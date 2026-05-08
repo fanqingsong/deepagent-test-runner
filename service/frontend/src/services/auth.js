@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8013';
 
 /**
- * Authentication API client for communicating with auth-service
+ * Authentication API client for communicating with backend service
  */
 class AuthClient {
   constructor() {
