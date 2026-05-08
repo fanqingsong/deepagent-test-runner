@@ -1,0 +1,87 @@
+/* LoginView Styles - IBM Carbon-inspired Design System */
+
+.login-view-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background-color: #f4f4f4;
+}
+
+.login-view-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: #fff;
+  padding: 3rem 2rem;
+  box-shadow: 0 0 0 1px #e0e0e0;
+  border-radius: 0;
+}
+
+/* Header */
+.login-view-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-view-header h1 {
+  font-size: 2rem;
+  font-weight: 300;
+  color: #161616;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+}
+
+.login-view-header p {
+  font-size: 1rem;
+  color: #525252;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Footer */
+.login-view-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #0f62fe;
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  transition: color 0.15s ease;
+}
+
+.back-button:hover {
+  color: #0353e9;
+  text-decoration: underline;
+}
+
+.back-button:active {
+  color: #002d9c;
+}
+
+/* Responsive Design */
+@media (max-width: 672px) {
+  .login-view-container {
+    padding: 1rem;
+  }
+
+  .login-view-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .login-view-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .login-view-header p {
+    font-size: 0.875rem;
+  }
+}
