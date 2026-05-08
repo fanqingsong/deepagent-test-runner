@@ -13,7 +13,12 @@ celery_app = Celery(
     "unified_backend",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks.test_execution", "app.tasks.schedule_sync"]
+    include=[
+        "app.tasks.test_execution",
+        "app.tasks.schedule_sync",
+        "app.tasks.email_tasks",
+        "app.tasks.maintenance_tasks"
+    ]
 )
 
 # Configure Celery
@@ -29,6 +34,8 @@ celery_app.conf.update(
     task_routes={
         "app.tasks.test_execution.execute_test": {"queue": "test_execution"},
         "app.tasks.schedule_sync.*": {"queue": "schedule_sync"},
+        "app.tasks.email_tasks.*": {"queue": "email_tasks"},
+        "app.tasks.maintenance_tasks.*": {"queue": "maintenance"},
     },
 
     # Worker settings
@@ -63,5 +70,18 @@ celery_app.conf.beat_schedule = {
     "cleanup-old-test-runs": {
         "task": "app.tasks.schedule_sync.cleanup_old_test_runs",
         "schedule": crontab(hour=2, minute=0),
+    },
+    # Auth maintenance tasks
+    "cleanup-expired-sessions": {
+        "task": "app.tasks.maintenance_tasks.cleanup_expired_sessions_task",
+        "schedule": crontab(minute='*/30'),  # Every 30 minutes
+    },
+    "cleanup-old-audit-logs": {
+        "task": "app.tasks.maintenance_tasks.cleanup_audit_logs_task",
+        "schedule": crontab(hour=3, minute=0),  # Daily at 3 AM
+    },
+    "reset-locked-accounts": {
+        "task": "app.tasks.maintenance_tasks.reset_locked_accounts_task",
+        "schedule": crontab(minute='*/5'),  # Every 5 minutes
     },
 }

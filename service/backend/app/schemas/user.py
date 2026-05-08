@@ -1,56 +1,63 @@
 """
-Pydantic Schemas for User Management
+User Schemas
 
-Request and response models for user CRUD operations.
+Backend user management schemas (NOT authentication).
 """
-
-from typing import List, Optional
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional, List
 from datetime import datetime
-
-from pydantic import BaseModel, EmailStr, Field
-
-
-class RoleResponse(BaseModel):
-    """Schema for role response."""
-    id: int
-    name: str
-    description: Optional[str] = None
-    is_system: bool
-
-    model_config = {"from_attributes": True}
 
 
 class UserBase(BaseModel):
-    """Base schema for user."""
-    username: str = Field(..., min_length=3, max_length=100, description="Username")
-    email: EmailStr = Field(..., description="Email address")
+    """Base user model"""
+    email: EmailStr
+    full_name: Optional[str] = None
+    is_active: bool = True
 
 
 class UserCreate(UserBase):
-    """Schema for user creation."""
-    password: str = Field(..., min_length=8, max_length=100, description="Password")
-    is_active: bool = Field(default=True, description="User active status")
+    """User creation schema"""
+    password: str = Field(..., min_length=8)
 
 
 class UserUpdate(BaseModel):
-    """Schema for user update."""
-    email: Optional[EmailStr] = Field(None, description="Email address")
-    is_active: Optional[bool] = Field(None, description="User active status")
+    """User update schema"""
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class UserResponse(UserBase):
-    """Schema for user response."""
+    """User response schema"""
     id: int
-    is_active: bool
-    is_admin: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
 class UserWithRoles(UserResponse):
-    """Schema for user response with roles."""
-    roles: List[RoleResponse] = []
+    """User with roles"""
+    roles: List[str] = []
 
-    model_config = {"from_attributes": True}
+
+class Session(BaseModel):
+    """User session response model"""
+    id: int
+    session_token: str
+    ip_address: str
+    user_agent: str
+    created_at: datetime
+    last_active: datetime
+    expires_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SessionsListResponse(BaseModel):
+    """Sessions list response"""
+    sessions: List[Session]
+    total: int

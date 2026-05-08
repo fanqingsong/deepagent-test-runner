@@ -1,21 +1,45 @@
-"""Pydantic schemas for request/response validation."""
+# Auth schemas (from auth-service migration)
+from app.schemas.auth import (
+    RegistrationRequest,
+    RegistrationResponse,
+    EmailVerificationRequest,
+    LoginRequest,
+    LoginResponse,
+    LogoutResponse,
+)
+from app.schemas.mfa import (
+    MFAVerificationRequest,
+    MFASetupResponse,
+    MFAEnableRequest,
+    MFAEnabledResponse,
+    MFADisableRequest,
+)
+from app.schemas.password import (
+    PasswordResetRequest,
+    PasswordResetConfirmRequest,
+    PasswordChangeRequest,
+)
+from app.schemas.auth_user import User as AuthUser
+from app.schemas.user import Session, SessionsListResponse
 
+# Backend schemas (original)
 from app.schemas.test_definition import (
     TestDefinitionCreate,
-    TestDefinitionListResponse,
     TestDefinitionResponse,
     TestDefinitionUpdate,
+    TestDefinitionListResponse,
+    TestVersionSnapshot,
     TestStepCreate,
     TestStepResponse,
     TestStepUpdate,
-    TestVersionSnapshot,
 )
-from app.schemas.auth import (
-    Token,
-    TokenData,
-    UserCreate,
-    UserLogin,
-    UserResponse,
+from app.schemas.test_generation import (
+    TestCaseGenerateRequest,
+    TestCaseGenerateResponse,
+    GeneratedTestStep,
+    GeneratedTestCase,
+    BatchGenerateRequest,
+    BatchGenerateResponse,
 )
 from app.schemas.schedules import (
     ScheduleCreate,
@@ -26,36 +50,75 @@ from app.schemas.schedules import (
     SchedulePresetsResponse,
     ScheduleTriggerResponse,
 )
+from app.schemas.jobs import (
+    JobCreate,
+    JobResponse,
+    JobStatusResponse,
+)
 from app.schemas.sso_config import (
     SSOConfigCreate,
-    SSOConfigUpdate,
     SSOConfigResponse,
+    SSOConfigUpdate,
     SSOConfigListResponse,
 )
+from app.schemas.common import Error, MessageResponse
 
 __all__ = [
+    # Auth (from auth-service)
+    "RegistrationRequest",
+    "RegistrationResponse",
+    "EmailVerificationRequest",
+    "LoginRequest",
+    "LoginResponse",
+    "LogoutResponse",
+    # MFA
+    "MFAVerificationRequest",
+    "MFASetupResponse",
+    "MFAEnableRequest",
+    "MFAEnabledResponse",
+    "MFADisableRequest",
+    # Password
+    "PasswordResetRequest",
+    "PasswordResetConfirmRequest",
+    "PasswordChangeRequest",
+    # User
+    "AuthUser",
+    "Session",
+    "SessionsListResponse",
+    # Test Definitions
     "TestDefinitionCreate",
     "TestDefinitionResponse",
     "TestDefinitionUpdate",
     "TestDefinitionListResponse",
+    "TestVersionSnapshot",
     "TestStepCreate",
     "TestStepResponse",
     "TestStepUpdate",
-    "TestVersionSnapshot",
-    "Token",
-    "TokenData",
-    "UserCreate",
-    "UserLogin",
-    "UserResponse",
+    # Test Generation
+    "TestCaseGenerateRequest",
+    "TestCaseGenerateResponse",
+    "GeneratedTestStep",
+    "GeneratedTestCase",
+    "BatchGenerateRequest",
+    "BatchGenerateResponse",
+    # Schedules
     "ScheduleCreate",
-    "ScheduleUpdate",
     "ScheduleResponse",
+    "ScheduleUpdate",
     "ScheduleToggle",
     "SchedulePreset",
     "SchedulePresetsResponse",
     "ScheduleTriggerResponse",
+    # Jobs
+    "JobCreate",
+    "JobResponse",
+    "JobStatusResponse",
+    # SSO Config
     "SSOConfigCreate",
-    "SSOConfigUpdate",
     "SSOConfigResponse",
+    "SSOConfigUpdate",
     "SSOConfigListResponse",
+    # Common
+    "Error",
+    "MessageResponse",
 ]

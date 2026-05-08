@@ -23,3 +23,7 @@ python-multipart>=0.0.9
 redis==5.0.1
 sqlalchemy[asyncio]==2.0.25
 uvicorn[standard]>=0.31.1
+
+# Auth service dependencies
+pyotp==2.9.0
+qrcode[pil]==7.4.2

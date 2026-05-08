@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Configure apt to use Aliyun mirrors (Chinese mirror for faster downloads)
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
+
 # Install system dependencies for Playwright
 # These libraries are required for Chromium to run in headless mode
 RUN apt-get update && apt-get install -y \
@@ -39,6 +42,9 @@ RUN apt-get update && apt-get install -y \
     libexpat1 \
     # Clean up
     && rm -rf /var/lib/apt/lists/*
+
+# Configure pip to use Aliyun mirrors (Chinese mirror for faster downloads)
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

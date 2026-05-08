@@ -1,48 +1,39 @@
-"""
-Pydantic Schemas for Authentication
-
-Request and response models for authentication endpoints.
-"""
-
-from typing import Optional
-
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from app.schemas.auth_user import User as AuthUser
 
 
-class UserBase(BaseModel):
-    """Base schema for user."""
-    username: str = Field(..., min_length=3, max_length=100, description="Username")
-    email: EmailStr = Field(..., description="Email address")
+class RegistrationRequest(BaseModel):
+    """User registration request"""
+    email: EmailStr
+    password: str = Field(..., min_length=8)
 
 
-class UserCreate(UserBase):
-    """Schema for user registration."""
-    password: str = Field(..., min_length=8, max_length=100, description="Password")
+class RegistrationResponse(BaseModel):
+    """User registration response"""
+    message: str
+    user_id: int
 
 
-class UserLogin(BaseModel):
-    """Schema for user login."""
-    username: str = Field(..., description="Username")
-    password: str = Field(..., description="Password")
+class EmailVerificationRequest(BaseModel):
+    """Email verification request"""
+    token: str
 
 
-class UserResponse(UserBase):
-    """Schema for user response."""
-    id: int
-    is_active: bool
-    is_admin: bool
-
-    model_config = {"from_attributes": True}
+class LoginRequest(BaseModel):
+    """User login request"""
+    email: EmailStr
+    password: str
+    remember_me: Optional[bool] = False
 
 
-class Token(BaseModel):
-    """Schema for JWT token response."""
+class LoginResponse(BaseModel):
+    """User login response"""
     access_token: str
-    token_type: str = "bearer"
-    user: UserResponse
+    mfa_required: bool
+    user: AuthUser
 
 
-class TokenData(BaseModel):
-    """Schema for token payload data."""
-    username: Optional[str] = None
-    user_id: Optional[str] = None
+class LogoutResponse(BaseModel):
+    """Logout response"""
+    message: str

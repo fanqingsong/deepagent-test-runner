@@ -47,6 +47,61 @@ class Settings(BaseSettings):
         description="Access token expiration time in minutes"
     )
 
+    # Authentication Service Settings
+    JWT_SECRET_KEY: str = Field(
+        default="your-jwt-secret-key-change-this-in-production",
+        description="Secret key for auth JWT tokens"
+    )
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=15,
+        description="Auth access token expiration time in minutes"
+    )
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=30,
+        description="Auth refresh token expiration time in days"
+    )
+
+    # SMTP Configuration (for email verification)
+    SMTP_HOST: str = Field(default="smtp.gmail.com", description="SMTP server host")
+    SMTP_PORT: int = Field(default=587, description="SMTP server port")
+    SMTP_USER: str = Field(default="", description="SMTP username")
+    SMTP_PASSWORD: str = Field(default="", description="SMTP password")
+    EMAIL_FROM: str = Field(
+        default="noreply@example.com",
+        description="From email address for sent emails"
+    )
+
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")
+    RATE_LIMIT_REDIS_URL: str = Field(
+        default="redis://localhost:6379/1",
+        description="Redis URL for rate limiting"
+    )
+
+    # Session Management
+    MAX_CONCURRENT_SESSIONS: int = Field(
+        default=5,
+        description="Maximum concurrent sessions per user"
+    )
+    SESSION_EXPIRE_HOURS: int = Field(
+        default=24,
+        description="Session expiration time in hours"
+    )
+    SESSION_REMEMBER_ME_DAYS: int = Field(
+        default=30,
+        description="Remember-me session expiration time in days"
+    )
+
+    # MFA Configuration
+    MFA_TOTP_ISSUER: str = Field(
+        default="CC-Test-Runner",
+        description="TOTP issuer name"
+    )
+    MFA_RECOVERY_CODE_COUNT: int = Field(
+        default=10,
+        description="Number of MFA recovery codes"
+    )
+
     # CORS
     CORS_ORIGINS: List[str] = Field(
         default=["http://localhost:3000", "http://localhost:8000", "http://localhost:8013"],

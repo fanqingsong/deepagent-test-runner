@@ -58,6 +58,21 @@ def create_application() -> FastAPI:
     # Include API router
     app.include_router(api_router, prefix="/api/v1")
 
+    # Include authentication routers
+    from app.api.v1.endpoints import (
+        auth,
+        mfa,
+        password,
+        sessions,
+        admin
+    )
+
+    app.include_router(auth.router, prefix="/api/v1/auth")
+    app.include_router(mfa.router, prefix="/api/v1/auth/mfa")
+    app.include_router(password.router, prefix="/api/v1/auth/password")
+    app.include_router(sessions.router, prefix="/api/v1/auth/sessions")
+    app.include_router(admin.router, prefix="/api/v1/admin")
+
     @app.get("/")
     async def root():
         """Root endpoint with service information."""

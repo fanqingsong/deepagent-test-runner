@@ -77,6 +77,22 @@ services:
       ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
       API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000","http://localhost:8013","http://localhost:5173"]'
+      # Authentication Settings
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      RATE_LIMIT_ENABLED: "true"
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/1
+      MAX_CONCURRENT_SESSIONS: ${MAX_CONCURRENT_SESSIONS:-5}
+      SESSION_EXPIRE_HOURS: ${SESSION_EXPIRE_HOURS:-24}
+      SESSION_REMEMBER_ME_DAYS: ${SESSION_REMEMBER_ME_DAYS:-30}
+      MFA_TOTP_ISSUER: ${MFA_TOTP_ISSUER:-CC-Test-Runner}
+      MFA_RECOVERY_CODE_COUNT: ${MFA_RECOVERY_CODE_COUNT:-10}
     ports:
       - "8011:8001"
     volumes:
@@ -97,7 +113,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: cc-test-celery-worker
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q test_execution,schedule_sync
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q test_execution,schedule_sync,email_tasks,maintenance
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
@@ -169,98 +185,6 @@ services:
       # Mount frontend source for hot reload in development
       - ./frontend/src:/app/frontend
     command: ["sh", "-c", "cd /app/frontend && NODE_OPTIONS='--max-old-space-size=2048' npm run dev -- --host 0.0.0.0"]
-    networks:
-      - test-network
-    restart: unless-stopped
-
-  auth-service:
-    build:
-      context: ./auth-service
-      dockerfile: Dockerfile
-    container_name: cc-test-auth-service
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
-      CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000","http://localhost:8013","http://localhost:5173"]'
-    ports:
-      - "8010:8010"
-    volumes:
-      # Mount source for hot reload in development
-      - ./auth-service/app:/app/app
-    command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8010 --reload"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - test-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-
-  auth-service-worker:
-    build:
-      context: ./auth-service
-      dockerfile: Dockerfile
-    container_name: cc-test-auth-service-worker
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q email_tasks,maintenance
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
-    volumes:
-      # Mount source for hot reload in development
-      - ./auth-service/app:/app/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - test-network
-    restart: unless-stopped
-
-  auth-service-beat:
-    build:
-      context: ./auth-service
-      dockerfile: Dockerfile
-    container_name: cc-test-auth-service-beat
-    command: celery -A app.core.celery_app beat --loglevel=info
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
-    volumes:
-      # Mount source for hot reload in development
-      - ./auth-service/app:/app/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - test-network
     restart: unless-stopped

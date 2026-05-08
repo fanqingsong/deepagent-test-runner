@@ -1,266 +1,185 @@
-"""
-Authentication API Endpoints
-
-User registration, login, and token management.
-Supports both local and Casdoor authentication.
-"""
-
-import secrets
-from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import (
-    create_access_token,
-    get_current_user,
-    get_password_hash,
-    verify_password,
+from app.schemas.auth import (
+    RegistrationRequest,
+    RegistrationResponse,
+    EmailVerificationRequest,
+    LoginRequest,
+    LoginResponse,
+    LogoutResponse,
 )
-from app.models import User
-from app.schemas import Token, UserCreate, UserLogin, UserResponse
-from app.services.unified_auth import (
-    authenticate_user_casdoor,
-    refresh_token as refresh_auth_token,
-)
+from app.services.auth.auth_service import AuthService
+from app.services.auth.session_service import SessionService
+from app.services.auth.admin_service import AdminService
+from app.schemas.auth_user import User as AuthUser
+from app.core.rate_limit_decorator import rate_limit
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
+@rate_limit(max_attempts=3, window_seconds=3600)  # 3 attempts per hour
 async def register(
-    user_data: UserCreate,
+    request: Request,
+    data: RegistrationRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Register a new user.
-
-    - **username**: Unique username (min 3 characters)
-    - **email**: Valid email address
-    - **password**: Password (min 8 characters)
-    """
-    # Check if username already exists
-    result = await db.execute(select(User).where(User.username == user_data.username))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username already registered"
-        )
-
-    # Check if email already exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered"
-        )
-
-    # Create new user
-    hashed_password = get_password_hash(user_data.password)
-    db_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        hashed_password=hashed_password
+    """Register new user account"""
+    success, error_message, user = await AuthService.register_user(
+        db=db,
+        email=data.email,
+        password=data.password
     )
 
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST if error_message == "Invalid email format" else status.HTTP_409_CONFLICT,
+            detail=error_message
+        )
 
-    return db_user
+    return RegistrationResponse(
+        message="Registration successful. Please check your email to verify your account.",
+        user_id=user.id
+    )
 
 
-@router.post("/login", response_model=Token)
-async def login(
-    user_data: UserLogin,
+@router.post("/verify-email")
+async def verify_email(
+    data: EmailVerificationRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Login and receive access token.
+    """Verify email address with token"""
+    success, error_message, user = await AuthService.verify_email(
+        db=db,
+        token=data.token
+    )
 
-    - **username**: Username
-    - **password**: Password
-    """
-    # Find user by username
-    result = await db.execute(select(User).where(User.username == user_data.username))
-    user = result.scalar_one_or_none()
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_message
+        )
 
-    # Verify user exists and password is correct
-    if not user or not verify_password(user_data.password, user.hashed_password):
+    return {"message": "Email verified successfully. You can now log in."}
+
+
+@router.post("/login", response_model=LoginResponse)
+@rate_limit(max_attempts=5, window_seconds=900)  # 5 attempts per 15 minutes
+async def login(
+    request: Request,
+    data: LoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """User login with email and password"""
+    # Get client IP address
+    ip_address = request.client.host if request.client else "0.0.0.0"
+    user_agent = request.headers.get("user-agent", "")
+
+    # Authenticate user
+    success, error_message, user = await AuthService.authenticate_user(
+        db=db,
+        email=data.email,
+        password=data.password,
+        ip_address=ip_address
+    )
+
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail=error_message
         )
 
-    # Check if user is active
-    if not user.is_active:
+    # Check if email is verified
+    if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
+            detail="Please verify your email before logging in"
         )
 
-    # Create access token
-    access_token = create_access_token(
-        data={"sub": str(user.id), "username": user.username, "email": user.email}
+    # Check if account is suspended
+    is_suspended, suspension_message = await AdminService.check_suspension_during_login(db, user)
+    if is_suspended:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=suspension_message
+        )
+
+    # Check if MFA is required
+    if error_message == "MFA_REQUIRED":
+        # Return a response indicating MFA verification is needed
+        # Don't create session or tokens yet - wait for MFA verification
+        raise HTTPException(
+            status_code=status.HTTP_202_ACCEPTED,
+            detail={
+                "message": "MFA verification required",
+                "require_mfa": True,
+                "user_id": user.id
+            }
+        )
+
+    # Create session
+    session = await SessionService.create_user_session(
+        db=db,
+        user=user,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        remember_me=data.remember_me
     )
 
-    return Token(
+    # Generate JWT tokens
+    access_token, refresh_token = SessionService.generate_tokens(user.id, user.email)
+
+    return LoginResponse(
         access_token=access_token,
-        user=UserResponse.model_validate(user)
-    )
-
-
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_info(
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Get current authenticated user information.
-
-    Requires valid JWT token.
-    """
-    # In a real implementation, you would fetch the full user from database
-    # For now, return the basic info from token
-    return UserResponse(
-        id=int(current_user["user_id"]),
-        username=current_user["username"],
-        email=current_user["email"],
-        is_active=True,
-        is_admin=False
+        refresh_token=refresh_token,
+        session_token=session.session_token,
+        user=AuthUser(
+            id=user.id,
+            email=user.email,
+            is_verified=user.is_verified,
+            created_at=user.created_at
+        )
     )
 
 
 @router.post("/logout")
-async def logout():
-    """
-    Logout current user.
-
-    Note: In a stateless JWT implementation, logout is handled client-side
-    by discarding the token. This endpoint exists for API completeness.
-    """
-    return {"message": "Successfully logged out"}
-
-
-@router.post("/login/casdoor")
-async def login_casdoor(user_data: UserLogin):
-    """
-    Login with Casdoor using username and password.
-
-    - **username**: Casdoor username
-    - **password**: Casdoor password
-    """
-    token_response = await authenticate_user_casdoor(user_data.username, user_data.password)
-
-    if not token_response:
+async def logout(
+    http_request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Logout user and invalidate session"""
+    # Get session token from header
+    session_token = http_request.headers.get("X-Session-Token")
+    if not session_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Casdoor authentication failed",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Session token required"
         )
 
-    return token_response
+    # For now, we'll need to extract user_id from the session token
+    # In production, this would come from JWT token validation
+    from app.services.auth.session_service import SessionService
+    session = await SessionService.validate_session_token(db, session_token)
 
-
-@router.get("/oidc/login")
-async def oidc_login():
-    """
-    Get OIDC authorization URL for Casdoor SSO login.
-
-    Returns the authorization URL and state parameter for CSRF protection.
-    """
-    import os
-    from urllib.parse import urlencode
-
-    state = secrets.token_urlsafe(32)
-    casdoor_endpoint = os.environ.get("CASDOOR_ENDPOINT", "http://casdoor:8000")
-    casdoor_organization = os.environ.get("CASDOOR_ORGANIZATION", "org")
-    casdoor_client_id = os.environ.get("CASDOOR_CLIENT_ID", "")
-
-    auth_url = f"{casdoor_endpoint}/login/oauth/authorize"
-    params = {
-        "client_id": casdoor_client_id,
-        "response_type": "code",
-        "scope": "openid email profile",
-        "redirect_uri": "http://localhost:8080/oidc/callback",
-        "state": state,
-        "organization": casdoor_organization
-    }
-
-    auth_url_with_params = f"{auth_url}?{urlencode(params)}"
-
-    return {
-        "auth_url": auth_url_with_params,
-        "state": state
-    }
-
-
-@router.get("/oidc/callback")
-async def oidc_callback(
-    code: str = Query(..., description="Authorization code from Casdoor"),
-    state: str = Query(None, description="State parameter for CSRF validation")
-):
-    """
-    Handle OIDC callback from Casdoor.
-
-    - **code**: Authorization code from Casdoor
-    - **state**: State parameter for CSRF validation (optional)
-    """
-    try:
-        from app.services.unified_auth import get_casdoor_sdk
-
-        sdk = get_casdoor_sdk()
-        token_data = sdk.get_oauth_token(code)
-
-        # Get user info from Casdoor
-        user_info = sdk.get_user(token_data["access_token"])
-
-        return {
-            "access_token": token_data.get("access_token"),
-            "refresh_token": token_data.get("refresh_token"),
-            "token_type": "bearer",
-            "provider": "casdoor",
-            "expires_in": token_data.get("expires_in", 300),
-            "refresh_expires_in": token_data.get("refresh_expires_in", 1800),
-            "user": {
-                "id": user_info.get("id"),
-                "username": user_info.get("name"),
-                "email": user_info.get("email"),
-                "roles": user_info.get("roles", [])
-            }
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"OIDC authentication failed: {str(e)}"
-        )
-
-
-@router.post("/refresh")
-async def refresh(
-    refresh_token: str,
-    provider: str = Query(..., description="Auth provider: 'local' or 'casdoor'")
-):
-    """
-    Refresh an access token using a refresh token.
-
-    - **refresh_token**: Refresh token
-    - **provider**: Auth provider ('local' or 'casdoor')
-    """
-    if provider != "casdoor":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token refresh only supported for Casdoor provider"
-        )
-
-    new_tokens = await refresh_auth_token(refresh_token, provider)
-
-    if not new_tokens:
+    if not session:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token"
+            detail="Invalid session"
         )
 
-    return new_tokens
+    # Logout user
+    success, error_message = await AuthService.logout_user(
+        db=db,
+        user_id=session.user_id,
+        session_token=session_token
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_message
+        )
+
+    return {"message": "Logged out successfully"}
