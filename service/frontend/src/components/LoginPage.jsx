@@ -16,7 +16,7 @@ function LoginPage() {
 
   const [activeTab, setActiveTab] = useState('local');
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
@@ -37,8 +37,8 @@ function LoginPage() {
     }
 
     // Validate form inputs
-    if (!formData.username.trim()) {
-      setError('Please enter your username');
+    if (!formData.email.trim()) {
+      setError('Please enter your email');
       return;
     }
 
@@ -50,7 +50,7 @@ function LoginPage() {
     setLoading(true);
     setError('');
 
-    const result = await login('local', formData.username, formData.password);
+    const result = await login('local', formData.email, formData.password);
 
     if (result.success) {
       // Redirect to dashboard using hash routing
@@ -131,15 +131,15 @@ function LoginPage() {
         {activeTab === 'local' && (
           <form className="login-form" onSubmit={handleLocalLogin} noValidate>
             <div className="form-group">
-              <label htmlFor="local-username">Username</label>
+              <label htmlFor="local-email">Email</label>
               <input
-                id="local-username"
-                type="text"
-                name="username"
-                value={formData.username}
+                id="local-email"
+                type="email"
+                name="email"
+                value={formData.email}
                 onChange={handleInputChange}
                 required
-                placeholder="Enter your username"
+                placeholder="Enter your email"
                 disabled={loading}
               />
             </div>

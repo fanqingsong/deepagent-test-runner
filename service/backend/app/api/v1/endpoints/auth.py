@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.core.database import get_db
 from app.schemas.auth import (
@@ -15,6 +16,7 @@ from app.services.auth.session_service import SessionService
 from app.services.auth.admin_service import AdminService
 from app.schemas.auth_user import User as AuthUser
 from app.core.rate_limit_decorator import rate_limit
+from app.models.auth.user_account import UserAccount
 
 router = APIRouter()
 
@@ -128,18 +130,36 @@ async def login(
         remember_me=data.remember_me
     )
 
-    # Generate JWT tokens
-    access_token, refresh_token = SessionService.generate_tokens(user.id, user.email)
+    # Check if user is admin by querying users table
+    is_admin = False
+    token_user_id = user.id  # Default to user_accounts ID
+    try:
+        from app.models.user import User as UserModel
+        result = await db.execute(
+            select(UserModel).where(UserModel.email == user.email)
+        )
+        legacy_user = result.scalar_one_or_none()
+        if legacy_user:
+            is_admin = legacy_user.is_admin
+            token_user_id = legacy_user.id  # Use users table ID for token
+    except Exception:
+        pass  # If users table doesn't exist or query fails, default to non-admin
+
+    # Generate JWT tokens with the correct user ID (prefer users table ID)
+    access_token, refresh_token = SessionService.generate_tokens(token_user_id, user.email)
 
     return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         session_token=session.session_token,
+        mfa_required=False,
         user=AuthUser(
             id=user.id,
             email=user.email,
             is_verified=user.is_verified,
-            created_at=user.created_at
+            mfa_enabled=user.mfa_enabled,
+            status=user.status,
+            is_admin=is_admin
         )
     )
 

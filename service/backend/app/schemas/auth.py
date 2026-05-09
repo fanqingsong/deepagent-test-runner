@@ -30,6 +30,8 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     """User login response"""
     access_token: str
+    refresh_token: str
+    session_token: str
     mfa_required: bool
     user: AuthUser
 

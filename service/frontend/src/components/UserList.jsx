@@ -90,8 +90,8 @@ const UserList = ({ refreshKey, onEditUser }) => {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (user.username || user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (user.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -151,7 +151,7 @@ const UserList = ({ refreshKey, onEditUser }) => {
               {filteredUsers.map((user) => (
                 <tr key={user.id} className="user-row">
                   <td className="username-cell">
-                    <div className="user-username">{user.username}</div>
+                    <div className="user-username">{user.username || user.email || 'Unknown'}</div>
                   </td>
                   <td className="email-cell">
                     <div className="user-email">{user.email}</div>
@@ -206,7 +206,7 @@ const UserList = ({ refreshKey, onEditUser }) => {
                         )}
                       </button>
                       <button
-                        onClick={() => handleDeleteUser(user.id, user.username)}
+                        onClick={() => handleDeleteUser(user.id, user.username || user.email || 'Unknown')}
                         className="action-btn delete-btn"
                         title="删除用户"
                         aria-label="删除用户"

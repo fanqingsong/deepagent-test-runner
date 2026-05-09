@@ -10,6 +10,7 @@ class User(BaseModel):
     is_verified: bool
     mfa_enabled: bool
     status: str  # active, suspended, admin_suspended
+    is_admin: bool = False
 
     class Config:
         from_attributes = True
