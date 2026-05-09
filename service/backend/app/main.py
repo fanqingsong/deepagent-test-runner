@@ -8,12 +8,16 @@ connection pool.
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.core.observability import setup_observability
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -23,10 +27,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     Manages application startup and shutdown events.
     """
     # Startup
-    print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     yield
     # Shutdown
-    print(f"Shutting down {settings.APP_NAME}")
+    logger.info(f"Shutting down {settings.APP_NAME}")
 
 
 def create_application() -> FastAPI:
@@ -45,6 +49,9 @@ def create_application() -> FastAPI:
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
     )
+
+    # Setup observability FIRST (before CORS)
+    setup_observability(app)
 
     # Configure CORS
     app.add_middleware(

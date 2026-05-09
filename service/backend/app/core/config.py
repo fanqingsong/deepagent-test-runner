@@ -161,6 +161,30 @@ class Settings(BaseSettings):
         description="Directory to store test screenshots"
     )
 
+    # Observability - Prometheus
+    PROMETHEUS_PORT: int = Field(default=9090, description="Prometheus metrics port")
+    PROMETHEUS_ENABLED: bool = Field(default=True, description="Enable Prometheus metrics")
+
+    # Observability - Loki
+    LOKI_ENABLED: bool = Field(default=False, description="Enable Loki logging")
+    LOKI_ENDPOINT: str = Field(
+        default="http://loki:3100/loki/api/v1/push",
+        description="Loki push endpoint"
+    )
+
+    # Observability - Jaeger
+    JAEGER_ENABLED: bool = Field(default=False, description="Enable Jaeger tracing")
+    JAEGER_AGENT_HOST: str = Field(default="jaeger", description="Jaeger agent hostname")
+    JAEGER_AGENT_PORT: int = Field(default=6831, description="Jaeger agent port")
+    TRACE_SAMPLE_RATE: float = Field(
+        default=0.1,
+        description="Trace sampling rate (0.0-1.0)"
+    )
+
+    # Observability - Logging
+    LOG_LEVEL: str = Field(default="INFO", description="Logging level")
+    LOG_FORMAT: str = Field(default="json", description="Log format (json or text)")
+
 
 # Global settings instance
 settings = Settings()
