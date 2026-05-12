@@ -10,7 +10,7 @@ import authClient from '../../services/auth';
 import MFALogin from './MFALogin';
 import './LoginForm.css';
 
-function LoginForm({ onLoginSuccess }) {
+function LoginForm({ onLoginSuccess, onSwitchToPasswordReset }) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -79,7 +79,18 @@ function LoginForm({ onLoginSuccess }) {
       }
     } catch (err) {
       // Extract error message from response or use default
-      const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
+      let errorMessage = err.message || 'Login failed. Please try again.';
+
+      // Handle different error response structures
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        // detail can be a string or an object
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (typeof detail === 'object' && detail.message) {
+          errorMessage = detail.message;
+        }
+      }
 
       // Check if account is suspended
       if (errorMessage.toLowerCase().includes('suspended')) {
@@ -198,7 +209,13 @@ function LoginForm({ onLoginSuccess }) {
             aria-describedby={error ? 'login-error' : undefined}
           />
           <div className="forgot-password-link">
-            <a href="/password-reset" className="link">Forgot password?</a>
+            <button
+              type="button"
+              className="link-button"
+              onClick={onSwitchToPasswordReset}
+            >
+              Forgot password?
+            </button>
           </div>
         </div>
 

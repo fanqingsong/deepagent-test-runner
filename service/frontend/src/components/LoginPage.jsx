@@ -1,181 +1,116 @@
 /**
  * LoginPage
  *
- * Login page with local authentication:
+ * Login page with local authentication and registration:
  * 1. Local username/password
+ * 2. User registration
+ * 3. Password reset
  *
  * Note: Casdoor and SSO options have been hidden
  */
 
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import LoginForm from './auth/LoginForm';
+import RegisterForm from './auth/RegisterForm';
+import PasswordResetForm from './auth/PasswordResetForm';
 import './LoginPage.css';
 
 function LoginPage() {
   const { login, loginOidc } = useAuth();
 
   const [activeTab, setActiveTab] = useState('local');
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [showRegister, setShowRegister] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setError('');
+  const handleSwitchToRegister = () => {
+    setShowRegister(true);
+    setShowPasswordReset(false);
   };
 
-  const handleLocalLogin = async (e) => {
-    e.preventDefault();
-
-    // Prevent rapid double-submit
-    if (loading) {
-      return;
-    }
-
-    // Validate form inputs
-    if (!formData.email.trim()) {
-      setError('Please enter your email');
-      return;
-    }
-
-    if (!formData.password.trim()) {
-      setError('Please enter your password');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    const result = await login('local', formData.email, formData.password);
-
-    if (result.success) {
-      // Redirect to dashboard using hash routing
-      window.location.hash = 'dashboard';
-    } else {
-      setError(result.error);
-      setLoading(false);
-    }
+  const handleSwitchToLogin = () => {
+    setShowRegister(false);
+    setShowPasswordReset(false);
   };
 
-  const handleCasdoorLogin = async (e) => {
-    e.preventDefault();
-
-    // Prevent rapid double-submit
-    if (loading) {
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    const result = await login('casdoor', formData.username, formData.password);
-
-    if (result.success) {
-      // Redirect to dashboard using hash routing
-      window.location.hash = 'dashboard';
-    } else {
-      setError(result.error);
-      setLoading(false);
-    }
+  const handleSwitchToPasswordReset = () => {
+    setShowPasswordReset(true);
+    setShowRegister(false);
   };
 
-  const handleOidcLogin = async () => {
-    // Prevent rapid double-submit
-    if (loading) {
-      return;
-    }
+  const handleLoginSuccess = (user) => {
+    // Redirect to dashboard using hash routing
+    window.location.hash = 'dashboard';
+  };
 
-    setLoading(true);
-    setError('');
+  const handleRegistrationSuccess = (user) => {
+    // After successful registration, switch back to login
+    setShowRegister(false);
+  };
 
-    const result = await loginOidc();
-
-    if (!result.success) {
-      setError(result.error);
-      setLoading(false);
-    }
-    // If successful, redirect happens automatically
+  const handlePasswordResetSuccess = () => {
+    // After successful password reset request, switch back to login
+    setShowPasswordReset(false);
+    setShowRegister(false);
   };
 
   return (
     <div className="login-container">
       <div className="login-card">
-        <div className="login-header">
-          <h1>Claude Code Test Runner</h1>
-          <p>Sign in to your account</p>
-        </div>
-
-        {/* Auth Method Tabs */}
-        <div className="auth-tabs">
-          <button
-            className={`tab-button ${activeTab === 'local' ? 'active' : ''}`}
-            onClick={() => setActiveTab('local')}
-          >
-            Local Account
-          </button>
-          {/* Casdoor and SSO options hidden */}
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
-
-        {/* Local Login Form */}
-        {activeTab === 'local' && (
-          <form className="login-form" onSubmit={handleLocalLogin} noValidate>
-            <div className="form-group">
-              <label htmlFor="local-email">Email</label>
-              <input
-                id="local-email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter your email"
-                disabled={loading}
-              />
+        {!showRegister && !showPasswordReset ? (
+          <>
+            <div className="login-header">
+              <h1>Claude Code Test Runner</h1>
+              <p>Sign in to your account</p>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="local-password">Password</label>
-              <input
-                id="local-password"
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter your password"
-                disabled={loading}
-              />
+            <LoginForm
+              onLoginSuccess={handleLoginSuccess}
+              onSwitchToPasswordReset={handleSwitchToPasswordReset}
+            />
+
+            {/* Switch to Register */}
+            <div className="login-footer">
+              <p>
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={handleSwitchToRegister}
+                >
+                  Create account
+                </button>
+              </p>
+              <p className="footer-note">
+                Admin users can view all data. Regular users can only view their own data.
+              </p>
+            </div>
+          </>
+        ) : showRegister ? (
+          <>
+            <div className="login-header">
+              <h1>Claude Code Test Runner</h1>
+              <p>Create a new account</p>
             </div>
 
-            <button
-              type="submit"
-              className="login-button"
-              disabled={loading}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
+            <RegisterForm
+              onRegistrationSuccess={handleRegistrationSuccess}
+              onSwitchToLogin={handleSwitchToLogin}
+            />
+          </>
+        ) : (
+          <>
+            <div className="login-header">
+              <h1>Claude Code Test Runner</h1>
+              <p>Reset Your Password</p>
+            </div>
+
+            <PasswordResetForm
+              onSuccess={handlePasswordResetSuccess}
+              onCancel={handleSwitchToLogin}
+            />
+          </>
         )}
-
-        {/* Casdoor and SSO forms hidden */}
-
-        {/* Footer */}
-        <div className="login-footer">
-          <p>
-            Admin users can view all data. Regular users can only view their own data.
-          </p>
-        </div>
       </div>
     </div>
   );
