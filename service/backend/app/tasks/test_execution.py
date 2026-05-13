@@ -279,17 +279,9 @@ async def _execute_test_async(
                             "run_id": run_id
                         }
 
-                # Execute each step using AI interpretation
-                for step in test_steps:
-                    print(f"Executing step {step.get('step_number')}: {step.get('description')}")
-                    step_result = await _execute_step_with_ai(page, step, environment)
-                    print(f"Step result: {step_result.get('status')} - success: {step_result.get('success', 'N/A')}")
-                    test_results.append(step_result)
-
-                    # Stop on failure
-                    if step_result["status"] == "failed":
-                        print(f"Step failed, stopping execution")
-                        break
+                # Execute ALL steps in a single Claude Code session (matches CLI architecture)
+                print(f"Executing {len(test_steps)} test steps in a single Claude Code session")
+                test_results = await _execute_all_steps_with_ai(page, test_steps, environment)
 
                 print(f"Test execution completed. Total steps: {len(test_results)}, Passed: {sum(1 for r in test_results if r['status'] == 'passed')}")
 
@@ -358,6 +350,66 @@ async def _execute_test_async(
     return result
 
 
+async def _execute_all_steps_with_ai(
+    page: Page,
+    test_steps: List[Dict[str, Any]],
+    environment: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    Execute ALL test steps in a single Claude Code session (matches CLI architecture).
+
+    This is the NEW method that replaces the old per-step approach.
+
+    Args:
+        page: Playwright page
+        test_steps: List of test steps with natural language descriptions
+        environment: Environment variables
+
+    Returns:
+        List of step execution results
+    """
+    step_start = datetime.now(timezone.utc).timestamp() * 1000
+
+    if not test_steps:
+        return []
+
+    try:
+        # Use Claude AI to interpret and execute ALL steps in a single session
+        context = {
+            "environment": environment
+        }
+
+        results = await get_claude_interpreter().interpret_and_execute_batch(
+            page,
+            test_steps,
+            context
+        )
+
+        # Add duration to each result
+        step_end = datetime.utcnow().timestamp() * 1000
+        total_duration = step_end - step_start
+
+        # Distribute total duration evenly across steps (or could track per-step timing)
+        duration_per_step = total_duration // len(results) if results else total_duration
+
+        for result in results:
+            if "duration" not in result:
+                result["duration"] = duration_per_step
+
+        return results
+
+    except Exception as e:
+        # On exception, mark all steps as failed
+        step_end = datetime.utcnow().timestamp() * 1000
+        return [{
+            "step_number": step.get("step_number", idx + 1),
+            "description": step.get("description", ""),
+            "status": "failed",
+            "error": f"Batch execution failed: {str(e)}",
+            "duration": step_end - step_start
+        } for idx, step in enumerate(test_steps)]
+
+
 async def _execute_step_with_ai(
     page: Page,
     step: Dict[str, Any],
@@ -365,6 +417,9 @@ async def _execute_step_with_ai(
 ) -> Dict[str, Any]:
     """
     Execute a single test step using AI interpretation of natural language.
+
+    DEPRECATED: Use _execute_all_steps_with_ai instead for better token efficiency.
+    This method is kept for backward compatibility.
 
     Args:
         page: Playwright page
