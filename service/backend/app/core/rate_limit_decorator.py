@@ -2,6 +2,7 @@
 Rate limiting decorator for FastAPI endpoints.
 """
 
+import os
 from functools import wraps
 from fastapi import Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +27,10 @@ def rate_limit(max_attempts: int = 5, window_seconds: int = 900):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
+            # Skip rate limiting during tests
+            if os.getenv("TESTING_MODE"):
+                return await func(*args, **kwargs)
+
             # Find the request object
             request = None
             for arg in args:

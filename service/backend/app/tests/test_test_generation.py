@@ -71,7 +71,7 @@ async def test_generate_test_case_basic(db_session: AsyncSession):
 ```"""
 
     with patch.object(service, '_call_claude', return_value=mock_response):
-        result = await service.generate_test_case(request, db_session)
+        result = await service.generate_test_case(request)
 
         assert result["test_definition_id"] > 0
         assert "test_case" in result
@@ -124,7 +124,7 @@ def test_parse_ai_response():
     request = TestCaseGenerateRequest(
         app_url="https://example.com/login",
         app_description="Login page",
-        requirements="Test login",
+        requirements="Test user login functionality with valid credentials",
         test_type="functional"
     )
 
@@ -176,20 +176,20 @@ async def test_batch_generation(db_session: AsyncSession):
     requests = [
         TestCaseGenerateRequest(
             app_url="https://example.com",
-            app_description="App",
-            requirements="Test 1",
+            app_description="User login application page",
+            requirements="Test user login with valid credentials scenario 1",
             test_type="functional"
         ),
         TestCaseGenerateRequest(
             app_url="https://example.com",
-            app_description="App",
-            requirements="Test 2",
+            app_description="User login application page",
+            requirements="Test user login with valid credentials scenario 2",
             test_type="functional"
         )
     ]
 
     with patch.object(service, '_call_claude', return_value=mock_response):
-        result = await service.generate_batch(requests, db_session)
+        result = await service.generate_batch(requests)
 
         assert result["summary"]["total"] == 2
         assert result["summary"]["succeeded"] >= 0
@@ -217,8 +217,8 @@ async def test_claude_api_error_handling(db_session: AsyncSession):
 
     request = TestCaseGenerateRequest(
         app_url="https://example.com",
-        app_description="App",
-        requirements="Test",
+        app_description="User login application page",
+        requirements="Test user login with valid credentials",
         test_type="functional"
     )
 
@@ -235,8 +235,8 @@ def test_validate_test_type():
     # Valid test type
     request = TestCaseGenerateRequest(
         app_url="https://example.com",
-        app_description="App",
-        requirements="Test",
+        app_description="User login application page",
+        requirements="Test user login with valid credentials",
         test_type="functional"
     )
     assert request.test_type == "functional"
@@ -245,8 +245,8 @@ def test_validate_test_type():
     with pytest.raises(ValidationError):
         TestCaseGenerateRequest(
             app_url="https://example.com",
-            app_description="App",
-            requirements="Test",
+            app_description="User login application page",
+            requirements="Test user login with valid credentials",
             test_type="invalid_type"
         )
 
@@ -258,8 +258,8 @@ def test_max_steps_validation():
     # Valid max_steps
     request = TestCaseGenerateRequest(
         app_url="https://example.com",
-        app_description="App",
-        requirements="Test",
+        app_description="User login application page",
+        requirements="Test user login with valid credentials",
         test_type="functional",
         max_steps=10
     )
@@ -269,8 +269,8 @@ def test_max_steps_validation():
     with pytest.raises(ValidationError):
         TestCaseGenerateRequest(
             app_url="https://example.com",
-            app_description="App",
-            requirements="Test",
+            app_description="User login application page",
+            requirements="Test user login with valid credentials",
             test_type="functional",
             max_steps=3
         )
@@ -279,8 +279,8 @@ def test_max_steps_validation():
     with pytest.raises(ValidationError):
         TestCaseGenerateRequest(
             app_url="https://example.com",
-            app_description="App",
-            requirements="Test",
+            app_description="User login application page",
+            requirements="Test user login with valid credentials",
             test_type="functional",
             max_steps=25
         )

@@ -86,6 +86,12 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      # Observability Settings
+      PROMETHEUS_ENABLED: "true"
+      LOKI_ENABLED: "true"
+      JAEGER_ENABLED: "false"
+      LOG_FORMAT: "json"
+      LOG_LEVEL: "INFO"
       RATE_LIMIT_ENABLED: "true"
       RATE_LIMIT_REDIS_URL: redis://redis:6379/1
       MAX_CONCURRENT_SESSIONS: ${MAX_CONCURRENT_SESSIONS:-5}
@@ -276,7 +282,7 @@ services:
       - "8090:8080"
     volumes:
       - zap_data:/zap/wrk
-      - ./zap:/zap/scripts:ro
+      - ../infrastructure/ci/zap:/zap/scripts:ro
     networks:
       - test-network
     restart: unless-stopped

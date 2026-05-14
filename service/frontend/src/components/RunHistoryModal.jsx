@@ -39,6 +39,45 @@ function RunHistoryModal({ test, onClose }) {
     }
   };
 
+  const copyResultsToClipboard = () => {
+    if (!jobDetails || !jobDetails.results) return;
+
+    const testRuns = jobDetails.results.test_runs || [];
+
+    // Format the results for copying
+    let copyText = `📊 测试运行结果 - ${test.name}\n`;
+    copyText += `🕐 时间: ${formatDate(jobDetails.created_at)}\n`;
+    copyText += `📈 状态: ${getStatusText(jobDetails.status)}\n`;
+    copyText += `\n`;
+
+    testRuns.forEach((run, index) => {
+      copyText += `${index + 1}. 测试用例 #${run.test_definition_id || 'N/A'}\n`;
+      copyText += `   状态: ${run.status === 'passed' ? '✅ 通过' : '❌ 失败'}\n`;
+
+      if (run.error) {
+        copyText += `   错误: ${run.error}\n`;
+      }
+
+      if (run.total_tests !== undefined) {
+        copyText += `   统计: 总计 ${run.total_tests} | 通过 ${run.passed} | 失败 ${run.failed}\n`;
+      }
+
+      if (run.duration) {
+        copyText += `   耗时: ${Math.round(run.duration)}ms\n`;
+      }
+
+      copyText += `\n`;
+    });
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(copyText).then(() => {
+      alert('✅ 测试结果已复制到剪贴板！');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('❌ 复制失败，请手动复制');
+    });
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       'completed': '#4caf50',
@@ -205,7 +244,28 @@ function RunHistoryModal({ test, onClose }) {
 
                 {jobDetails.results && jobDetails.results.test_runs && jobDetails.results.test_runs.length > 0 && (
                   <div style={{marginTop: '12px'}}>
-                    <strong>测试结果:</strong>
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
+                      <strong>测试结果:</strong>
+                      <button
+                        onClick={copyResultsToClipboard}
+                        style={{
+                          padding: '4px 12px',
+                          background: '#4caf50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        title="复制测试结果到剪贴板"
+                      >
+                        📋 复制结果
+                      </button>
+                    </div>
                     {jobDetails.results.test_runs.map((run, index) => (
                       <div key={index} style={{
                         padding: '8px',

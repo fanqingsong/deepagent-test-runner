@@ -262,7 +262,7 @@ async def test_delete_test_suite_not_found(async_client: AsyncClient):
 # ==================== Schedules API Tests ====================
 
 @pytest.mark.asyncio
-async def test_create_schedule_single(async_client: AsyncClient, db_session: AsyncSession):
+async def test_create_schedule_single(async_client: AsyncClient, db_session: AsyncSession, admin_token: str):
     """Test creating a schedule for a single test"""
     schedule_data = {
         "name": "Single Test Schedule",
@@ -277,7 +277,8 @@ async def test_create_schedule_single(async_client: AsyncClient, db_session: Asy
         "retry_interval_seconds": 60
     }
 
-    response = await async_client.post("/api/v1/schedules/", json=schedule_data)
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    response = await async_client.post("/api/v1/schedules/", json=schedule_data, headers=headers)
 
     assert response.status_code == 201
     data = response.json()
@@ -292,7 +293,7 @@ async def test_create_schedule_single(async_client: AsyncClient, db_session: Asy
 
 
 @pytest.mark.asyncio
-async def test_create_schedule_suite(async_client: AsyncClient, db_session: AsyncSession):
+async def test_create_schedule_suite(async_client: AsyncClient, db_session: AsyncSession, admin_token: str):
     """Test creating a schedule for a test suite"""
     # First create a test suite
     suite_data = {
@@ -311,7 +312,8 @@ async def test_create_schedule_suite(async_client: AsyncClient, db_session: Asyn
         "timezone": "America/New_York"
     }
 
-    response = await async_client.post("/api/v1/schedules/", json=schedule_data)
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    response = await async_client.post("/api/v1/schedules/", json=schedule_data, headers=headers)
 
     assert response.status_code == 201
     data = response.json()
@@ -320,7 +322,7 @@ async def test_create_schedule_suite(async_client: AsyncClient, db_session: Asyn
 
 
 @pytest.mark.asyncio
-async def test_create_schedule_tag_filter(async_client: AsyncClient, db_session: AsyncSession):
+async def test_create_schedule_tag_filter(async_client: AsyncClient, db_session: AsyncSession, admin_token: str):
     """Test creating a schedule with tag filtering"""
     schedule_data = {
         "name": "Tag Filter Schedule",
@@ -330,7 +332,8 @@ async def test_create_schedule_tag_filter(async_client: AsyncClient, db_session:
         "timezone": "UTC"
     }
 
-    response = await async_client.post("/api/v1/schedules/", json=schedule_data)
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    response = await async_client.post("/api/v1/schedules/", json=schedule_data, headers=headers)
 
     assert response.status_code == 201
     data = response.json()

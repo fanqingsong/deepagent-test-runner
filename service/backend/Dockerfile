@@ -43,19 +43,26 @@ RUN apt-get update && apt-get install -y \
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
-# Configure pip to use Aliyun mirrors (Chinese mirror for faster downloads)
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
-
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Create non-root user first
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Try installing with retry logic and fallback to default PyPI
+RUN pip install --no-cache-dir -r requirements.txt || \
+    pip config set global.index-url https://pypi.org/simple/ && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers as non-root user
-USER appuser
+# Install Playwright browsers as root (system deps already installed above)
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 RUN playwright install chromium
+
+# Create non-root user and set permissions
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app && \
+    chown -R appuser:appuser /home/appuser/.cache/ms-playwright
+
+# Switch to non-root user
+USER appuser
 
 # Copy application code
 COPY . --chown=appuser:appuser

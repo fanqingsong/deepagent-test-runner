@@ -14,7 +14,7 @@ def is_valid_email_format(email: str) -> bool:
         True if email format is valid, False otherwise
     """
     try:
-        email_validate(email)
+        email_validate(email, check_deliverability=False)
         return True
     except:
         return False

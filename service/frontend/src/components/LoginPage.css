@@ -182,3 +182,36 @@
 .login-footer p {
   margin: 0;
 }
+
+.link-button {
+  padding: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  color: #0f62fe;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.link-button:hover:not(:disabled) {
+  color: #0353e9;
+  text-decoration: underline;
+}
+
+.link-button:active:not(:disabled) {
+  color: #002d9c;
+}
+
+.link-button:disabled {
+  color: #c6c6c6;
+  cursor: not-allowed;
+}
+
+.footer-note {
+  margin-top: 16px !important;
+  font-size: 11px !important;
+  color: #999 !important;
+}

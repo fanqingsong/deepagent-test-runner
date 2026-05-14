@@ -23,6 +23,8 @@ class ClaudeTestInterpreter:
     Architecture: Single session for all test steps (matches CLI approach).
     """
 
+    MAX_ITERATIONS = 50  # Maximum iterations to prevent infinite loops
+
     def __init__(self):
         """Initialize Claude Code Agent SDK interpreter."""
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -157,6 +159,12 @@ class ClaudeTestInterpreter:
                 options=options
             ):
                 iteration_count += 1
+
+                # Prevent infinite loops
+                if iteration_count > self.MAX_ITERATIONS:
+                    error_msg = f"Exceeded maximum iterations ({self.MAX_ITERATIONS}). Terminating to prevent infinite loop."
+                    print(f"[ERROR] {error_msg}")
+                    return {"success": False, "error": error_msg, "mode": "autonomous_claude_sdk"}
                 print(f"[Claude SDK] Iteration {iteration_count}")
 
                 if isinstance(message, AssistantMessage):
@@ -327,6 +335,12 @@ Execute the test step now using Playwright CLI through Bash commands.
                 options=options
             ):
                 iteration_count += 1
+
+                # Prevent infinite loops
+                if iteration_count > self.MAX_ITERATIONS:
+                    error_msg = f"Exceeded maximum iterations ({self.MAX_ITERATIONS}). Terminating to prevent infinite loop."
+                    print(f"[ERROR] {error_msg}")
+                    return [{"success": False, "error": error_msg, "mode": "autonomous_claude_sdk"} for _ in test_steps]
                 print(f"[Claude SDK] Iteration {iteration_count}")
 
                 if isinstance(message, AssistantMessage):

@@ -1,3 +1,7 @@
+// DEPRECATED: Replaced by single textarea in TestForm.jsx
+// This component is kept for backward compatibility but is no longer used.
+// The new implementation uses a single textarea where users enter all steps (one per line).
+
 function StepEditor({ steps, onChange }) {
   const addStep = () => {
     const newStep = {

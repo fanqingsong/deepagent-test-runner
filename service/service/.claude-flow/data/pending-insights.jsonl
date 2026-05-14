@@ -1,0 +1,16 @@
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/frontend/src/components/LoginPage.jsx","timestamp":1778245145269,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/frontend/src/components/LoginPage.jsx","timestamp":1778245148329,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/frontend/src/components/LoginPage.jsx","timestamp":1778245150768,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/frontend/src/components/LoginPage.jsx","timestamp":1778245157737,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/frontend/src/services/authService.js","timestamp":1778245176508,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/test-login.js","timestamp":1778245554649,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/backend/app/api/v1/endpoints/auth.py","timestamp":1778245680417,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/backend/app/api/v1/endpoints/auth.py","timestamp":1778245701208,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/backend/app/schemas/auth.py","timestamp":1778245720758,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/backend/app/api/v1/endpoints/auth.py","timestamp":1778245727145,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/backend/app/middleware/prometheus.py","timestamp":1778396962988,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/service/backend/app/middleware/prometheus.py","timestamp":1778397653694,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/test-login.spec.ts","timestamp":1778423321179,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/demo-login-correct.spec.ts","timestamp":1778423498651,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/demo-login-correct.js","timestamp":1778423530820,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/claude-code-test-runner/verify-login.js","timestamp":1778501627143,"sessionId":null}

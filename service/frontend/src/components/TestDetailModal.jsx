@@ -50,6 +50,37 @@ function TestDetailModal({ test, onClose, onViewRunHistory }) {
     return labels[stepType] || stepType;
   };
 
+  // Format steps for cleaner display (single-textarea style)
+  const formatStepsForDisplay = (steps) => {
+    return steps.map((step, index) => {
+      const desc = step.description || `${step.type} ${step.params?.selector || ''} ${step.params?.value || ''}`.trim();
+      return `${index + 1}. ${desc}`;
+    }).join('\n');
+  };
+
+  // Copy test steps to clipboard
+  const copyStepsToClipboard = () => {
+    if (!testDetails || !testDetails.steps) return;
+
+    let copyText = `📋 测试用例: ${testDetails.name}\n`;
+    copyText += `🔗 URL: ${testDetails.url || 'N/A'}\n`;
+    copyText += `🆔 Test ID: ${testDetails.test_id || 'N/A'}\n`;
+
+    if (testDetails.description) {
+      copyText += `📝 描述: ${testDetails.description}\n`;
+    }
+
+    copyText += `\n✨ 测试步骤 (${testDetails.steps.length}):\n\n`;
+    copyText += formatStepsForDisplay(testDetails.steps);
+
+    navigator.clipboard.writeText(copyText).then(() => {
+      alert('✅ 测试步骤已复制到剪贴板！');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('❌ 复制失败，请手动复制');
+    });
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -115,51 +146,49 @@ function TestDetailModal({ test, onClose, onViewRunHistory }) {
               </div>
             </div>
 
-            <h3 style={{marginTop: 0, marginBottom: '16px'}}>测试步骤 ({testDetails.steps?.length || 0})</h3>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px'}}>
+              <h3 style={{marginTop: 0, marginBottom: '0'}}>测试步骤 ({testDetails.steps?.length || 0})</h3>
+              {testDetails.steps && testDetails.steps.length > 0 && (
+                <button
+                  onClick={copyStepsToClipboard}
+                  style={{
+                    padding: '4px 12px',
+                    background: '#4caf50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="复制测试步骤到剪贴板"
+                >
+                  📋 复制步骤
+                </button>
+              )}
+            </div>
 
             {testDetails.steps && testDetails.steps.length > 0 ? (
-              <div style={{background: '#f9f9f9', borderRadius: '6px', padding: '16px'}}>
-                {testDetails.steps.map((step, index) => (
-                  <div
-                    key={step.id || index}
-                    style={{
-                      background: 'white',
-                      padding: '12px',
-                      marginBottom: '8px',
-                      borderRadius: '4px',
-                      border: '1px solid #e0e0e0'
-                    }}
-                  >
-                    <div style={{display: 'flex', alignItems: 'center', marginBottom: '8px'}}>
-                      <span style={{
-                        background: '#1976d2',
-                        color: 'white',
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        marginRight: '8px'
-                      }}>
-                        {index + 1}
-                      </span>
-                      <strong>{getStepTypeLabel(step.step_type)}</strong>
-                      {step.description && (
-                        <span style={{marginLeft: '8px', color: '#666'}}> - {step.description}</span>
-                      )}
-                    </div>
-
-                    <div style={{marginLeft: '32px', fontSize: '13px', color: '#333'}}>
-                      {step.url && <div><strong>URL:</strong> {step.url}</div>}
-                      {step.selector && <div><strong>选择器:</strong> {step.selector}</div>}
-                      {step.value && <div><strong>值:</strong> {step.value}</div>}
-                      {step.timeout && <div><strong>超时:</strong> {step.timeout}ms</div>}
-                    </div>
-                  </div>
-                ))}
+              <div style={{
+                background: '#f9f9f9',
+                borderRadius: '6px',
+                padding: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <pre style={{
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word',
+                  fontFamily: 'var(--cds-font-family)',
+                  fontSize: 'var(--cds-body-short-01)',
+                  lineHeight: '1.6',
+                  color: '#333'
+                }}>
+                  {formatStepsForDisplay(testDetails.steps)}
+                </pre>
               </div>
             ) : (
               <div style={{

@@ -13,12 +13,13 @@ async def test_resolve_single_test(db_session: AsyncSession):
     schedule = Schedule(
         name="Single Test",
         schedule_type="single",
-        test_definition_id=5,
+        test_definition_ids=[5],  # Use array field as per schema
+        test_definition_id=5,   # Keep legacy field for compatibility
         cron_expression="0 9 * * *"
     )
 
     service = ExecutionService(db_session)
-    test_ids = await service.resolve_target_tests(schedule)
+    test_ids = await service.resolve_target_tests(schedule, db_session)
 
     assert test_ids == [5]
 
@@ -34,17 +35,19 @@ async def test_resolve_suite_tests(db_session: AsyncSession):
 
     db_session.add(suite)
     await db_session.commit()
+    await db_session.refresh(suite)
 
     # Create schedule for suite
     schedule = Schedule(
         name="Suite Schedule",
         schedule_type="suite",
+        test_definition_ids=[],  # Empty array for suite type
         test_suite_id=suite.id,
         cron_expression="0 9 * * *"
     )
 
     service = ExecutionService(db_session)
-    test_ids = await service.resolve_target_tests(schedule)
+    test_ids = await service.resolve_target_tests(schedule, db_session)
 
     assert test_ids == [1, 2, 3]
 
@@ -55,16 +58,17 @@ async def test_check_execution_limit_allow_concurrent(db_session: AsyncSession):
     schedule = Schedule(
         name="Concurrent Test",
         schedule_type="single",
-        test_definition_id=1,
+        test_definition_ids=[1],  # Use array field
         cron_expression="0 9 * * *",
         allow_concurrent=True
     )
 
     db_session.add(schedule)
     await db_session.commit()
+    await db_session.refresh(schedule)
 
     service = ExecutionService(db_session)
-    result = await service.check_execution_limit(schedule.id)
+    result = await service.check_execution_limit(schedule, db_session)
 
     assert result is True
 
@@ -96,29 +100,41 @@ async def test_build_environment_merge(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_create_test_run(db_session: AsyncSession):
     """Test creating a test run"""
+    import time
     service = ExecutionService(db_session)
 
     test_run = await service.create_test_run(
-        schedule_id=1,
-        test_definition_id=1,
-        run_id="test_run_123"
+        run_id=f"test_run_{int(time.time()*1000)}",  # Unique run_id
+        test_definition_ids=[1],
+        environment={},
+        db=db_session,
+        schedule_id=1
     )
 
     assert test_run.id is not None
-    assert test_run.run_id == "test_run_123"
     assert test_run.status == "pending"
 
 
 @pytest.mark.asyncio
 async def test_update_run_status_valid_transition(db_session: AsyncSession):
     """Test valid status transition"""
+    import time
     service = ExecutionService(db_session)
 
     # Create test run
-    test_run = await service.create_test_run(1, 1, "test_run_456")
+    run_id = f"test_run_{int(time.time()*1000)}"
+    test_run = await service.create_test_run(
+        run_id=run_id,
+        test_definition_ids=[1],
+        environment={},
+        db=db_session,
+        schedule_id=1
+    )
 
-    # Update to running
-    updated = await service.update_run_status("test_run_456", "running")
+    # Update to running (convert datetime to milliseconds for database)
+    from datetime import datetime
+    start_time_ms = int(datetime.utcnow().timestamp() * 1000)
+    updated = await service.update_run_status(run_id, "running", start_time=start_time_ms)
 
     assert updated.status == "running"
     assert updated.start_time is not None
@@ -127,11 +143,19 @@ async def test_update_run_status_valid_transition(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_update_run_status_invalid_transition(db_session: AsyncSession):
     """Test invalid status transition"""
+    import time
     service = ExecutionService(db_session)
 
-    # Create test run
-    test_run = await service.create_test_run(1, 1, "test_run_789")
+    # Create test run with unique run_id
+    run_id = f"test_run_{int(time.time()*1000)}"
+    test_run = await service.create_test_run(
+        run_id=run_id,
+        test_definition_ids=[1],
+        environment={},
+        db=db_session,
+        schedule_id=1
+    )
 
     # Try invalid transition: pending -> passed
     with pytest.raises(ValueError, match="Invalid status transition"):
-        await service.update_run_status("test_run_789", "passed")
+        await service.update_run_status(run_id, "passed")

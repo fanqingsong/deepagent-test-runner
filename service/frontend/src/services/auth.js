@@ -1,6 +1,8 @@
 import axios from 'axios';
+import authService from './authService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8013';
+// Use current origin (port 8080 with nginx) for API requests
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 /**
  * Authentication API client for communicating with backend service
@@ -113,7 +115,10 @@ class AuthClient {
     localStorage.setItem('access_token', access_token);
     localStorage.setItem('refresh_token', refresh_token);
     localStorage.setItem('session_token', session_token);
-    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('user_info', JSON.stringify(user));
+
+    // Notify authService about authentication state change
+    authService.notifyAuthChange();
 
     // Clear pending login data
     sessionStorage.removeItem('pending_login_email');
@@ -251,7 +256,10 @@ class AuthClient {
     localStorage.setItem('access_token', access_token);
     localStorage.setItem('refresh_token', refresh_token);
     localStorage.setItem('session_token', session_token);
-    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('user_info', JSON.stringify(user));
+
+    // Notify authService about authentication state change
+    authService.notifyAuthChange();
 
     // Clear pending login data
     sessionStorage.removeItem('pending_login_email');

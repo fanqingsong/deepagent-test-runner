@@ -1,0 +1,110 @@
+# Observability Stack - Prometheus, Loki, Promtail, Jaeger, Grafana
+# Usage: docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+
+version: '3.8'
+
+services:
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: cc-test-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ../infrastructure/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - test-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: cc-test-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ../infrastructure/observability/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  # Promtail - Log Collector
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: cc-test-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ../infrastructure/observability/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+    networks:
+      - test-network
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: cc-test-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "5775:5775/udp"     # Zipkin compact thrift
+      - "6831:6831/udp"     # Jaeger compact thrift
+      - "6832:6832/udp"     # Jaeger binary thrift
+      - "5778:5778"         # Serve config
+      - "16686:16686"       # Jaeger UI
+      - "14268:14268"       # Jaeger collector HTTP
+      - "14250:14250"       # Jaeger collector gRPC
+      - "9411:9411"         # Zipkin compatible endpoint
+      - "4317:4317"         # OTLP gRPC
+      - "4318:4318"         # OTLP HTTP
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: cc-test-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - ../infrastructure/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../infrastructure/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - test-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+
+networks:
+  test-network:
+    external: true
+    name: service_test-network
+
+volumes:
+  prometheus_data:
+  loki_data:
+  grafana_data:

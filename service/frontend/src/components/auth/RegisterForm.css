@@ -1,0 +1,277 @@
+/**
+ * RegisterForm Component Styles
+ * Following IBM Carbon Design System
+ */
+
+/* Container */
+.register-form-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Title */
+.form-title {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1.25;
+  color: #161616;
+  margin: 0 0 32px 0;
+  text-align: center;
+}
+
+/* Form */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Form Groups */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #161616;
+}
+
+.required {
+  color: #da1e28;
+}
+
+/* Input Fields */
+.form-group input {
+  height: 48px;
+  padding: 0 16px;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.50;
+  color: #161616;
+  background-color: #f4f4f4;
+  border: none;
+  border-bottom: 1px solid #8d8d8d;
+  border-radius: 0;
+  outline: none;
+  transition: background-color 70ms cubic-bezier(0, 0, 0.38, 0.9),
+              border-bottom-color 70ms cubic-bezier(0, 0, 0.38, 0.9);
+}
+
+.form-group input:hover {
+  background-color: #e8e8e8;
+}
+
+.form-group input:focus {
+  background-color: #ffffff;
+  border-bottom-color: #0f62fe;
+  outline: 2px inset #0f62fe;
+  outline-offset: -2px;
+}
+
+.form-group input:disabled {
+  background-color: #e0e0e0;
+  color: #c6c6c6;
+  cursor: not-allowed;
+}
+
+.form-group input::placeholder {
+  color: #6f6f6f;
+}
+
+.form-group input[aria-invalid="true"] {
+  border-bottom-color: #da1e28;
+}
+
+.form-group input[aria-invalid="true"]:focus {
+  outline: 2px inset #da1e28;
+  outline-offset: -2px;
+}
+
+/* Primary Button */
+.primary-button {
+  height: 48px;
+  margin-top: 8px;
+  padding: 0 64px;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.50;
+  color: #ffffff;
+  background-color: #0f62fe;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color 70ms cubic-bezier(0, 0, 0.38, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.primary-button:hover:not(:disabled) {
+  background-color: #0353e9;
+}
+
+.primary-button:active:not(:disabled) {
+  background-color: #002d9c;
+}
+
+.primary-button:disabled {
+  background-color: #c6c6c6;
+  cursor: not-allowed;
+}
+
+/* Link Button */
+.link-button {
+  padding: 0;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #0f62fe;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 70ms cubic-bezier(0, 0, 0.38, 0.9);
+}
+
+.link-button:hover:not(:disabled) {
+  color: #0353e9;
+  text-decoration: underline;
+}
+
+.link-button:active:not(:disabled) {
+  color: #002d9c;
+}
+
+.link-button:disabled {
+  color: #c6c6c6;
+  cursor: not-allowed;
+}
+
+/* Form Footer */
+.form-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.form-footer p {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #525252;
+  margin: 0;
+}
+
+/* Error Message */
+.error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #fff1f0;
+  border-left: 3px solid #da1e28;
+  margin-bottom: 16px;
+}
+
+.error-icon {
+  flex-shrink: 0;
+  color: #da1e28;
+  margin-top: 2px;
+}
+
+.error-message span {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #161616;
+  word-break: break-word;
+}
+
+/* Success Message */
+.success-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #defbe6;
+  border-left: 3px solid #24a148;
+  margin-bottom: 16px;
+}
+
+.success-icon {
+  flex-shrink: 0;
+  color: #24a148;
+  margin-top: 2px;
+}
+
+.success-title {
+  display: block;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #161616;
+  margin-bottom: 4px;
+}
+
+.success-description {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #525252;
+  margin: 0;
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 672px) {
+  .register-form-container {
+    max-width: 100%;
+    padding: 0 16px;
+  }
+
+  .form-title {
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+
+  .primary-button {
+    width: 100%;
+    padding: 0 16px;
+  }
+}

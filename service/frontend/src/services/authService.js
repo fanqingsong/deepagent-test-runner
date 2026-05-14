@@ -111,13 +111,13 @@ class AuthService {
   /**
    * Local user registration
    */
-  async register(username, email, password) {
+  async register(email, password) {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ email, password }),
     });
 
     if (!response.ok) {

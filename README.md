@@ -409,3 +409,252 @@ It exposes two main tools:
 
 This architecture ensures Claude Code always knows what test it's executing and can report results back to the runner, 
 enabling proper test orchestration and reporting.
+
+## Observability Stack
+
+The project includes a comprehensive observability stack for monitoring, logging, and distributed tracing in production environments.
+
+### Overview
+
+The observability stack provides 4-pillar monitoring:
+
+- **Metrics** (Prometheus): Time-series data collection and querying
+- **Logs** (Loki): Centralized log aggregation with label-based indexing
+- **Traces** (Jaeger): Distributed tracing for request flow analysis
+- **Dashboards** (Grafana): Unified visualization for all observability data
+
+### Architecture
+
+```mermaid
+graph TB
+    subgraph "Application Layer"
+        Backend["Backend Service<br/>:8011"]
+        Nginx["Nginx Proxy<br/>:8080"]
+    end
+    
+    subgraph "Observability Layer"
+        Prometheus["Prometheus<br/>:9090"]
+        Loki["Loki<br/>:3100"]
+        Jaeger["Jaeger<br/>:16686"]
+        Grafana["Grafana<br/>:3000"]
+    end
+    
+    subgraph "Collection Layer"
+        Metrics["/metrics endpoint"]
+        Logs["Docker logs"]
+        Traces["OpenTelemetry"]
+        Promtail["Promtail<br/>Log collector"]
+    end
+    
+    Backend -->|1. Metrics| Metrics
+    Backend -->|2. Structured logs| Logs
+    Backend -->|3. Traces (optional)| Traces
+    
+    Metrics --> Prometheus
+    Logs --> Promtail
+    Promtail --> Loki
+    Traces --> Jaeger
+    
+    Prometheus --> Grafana
+    Loki --> Grafana
+    Jaeger --> Grafana
+    
+    Nginx --> Backend
+    
+    style Backend fill:#bbf,stroke:#333,stroke-width:2px
+    style Prometheus fill:#f96,stroke:#333,stroke-width:2px
+    style Loki fill:#69f,stroke:#333,stroke-width:2px
+    style Jaeger fill:#9f6,stroke:#333,stroke-width:2px
+    style Grafana fill:#fb9,stroke:#333,stroke-width:2px
+    style Promtail fill:#696,stroke:#333,stroke-width:2px
+```
+
+### Deployment Options
+
+#### Option 1: Docker Compose (Recommended for Development)
+
+For local development and environments without Kubernetes:
+
+```bash
+cd infrastructure/observability
+./start-observability.sh
+```
+
+This starts:
+- Prometheus (metrics scraping from `backend:8001/metrics`)
+- Loki (log storage)
+- Promtail (Docker log collection)
+- Jaeger (distributed tracing)
+- Grafana (dashboards with pre-configured datasources)
+
+**Access Points:**
+- Grafana: http://localhost:3000 (admin/admin)
+- Prometheus: http://localhost:9090
+- Jaeger UI: http://localhost:16686
+
+See [docs/observability/docker-compose-setup.md](docs/observability/docker-compose-setup.md) for detailed instructions.
+
+#### Option 2: Kubernetes (Production)
+
+For production Kubernetes deployments:
+
+```bash
+# Install observability stack
+kubectl apply -f k8s/observability/loki-stack.yaml
+kubectl apply -f k8s/observability/promtail-config.yaml
+kubectl apply -f k8s/observability/jaeger-deployment.yaml
+kubectl apply -f k8s/observability/prometheus-config.yaml
+
+# Install Prometheus and Grafana via Helm
+helm install prometheus prometheus-community/prometheus --namespace observability --create-namespace
+helm install grafana grafana/grafana --namespace observability
+```
+
+See [docs/observability/setup.md](docs/observability/setup.md) for Kubernetes deployment guide.
+
+### Features
+
+#### Prometheus Metrics
+
+The backend exposes Prometheus metrics at `/metrics`:
+
+- **Request metrics**: `http_requests_total` (by method, endpoint, status)
+- **Latency histograms**: `http_request_duration_seconds` (with buckets)
+- **Active connections**: `active_connections` gauge
+- **Auto-instrumentation**: FastAPI endpoints automatically instrumented
+
+Example queries:
+```promql
+# Request rate
+rate(http_requests_total[5m])
+
+# P95 latency
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000
+
+# Error rate
+rate(http_requests_total{status_code!~"2.."}[5m])
+```
+
+#### Structured Logging
+
+Logs are JSON-formatted with correlation IDs for request tracing:
+
+```json
+{
+  "level": "info",
+  "message": "Request completed",
+  "correlation_id": "abc123",
+  "method": "GET",
+  "path": "/api/v1/schedules/",
+  "status_code": 200,
+  "duration": 45.2
+}
+```
+
+Filter logs in Grafana/Loki:
+```
+{job="backend"} |= "error"
+{job="backend", method="POST"} |~ "correlation_id"
+```
+
+#### Distributed Tracing
+
+OpenTelemetry instrumentation traces requests across service boundaries:
+
+- **Auto-instrumentation**: FastAPI, SQLAlchemy, HTTPX automatically traced
+- **Jaeger integration**: Traces sent to Jaeger agent
+- **Correlation IDs**: Trace IDs propagated through request headers
+
+Enable tracing by setting `JAEGER_ENABLED=true` in backend environment.
+
+#### Grafana Dashboards
+
+Pre-configured dashboards included:
+
+1. **Claude Test Runner - Overview**
+   - Request rate (requests/second)
+   - P95 latency gauge (ms)
+   - Active connections
+   - Error rate chart
+
+2. **Claude Test Runner - API Performance**
+   - Latency percentiles (P50, P95, P99)
+   - Request rate by HTTP method
+   - Response status distribution
+
+3. **Claude Test Runner - Database Metrics**
+   - Connection pool size
+   - Query duration percentiles
+   - Query rate
+   - Connection error rate
+
+### Configuration
+
+Enable observability in backend environment variables:
+
+```bash
+# service/.env
+PROMETHEUS_ENABLED=true
+PROMETHEUS_PORT=9090
+LOKI_ENABLED=true
+LOKI_ENDPOINT=http://loki:3100/loki/api/v1/push
+JAEGER_ENABLED=false  # Set to true for distributed tracing
+JAEGER_AGENT_HOST=jaeger
+JAEGER_AGENT_PORT=6831
+TRACE_SAMPLE_RATE=0.1
+LOG_FORMAT=json
+LOG_LEVEL=INFO
+```
+
+### Data Flow
+
+1. **Metrics Flow:**
+   ```
+   Backend → /metrics → Prometheus (scrapes every 15s) → Grafana
+   ```
+
+2. **Logs Flow:**
+   ```
+   Backend → JSON logs → Docker → Promtail → Loki → Grafana
+   ```
+
+3. **Traces Flow** (when enabled):
+   ```
+   Backend → OpenTelemetry → Jaeger Agent → Jaeger Collector → Jaeger UI → Grafana
+   ```
+
+### Management
+
+**Docker Compose:**
+```bash
+# View logs
+docker compose -f docker-compose.observability.yml logs -f
+
+# Restart services
+docker compose -f docker-compose.observability.yml restart
+
+# Stop services
+docker compose -f docker-compose.observability.yml down
+```
+
+**Kubernetes:**
+```bash
+# View logs
+kubectl logs -n observability -l app=prometheus
+kubectl logs -n observability -l app=loki
+kubectl logs -n observability -l app=jaeger
+
+# Restart services
+kubectl rollout restart deployment/prometheus -n observability
+kubectl rollout restart deployment/loki -n observability
+```
+
+### Troubleshooting
+
+See [docs/observability/troubleshooting.md](docs/observability/troubleshooting.md) for common issues and solutions.
+
+Common issues:
+- **No metrics in Prometheus**: Check backend `/metrics` endpoint is accessible
+- **Logs not appearing in Loki**: Verify Promtail is running and can reach Loki
+- **No traces in Jaeger**: Ensure `JAEGER_ENABLED=true` and make API requests to generate traces
+- **Grafana dashboards not loading**: Verify datasources are configured and test connections

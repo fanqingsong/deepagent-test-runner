@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import authService from '../services/authService';
 // TEMPORARY: Directly define API functions here to bypass module caching
-import StepEditor from './StepEditor';
 
 const BASE_URL = 'http://localhost:8080';
 const TEST_API = `${BASE_URL}/api/v1`;
@@ -15,10 +14,15 @@ const createTest = async (testData) => {
       testData.test_id = `test-${timestamp}-${random}`;
     }
 
-    // Prepare test steps with proper format
-    const formattedSteps = testData.test_steps.map((step, index) => ({
+    // Parse textarea content into steps (one per line)
+    const stepDescriptions = testData.test_steps_text
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    const formattedSteps = stepDescriptions.map((desc, index) => ({
       step_number: index + 1,
-      description: step.description.trim() || `Step ${index + 1}`,
+      description: desc,
       type: 'action',
       params: {},
       expected_result: null
@@ -65,8 +69,14 @@ const updateTest = async (testId, testData) => {
     // Use test_id instead of numeric ID for PUT request
     const testIdString = testData.test_id || testId.toString();
 
+    // Parse textarea content into steps (one per line)
+    const stepDescriptions = testData.test_steps_text
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
     // Update test basic info (excluding test_steps for now)
-    const { test_steps, ...testInfo } = testData;
+    const { test_steps_text, ...testInfo } = testData;
 
     console.log('=== Updating Test ===');
     console.log('Test ID:', testIdString);
@@ -120,12 +130,13 @@ const updateTest = async (testId, testData) => {
     }
 
     // Add new steps using internal ID
-    for (const step of test_steps) {
+    for (let i = 0; i < stepDescriptions.length; i++) {
+      const desc = stepDescriptions[i];
       const stepData = {
         type: 'action',
-        description: step.description.trim() || `Step ${step.id}`,
+        description: desc,
         params: {},
-        step_number: step.id,
+        step_number: i + 1,
         expected_result: null
       };
 
@@ -173,7 +184,7 @@ function TestForm(props) {
     url: '',
     environment: {},
     tags: [],
-    test_steps: [{ id: 1, description: '' }]
+    test_steps_text: ''
   });
 
   const [envKey, setEnvKey] = useState('');
@@ -192,10 +203,11 @@ function TestForm(props) {
           });
           if (stepsResponse.ok) {
             const steps = await stepsResponse.json();
-            const formattedSteps = steps.map(step => ({
-              id: step.step_number,
-              description: step.description || `${step.type} ${step.params?.selector || ''} ${step.params?.value || ''}`.trim()
-            }));
+            // Join step descriptions with newlines for editing
+            const stepsText = steps
+              .map(step => step.description || '')
+              .filter(desc => desc.length > 0)
+              .join('\n');
 
             setFormData({
               name: editingTest.name || '',
@@ -204,7 +216,7 @@ function TestForm(props) {
               url: editingTest.url || '',
               environment: editingTest.environment || {},
               tags: editingTest.tags || [],
-              test_steps: formattedSteps.length > 0 ? formattedSteps : [{ id: 1, description: '' }]
+              test_steps_text: stepsText || ''
             });
           }
         } catch (error) {
@@ -233,14 +245,14 @@ function TestForm(props) {
       errors.url = 'URL is required';
     }
 
-    if (formData.test_steps.length === 0) {
-      errors.steps = 'At least one test step is required';
-    }
+    // Validate that test steps textarea has at least one non-empty line
+    const stepDescriptions = formData.test_steps_text
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
 
-    // Validate that all steps have non-empty descriptions
-    const emptyStepIndex = formData.test_steps.findIndex(step => !step.description || step.description.trim() === '');
-    if (emptyStepIndex !== -1) {
-      errors.steps = `Step ${emptyStepIndex + 1} cannot be empty. Please provide a description for each step.`;
+    if (stepDescriptions.length === 0) {
+      errors.steps = 'At least one test step is required. Please enter at least one step in the test steps field.';
     }
 
     // If there are validation errors, display them and stop submission
@@ -274,7 +286,7 @@ function TestForm(props) {
           url: '',
           environment: {},
           tags: [],
-          test_steps: [{ id: 1, description: '' }]
+          test_steps_text: ''
         });
       }
 
@@ -590,12 +602,39 @@ function TestForm(props) {
           </div>
         </div>
 
-        <StepEditor steps={formData.test_steps} onChange={(steps) => setFormData({...formData, test_steps: steps})} />
-        {validationErrors.steps && (
-          <div style={{color: 'var(--cds-support-error)', fontSize: 'var(--cds-label-01)', marginTop: 'var(--cds-spacing-xs)', marginBottom: 'var(--cds-spacing-md)'}}>
-            {validationErrors.steps}
+        <div style={{marginBottom: 'var(--cds-spacing-lg)'}}>
+          <label style={{display: 'block', fontWeight: 'var(--cds-font-weight-regular)', marginBottom: 'var(--cds-spacing-xs)', fontSize: 'var(--cds-caption-01)', letterSpacing: 'var(--cds-letter-spacing-caption)'}}>
+            Test Steps (one per line) <span style={{color: 'var(--cds-support-error)'}}>*</span>
+          </label>
+          <textarea
+            value={formData.test_steps_text}
+            onChange={(e) => setFormData({...formData, test_steps_text: e.target.value})}
+            placeholder="Enter each test step on a new line&#10;Example:&#10;Navigate to login page&#10;Enter username: admin&#10;Enter password: password123&#10;Click login button"
+            rows={10}
+            required
+            style={{
+              width: '100%',
+              padding: 'var(--cds-spacing-sm) 16px',
+              border: validationErrors.steps ? '2px solid var(--cds-support-error)' : 'none',
+              borderBottom: validationErrors.steps ? '2px solid var(--cds-support-error)' : '2px solid transparent',
+              borderRadius: 'var(--cds-border-radius)',
+              background: 'var(--cds-input-background)',
+              boxSizing: 'border-box',
+              resize: 'vertical',
+              fontSize: 'var(--cds-body-short-01)',
+              fontFamily: 'var(--cds-font-family)',
+              lineHeight: '1.5'
+            }}
+          />
+          {validationErrors.steps && (
+            <div style={{color: 'var(--cds-support-error)', fontSize: 'var(--cds-label-01)', marginTop: 'var(--cds-spacing-xs)'}}>
+              {validationErrors.steps}
+            </div>
+          )}
+          <div style={{fontSize: 'var(--cds-caption-01)', color: 'var(--cds-text-secondary)', marginTop: 'var(--cds-spacing-xs)'}}>
+            💡 Each line will become a separate test step. Empty lines will be ignored.
           </div>
-        )}
+        </div>
 
         <div style={{display: 'flex', gap: 'var(--cds-spacing-sm)', marginTop: 'var(--cds-spacing-lg)'}}>
           <button

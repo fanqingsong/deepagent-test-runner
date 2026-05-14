@@ -1,112 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { getDashboardData, getTestRuns } from '../api';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDashboard } from '../hooks/useDashboard';
 import StatsCards from './StatsCards';
 // import ChartsSection from './ChartsSection';  // Temporarily disabled due to loading issues
 import RecentTests from './RecentTests';
+import RefreshIndicator from './RefreshIndicator';
 
 function DashboardView() {
   const { user, isAdmin } = useAuth();
-  const [dashboardData, setDashboardData] = useState({
-    summary: {},
-    byDay: [],
-    totalDefinitions: 0
-  });
-  const [testRuns, setTestRuns] = useState([]);
   const [timeRange, setTimeRange] = useState('30d');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [dashboardResponse, runsResponse] = await Promise.all([
-        getDashboardData(parseInt(timeRange)).catch(err => {
-          console.error('Dashboard API error:', err);
-          return null;
-        }),
-        getTestRuns(20).catch(err => {
-          console.error('Test runs API error:', err);
-          return null;
-        })
-      ]);
-
-      // Use real API data if available, otherwise show empty state
-      // Don't use mock data - show actual data or empty state
-      if (dashboardResponse) {
-        setDashboardData(dashboardResponse);
-      } else {
-        // Set default empty structure
-        setDashboardData({
-          summary: {
-            total_runs: 0,
-            total_passed: 0,
-            total_failed: 0,
-            avg_duration: 0,
-            total_tests: 0,
-            successful_runs: 0,
-            failed_runs: 0
-          },
-          byDay: [],
-          totalDefinitions: 0,
-          days: parseInt(timeRange)
-        });
-      }
-
-      // Handle test runs response (direct array, not wrapped in object)
-      if (Array.isArray(runsResponse)) {
-        setTestRuns(runsResponse);
-      } else if (runsResponse?.items && Array.isArray(runsResponse.items)) {
-        setTestRuns(runsResponse.items);
-      } else {
-        setTestRuns([]);
-      }
-    } catch (err) {
-      // Show error state instead of mock data
-      console.error('Dashboard loading error:', err);
-      setError('加载仪表盘数据失败: ' + err.message);
-      setDashboardData({
-        summary: {
-          total_runs: 0,
-          total_passed: 0,
-          total_failed: 0,
-          avg_duration: 0,
-          total_tests: 0,
-          successful_runs: 0,
-          failed_runs: 0
-        },
-        byDay: [],
-        totalDefinitions: 0,
-        days: parseInt(timeRange)
-      });
-      setTestRuns([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Only load data if user is authenticated
-    if (user) {
-      loadDashboardData();
-    }
-
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(() => {
-      if (user) {
-        loadDashboardData();
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [timeRange, user]);
+  // 使用 React Query hook
+  const {
+    dashboardData,
+    testRuns,
+    isLoading,
+    isError,
+    error,
+    isRefreshing
+  } = useDashboard(timeRange);
 
   const handleTimeRangeChange = (newRange) => {
     setTimeRange(newRange);
   };
 
-  if (loading) {
+  // 首次加载：全屏loading
+  if (isLoading) {
     return (
       <div style={{
         padding: '40px',
@@ -119,7 +38,8 @@ function DashboardView() {
     );
   }
 
-  if (error) {
+  // 错误状态
+  if (isError) {
     return (
       <div style={{
         padding: '40px',
@@ -127,22 +47,7 @@ function DashboardView() {
         fontSize: '16px',
         color: '#f44336'
       }}>
-        {error}
-        <button
-          onClick={loadDashboardData}
-          style={{
-            marginTop: '16px',
-            padding: '8px 16px',
-            background: '#1976d2',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            marginLeft: '16px'
-          }}
-        >
-          重试
-        </button>
+        {error?.message || '加载失败'}
       </div>
     );
   }
@@ -153,6 +58,9 @@ function DashboardView() {
       maxWidth: '1400px',
       margin: '0 auto'
     }}>
+      {/* 刷新指示器 */}
+      <RefreshIndicator refreshing={isRefreshing} />
+
       <h1 style={{
         fontSize: '28px',
         fontWeight: 'bold',
