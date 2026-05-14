@@ -39,43 +39,86 @@ function RunHistoryModal({ test, onClose }) {
     }
   };
 
-  const copyResultsToClipboard = () => {
+  const copyResultsToClipboard = (format = 'text') => {
     if (!jobDetails || !jobDetails.results) return;
 
     const testRuns = jobDetails.results.test_runs || [];
 
-    // Format the results for copying
-    let copyText = `📊 测试运行结果 - ${test.name}\n`;
-    copyText += `🕐 时间: ${formatDate(jobDetails.created_at)}\n`;
-    copyText += `📈 状态: ${getStatusText(jobDetails.status)}\n`;
-    copyText += `\n`;
+    if (format === 'json') {
+      // Copy as JSON format - exact structure requested by user
+      const jsonData = {
+        test_runs: testRuns.map(run => ({
+          run_id: run.run_id,
+          test_definition_id: run.test_definition_id,
+          start_time: run.start_time,
+          end_time: run.end_time,
+          total_duration: run.total_duration || run.duration,
+          total_tests: run.total_tests,
+          passed: run.passed,
+          failed: run.failed,
+          skipped: run.skipped || 0,
+          status: run.status,
+          test_cases: run.test_cases || run.test_steps || []
+        }))
+      };
 
-    testRuns.forEach((run, index) => {
-      copyText += `${index + 1}. 测试用例 #${run.test_definition_id || 'N/A'}\n`;
-      copyText += `   状态: ${run.status === 'passed' ? '✅ 通过' : '❌ 失败'}\n`;
+      const jsonText = JSON.stringify(jsonData, null, 2);
 
-      if (run.error) {
-        copyText += `   错误: ${run.error}\n`;
-      }
-
-      if (run.total_tests !== undefined) {
-        copyText += `   统计: 总计 ${run.total_tests} | 通过 ${run.passed} | 失败 ${run.failed}\n`;
-      }
-
-      if (run.duration) {
-        copyText += `   耗时: ${Math.round(run.duration)}ms\n`;
-      }
-
+      navigator.clipboard.writeText(jsonText).then(() => {
+        alert('✅ JSON格式测试结果已复制到剪贴板！');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('❌ 复制失败，请手动复制');
+      });
+    } else {
+      // Copy as formatted text
+      let copyText = `📊 测试运行结果 - ${test.name}\n`;
+      copyText += `🕐 时间: ${formatDate(jobDetails.created_at)}\n`;
+      copyText += `📈 状态: ${getStatusText(jobDetails.status)}\n`;
       copyText += `\n`;
-    });
 
-    // Copy to clipboard
-    navigator.clipboard.writeText(copyText).then(() => {
-      alert('✅ 测试结果已复制到剪贴板！');
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-      alert('❌ 复制失败，请手动复制');
-    });
+      testRuns.forEach((run, index) => {
+        copyText += `${index + 1}. 测试用例 #${run.test_definition_id || 'N/A'}\n`;
+        copyText += `   状态: ${run.status === 'passed' ? '✅ 通过' : '❌ 失败'}\n`;
+
+        if (run.error) {
+          copyText += `   错误: ${run.error}\n`;
+        }
+
+        if (run.total_tests !== undefined) {
+          copyText += `   统计: 总计 ${run.total_tests} | 通过 ${run.passed} | 失败 ${run.failed}\n`;
+        }
+
+        if (run.duration || run.total_duration) {
+          copyText += `   耗时: ${Math.round(run.duration || run.total_duration)}ms\n`;
+        }
+
+        // Copy test cases details if available
+        if (run.test_cases && run.test_cases.length > 0) {
+          copyText += `   测试步骤:\n`;
+          run.test_cases.forEach((testCase, idx) => {
+            copyText += `     ${idx + 1}. ${testCase.description}\n`;
+            copyText += `        状态: ${testCase.status}\n`;
+            if (testCase.error) {
+              copyText += `        错误: ${testCase.error}\n`;
+            }
+            if (testCase.duration) {
+              copyText += `        耗时: ${testCase.duration}ms\n`;
+            }
+          });
+        }
+
+        copyText += `\n`;
+      });
+
+      // Copy to clipboard
+      navigator.clipboard.writeText(copyText).then(() => {
+        alert('✅ 测试结果已复制到剪贴板！');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('❌ 复制失败，请手动复制');
+      });
+    }
   };
 
   const getStatusColor = (status) => {
@@ -246,25 +289,46 @@ function RunHistoryModal({ test, onClose }) {
                   <div style={{marginTop: '12px'}}>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
                       <strong>测试结果:</strong>
-                      <button
-                        onClick={copyResultsToClipboard}
-                        style={{
-                          padding: '4px 12px',
-                          background: '#4caf50',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                        title="复制测试结果到剪贴板"
-                      >
-                        📋 复制结果
-                      </button>
+                      <div style={{display: 'flex', gap: '8px'}}>
+                        <button
+                          onClick={() => copyResultsToClipboard('text')}
+                          style={{
+                            padding: '4px 12px',
+                            background: '#4caf50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          title="复制格式化文本到剪贴板"
+                        >
+                          📋 复制文本
+                        </button>
+                        <button
+                          onClick={() => copyResultsToClipboard('json')}
+                          style={{
+                            padding: '4px 12px',
+                            background: '#2196f3',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          title="复制JSON格式到剪贴板"
+                        >
+                          { } 复制JSON
+                        </button>
+                      </div>
                     </div>
                     {jobDetails.results.test_runs.map((run, index) => (
                       <div key={index} style={{
