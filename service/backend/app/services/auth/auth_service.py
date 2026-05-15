@@ -12,6 +12,7 @@ from app.utils.password import validate_password_strength
 from app.utils.email import is_valid_email_format, normalize_email
 from app.shared.email.client import email_client
 from app.core.auth_rate_limit import check_rate_limit
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,10 @@ class AuthService:
             await db.refresh(user)
 
             # Queue verification email
-            verification_url = f"http://localhost:8013/auth/verify-email?token={verification_token}"
+            verification_url = (
+                f"{settings.FRONTEND_BASE_URL.rstrip('/')}/auth/verify-email"
+                f"?token={verification_token}"
+            )
             email_client.send_verification_email(normalized_email, verification_url)
 
             logger.info(f"User registered successfully: {user.id}")
@@ -239,11 +243,10 @@ class AuthService:
             return False, "Login failed", None
 
         # Check if MFA is enabled
-        from app.services.mfa_service import MFAService
+        from app.services.auth.mfa_service import MFAService
         mfa_success, mfa_enabled, _ = await MFAService.get_mfa_status(db, user.id)
 
         if mfa_success and mfa_enabled:
-            # Return special response indicating MFA is required
             return True, "MFA_REQUIRED", user
 
         return True, None, user
@@ -265,128 +268,14 @@ class AuthService:
         Returns:
             Tuple of (success, error_message)
         """
-        from app.services.session_service import SessionService
+        from app.services.auth.session_service import SessionService
 
-        # Validate session
         session = await SessionService.validate_session_token(db, session_token)
 
         if not session:
             return False, "Invalid session"
 
         try:
-            # Terminate session
-            session.terminate()
-            await db.commit()
-
-            logger.info(f"User {user_id} logged out successfully")
-            return True, None
-
-        except Exception as e:
-            await db.rollback()
-            logger.error(f"Error during logout: {str(e)}")
-            return False, "Logout failed"
-
-    @staticmethod
-    async def authenticate_user(
-        db: AsyncSession,
-        email: str,
-        password: str,
-        ip_address: str
-    ) -> Tuple[bool, Optional[str], Optional[UserAccount]]:
-        """
-        Authenticate user with email and password.
-
-        Args:
-            db: Database session
-            email: User email
-            password: User password
-            ip_address: Client IP address for rate limiting
-
-        Returns:
-            Tuple of (success, error_message, user_object)
-        """
-        # Normalize email
-        normalized_email = normalize_email(email)
-
-        # Check rate limit
-        allowed, remaining, retry_after = await check_rate_limit(
-            identifier=ip_address,
-            max_attempts=5,
-            window_seconds=900
-        )
-
-        if not allowed:
-            return False, f"Too many login attempts. Try again in {retry_after} seconds.", None
-
-        # Find user by email
-        query = select(UserAccount).where(
-            UserAccount.email == normalized_email,
-            UserAccount.status == "active"
-        )
-        result = await db.execute(query)
-        user = result.scalar_one_or_none()
-
-        if not user:
-            # Rate limit still applies even for non-existent users
-            return False, "Invalid email or password", None
-
-        # Check if account is locked
-        if user.is_locked():
-            return False, "Account is temporarily locked due to failed login attempts. Try again later.", None
-
-        # Verify password
-        if not verify_password(password, user.password_hash):
-            # Increment failed login attempts
-            user.failed_login_attempts += 1
-
-            # Lock account after 5 failed attempts
-            if user.failed_login_attempts >= 5:
-                user.lock_account(minutes=15)
-                await db.commit()
-                logger.warning(f"Account {user.id} locked due to 5 failed login attempts")
-
-            return False, "Invalid email or password", None
-
-        # Reset failed attempts on successful login
-        user.failed_login_attempts = 0
-        user.update_last_login()
-
-        try:
-            await db.commit()
-        except Exception as e:
-            await db.rollback()
-            logger.error(f"Error updating user after login: {str(e)}")
-            return False, "Login failed", None
-
-        return True, None, user
-
-    @staticmethod
-    async def logout_user(
-        db: AsyncSession,
-        user_id: int,
-        session_token: str
-    ) -> Tuple[bool, Optional[str]]:
-        """
-        Logout user and invalidate session.
-
-        Args:
-            db: Database session
-            user_id: User ID
-            session_token: Session token to invalidate
-
-        Returns:
-            Tuple of (success, error_message)
-        """
-        from app.services.session_service import SessionService
-
-        # Validate session
-        session = await SessionService.validate_session_token(db, session_token)
-
-        if not session:
-            return False, "Invalid session"
-
-        try:
-            # Terminate session
             session.terminate()
             await db.commit()
 
@@ -559,7 +448,7 @@ class AuthService:
                 email_token.mark_as_used()
 
             # Invalidate all existing sessions for security
-            from app.services.session_service import SessionService
+            from app.services.auth.session_service import SessionService
             await SessionService.terminate_all_user_sessions(db, user.id)
 
             await db.commit()
@@ -617,7 +506,7 @@ class AuthService:
             user.password_hash = hash_password(new_password)
 
             # Invalidate all other sessions for security
-            from app.services.session_service import SessionService
+            from app.services.auth.session_service import SessionService
             from sqlalchemy import select
             from app.models.auth import UserSession
 

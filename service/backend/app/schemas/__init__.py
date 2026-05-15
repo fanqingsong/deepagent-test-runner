@@ -32,6 +32,7 @@ from app.schemas.test_definition import (
     TestStepCreate,
     TestStepResponse,
     TestStepUpdate,
+    TestStepsReplaceRequest,
 )
 from app.schemas.test_generation import (
     TestCaseGenerateRequest,
@@ -94,6 +95,7 @@ __all__ = [
     "TestStepCreate",
     "TestStepResponse",
     "TestStepUpdate",
+    "TestStepsReplaceRequest",
     # Test Generation
     "TestCaseGenerateRequest",
     "TestCaseGenerateResponse",

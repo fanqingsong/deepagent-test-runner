@@ -42,6 +42,15 @@ class TestStepResponse(TestStepBase):
     model_config = {"from_attributes": True}
 
 
+class TestStepsReplaceRequest(BaseModel):
+    """Schema for replacing all test steps of a test definition."""
+
+    test_steps: List[TestStepCreate] = Field(
+        default_factory=list,
+        description="Full replacement set of test steps (existing steps will be deleted)",
+    )
+
+
 class TestDefinitionBase(BaseModel):
     """Base schema for test definition."""
     name: str = Field(..., min_length=1, max_length=255, description="Test name")

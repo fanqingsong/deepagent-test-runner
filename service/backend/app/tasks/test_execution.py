@@ -4,37 +4,24 @@ Test Execution Tasks
 Celery tasks for executing AI-powered tests using natural language.
 """
 
-import asyncio
-import json
-from datetime import datetime, timezone, timedelta
+import logging
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from jose import jwt
+from typing import Any, Dict, List, Optional, Tuple
 
-from celery import Task
-from playwright.async_api import async_playwright, Browser, Page, BrowserContext
+from playwright.async_api import Page, async_playwright
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
-from app.services import get_claude_interpreter, get_execution_service
+from app.core.worker_db import run_async, run_with_session
+from app.models.test_definition import TestDefinition
+from app.models.test_step import TestStep
+from app.services import get_claude_interpreter
+from app.services.execution_service import ExecutionService
 
-
-def create_service_token():
-    """Create a JWT token for service-to-service communication"""
-    data = {
-        "sub": "1",  # Admin user ID
-        "username": "admin",
-        "is_admin": True,
-        "type": "service"
-    }
-    expire = timedelta(hours=24)
-    to_encode = data.copy()
-    expire_time = datetime.utcnow() + expire
-    to_encode.update({"exp": expire_time})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name="app.tasks.test_execution.execute_test",
@@ -51,96 +38,88 @@ def execute_test(self, test_definition_id: int, run_id: str, environment: Dict[s
     Returns:
         dict: Test execution results
     """
-    # Update test run status to running
+    environment = environment or {}
+
     try:
-        async def update_status():
-            async_engine = create_async_engine(settings.DATABASE_URL)
-            async_session_maker = sessionmaker(
-                async_engine, class_=AsyncSession, expire_on_commit=False
-            )
-
-            async with async_session_maker() as db:
-                from app.services.execution_service import ExecutionService
-                execution_service = ExecutionService(db)
-                await execution_service.update_run_status(run_id, "running")
-                await async_engine.dispose()
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(update_status())
-        finally:
-            loop.close()
+        run_async(lambda: _update_run_status(run_id, "running"))
     except Exception as e:
-        # Log but don't fail the task
-        print(f"Warning: Failed to update test run status: {str(e)}")
+        logger.warning("Failed to set run %s to running: %s", run_id, e)
 
-    # Run async test execution in event loop
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
-        result = loop.run_until_complete(
-            _execute_test_async(test_definition_id, run_id, environment or {})
+        result = run_async(
+            lambda: _execute_test_async(test_definition_id, run_id, environment)
         )
-
-        # Update final status
         try:
-            async def update_final_status():
-                async_engine = create_async_engine(settings.DATABASE_URL)
-                async_session_maker = sessionmaker(
-                    async_engine, class_=AsyncSession, expire_on_commit=False
+            final_status = result.get("status", "failed")
+            if final_status == "error":
+                final_status = "failed"
+            error_msg = result.get("error")
+            run_async(
+                lambda: _update_run_status(
+                    run_id, final_status, error_message=error_msg
                 )
-
-                async with async_session_maker() as db:
-                    from app.services.execution_service import ExecutionService
-                    execution_service = ExecutionService(db)
-                    # Map "error" status to "failed" for valid status transition
-                    final_status = result.get("status", "failed")
-                    if final_status == "error":
-                        final_status = "failed"
-                    # Extract error message if present
-                    error_msg = result.get("error", "Test execution failed")
-                    await execution_service.update_run_status(run_id, final_status, error_message=error_msg)
-                    await async_engine.dispose()
-
-            loop2 = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop2)
-            try:
-                loop2.run_until_complete(update_final_status())
-            finally:
-                loop2.close()
+            )
         except Exception as e:
-            print(f"Warning: Failed to update final test run status: {str(e)}")
-
+            logger.warning("Failed to update final status for run %s: %s", run_id, e)
         return result
-    except Exception as e:
-        # Update status to failed on error
+    except Exception:
         try:
-            async def update_error_status():
-                async_engine = create_async_engine(settings.DATABASE_URL)
-                async_session_maker = sessionmaker(
-                    async_engine, class_=AsyncSession, expire_on_commit=False
-                )
-
-                async with async_session_maker() as db:
-                    from app.services.execution_service import ExecutionService
-                    execution_service = ExecutionService(db)
-                    await execution_service.update_run_status(run_id, "failed")
-                    await async_engine.dispose()
-
-            loop2 = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop2)
-            try:
-                loop2.run_until_complete(update_error_status())
-            finally:
-                loop2.close()
+            run_async(lambda: _update_run_status(run_id, "failed"))
         except Exception as e2:
-            print(f"Warning: Failed to update error status: {str(e2)}")
-
-        # Re-raise exception for Celery retry logic
+            logger.warning("Failed to set failed status for run %s: %s", run_id, e2)
         raise
-    finally:
-        loop.close()
+
+
+async def _update_run_status(
+    run_id: str,
+    status: str,
+    error_message: Optional[str] = None,
+) -> None:
+    async def _op(db: AsyncSession) -> None:
+        svc = ExecutionService(db)
+        await svc.update_run_status(run_id, status, error_message=error_message)
+
+    await run_with_session(_op)
+
+
+async def _load_test_from_db(
+    test_definition_id: int,
+) -> Tuple[Optional[TestDefinition], List[Dict[str, Any]]]:
+    """Load test definition and steps directly from PostgreSQL."""
+
+    async def _op(db: AsyncSession):
+        def_result = await db.execute(
+            select(TestDefinition).where(TestDefinition.id == test_definition_id)
+        )
+        test_def = def_result.scalar_one_or_none()
+        if not test_def:
+            return None, []
+
+        steps_result = await db.execute(
+            select(TestStep)
+            .where(TestStep.test_definition_id == test_definition_id)
+            .order_by(TestStep.step_number)
+        )
+        steps = steps_result.scalars().all()
+        test_steps: List[Dict[str, Any]] = []
+        for step in steps:
+            description = (step.description or "").strip()
+            if not description:
+                description = step.type
+                params = step.params or {}
+                if params.get("selector"):
+                    description += f" selector '{params['selector']}'"
+                if params.get("value"):
+                    description += f" with value '{params['value']}'"
+                if params.get("url"):
+                    description += f" to '{params['url']}'"
+            test_steps.append({
+                "step_number": step.step_number,
+                "description": description,
+            })
+        return test_def, test_steps
+
+    return await run_with_session(_op)
 
 
 async def _execute_test_async(
@@ -159,92 +138,15 @@ async def _execute_test_async(
     Returns:
         dict: Test execution results
     """
-    import httpx
+    test_def, test_steps = await _load_test_from_db(test_definition_id)
+    if not test_def:
+        return {
+            "status": "error",
+            "error": f"Test definition with ID {test_definition_id} not found",
+            "run_id": run_id,
+        }
 
-    # Generate service token for API authentication
-    service_token = create_service_token()
-    headers = {
-        "Authorization": f"Bearer {service_token}",
-        "Content-Type": "application/json"
-    }
-
-    # Fetch test definition from test-case-service API
-    async with httpx.AsyncClient() as client:
-        try:
-            # First, get all test definitions and find the one with matching ID
-            response = await client.get(
-                "http://backend:8001/api/v1/test-definitions/",
-                headers=headers,
-                timeout=10.0
-            )
-            if response.status_code != 200:
-                return {
-                    "status": "error",
-                    "error": f"Failed to fetch test definitions: HTTP {response.status_code}",
-                    "run_id": run_id
-                }
-
-            data = response.json()
-            test_def_data = None
-            test_url = None
-
-            # Find the test definition with matching numeric ID
-            for item in data.get("items", []):
-                if item.get("id") == test_definition_id:
-                    test_def_data = item
-                    test_url = item.get("url")
-                    break
-
-            if not test_def_data:
-                return {
-                    "status": "error",
-                    "error": f"Test definition with ID {test_definition_id} not found",
-                    "run_id": run_id
-                }
-
-            # Fetch test steps using the numeric ID
-            response = await client.get(
-                f"http://backend:8001/api/v1/test-steps/test-definition/{test_definition_id}",
-                headers=headers,
-                timeout=10.0
-            )
-            if response.status_code != 200:
-                return {
-                    "status": "error",
-                    "error": f"Failed to fetch test steps: HTTP {response.status_code}",
-                    "run_id": run_id
-                }
-            test_steps_data = response.json()
-
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": f"Failed to connect to test-case-service: {str(e)}",
-                "run_id": run_id
-            }
-
-    # Convert to simplified AI-friendly format
-    test_steps = []
-    for step_data in test_steps_data:
-        # Use the description field for AI interpretation
-        description = step_data.get("description", "")
-
-        # If no description, try to construct from technical fields (backward compatibility)
-        if not description:
-            step_type = step_data.get("type", "unknown")
-            params = step_data.get("params", {})
-            description = f"{step_type}"
-            if params.get("selector"):
-                description += f" selector '{params['selector']}'"
-            if params.get("value"):
-                description += f" with value '{params['value']}'"
-            if params.get("url"):
-                description += f" to '{params['url']}'"
-
-        test_steps.append({
-            "step_number": step_data.get("step_number", 0),
-            "description": description
-        })
+    test_url = test_def.url
 
     if not test_steps:
         return {
@@ -280,10 +182,18 @@ async def _execute_test_async(
                         }
 
                 # Execute ALL steps in a single Claude Code session (matches CLI architecture)
-                print(f"Executing {len(test_steps)} test steps in a single Claude Code session")
+                logger.info(
+                    "Executing %d test steps in a single Claude session for run %s",
+                    len(test_steps),
+                    run_id,
+                )
                 test_results = await _execute_all_steps_with_ai(page, test_steps, environment)
-
-                print(f"Test execution completed. Total steps: {len(test_results)}, Passed: {sum(1 for r in test_results if r['status'] == 'passed')}")
+                logger.info(
+                    "Run %s finished: %d steps, %d passed",
+                    run_id,
+                    len(test_results),
+                    sum(1 for r in test_results if r.get("status") == "passed"),
+                )
 
             except Exception as e:
                 test_results.append({
@@ -324,28 +234,15 @@ async def _execute_test_async(
         "test_cases": test_results
     }
 
-    # Save results to database if this is a scheduled run
-    # We need to use async engine for this
-    print(f"Preparing to save results for run_id: {run_id}, status: {result.get('status')}")
     try:
-        async_engine = create_async_engine(settings.DATABASE_URL)
-        async_session_maker = sessionmaker(
-            async_engine, class_=AsyncSession, expire_on_commit=False
-        )
+        async def _save(db: AsyncSession) -> None:
+            svc = ExecutionService(db)
+            await svc.save_test_results(run_id, result)
 
-        async with async_session_maker() as db:
-            # Initialize service with db session and save results
-            from app.services.execution_service import ExecutionService
-            execution_service = ExecutionService(db)
-            print(f"Calling save_test_results for run_id: {run_id}")
-            await execution_service.save_test_results(run_id, result)
-            print(f"Successfully saved results for run_id: {run_id}")
-            await async_engine.dispose()
+        await run_with_session(_save)
+        logger.info("Saved results for run %s with status %s", run_id, result.get("status"))
     except Exception as e:
-        # Log but don't fail the task if database update fails
-        print(f"Warning: Failed to save test results to database: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.warning("Failed to save test results for run %s: %s", run_id, e, exc_info=True)
 
     return result
 

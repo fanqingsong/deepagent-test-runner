@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTests } from './api';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -17,42 +18,27 @@ import authService from './services/authService';
 
 function AppContent() {
   const { user, logout, isAuthenticated, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState('dashboard');
-  const [tests, setTests] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
 
   // Schedule states
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
-  const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
-
   // User management states
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [userRefreshKey, setUserRefreshKey] = useState(0);
 
-  const loadTests = async () => {
-    // 只在用户已认证时才加载测试
-    if (!isAuthenticated) {
-      console.log('loadTests - User not authenticated, skipping');
-      return;
-    }
+  const testsQuery = useQuery({
+    queryKey: ['tests'],
+    queryFn: getTests,
+    enabled: isAuthenticated,
+  });
 
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getTests();
-      setTests(data.items || data);
-    } catch (err) {
-      console.error('loadTests error:', err);
-      setError('Failed to load tests: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const tests = testsQuery.data?.items || testsQuery.data || [];
+  const loading = testsQuery.isLoading;
+  const error = testsQuery.error ? `Failed to load tests: ${testsQuery.error.message || testsQuery.error}` : null;
 
   // 从hash初始化视图
   useEffect(() => {
@@ -75,14 +61,8 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadTests();
-    }
-  }, [isAuthenticated]);
-
   const handleTestCreated = () => {
-    loadTests();
+    queryClient.invalidateQueries({ queryKey: ['tests'] });
     setShowCreateForm(false);
     setEditingTest(null);
   };
@@ -161,8 +141,7 @@ function AppContent() {
 
   // Schedule handlers
   const handleScheduleCreated = () => {
-    // 触发列表刷新
-    setScheduleRefreshKey(prev => prev + 1);
+    queryClient.invalidateQueries({ queryKey: ['schedules'] });
   };
 
   const handleEditSchedule = (schedule) => {
@@ -355,10 +334,7 @@ function AppContent() {
               </button>
             </div>
 
-            <UserList
-              refreshKey={userRefreshKey}
-              onEditUser={handleEditUser}
-            />
+            <UserList onEditUser={handleEditUser} />
 
             {/* 创建/编辑用户 Modal */}
             <Modal
@@ -372,7 +348,7 @@ function AppContent() {
               <UserForm
                 user={editingUser}
                 onSuccess={() => {
-                  setUserRefreshKey(prev => prev + 1);
+                  queryClient.invalidateQueries({ queryKey: ['users'] });
                   setShowUserForm(false);
                   setEditingUser(null);
                 }}
@@ -418,7 +394,6 @@ function AppContent() {
             </div>
 
             <ScheduleList
-              refreshKey={scheduleRefreshKey}
               onEditSchedule={handleEditSchedule}
               onTriggerSchedule={handleTriggerSchedule}
               onToggleSchedule={handleToggleSchedule}

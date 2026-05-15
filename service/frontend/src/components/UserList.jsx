@@ -2,66 +2,21 @@
  * UserList Component
  *
  * Displays a list of users with actions for management.
- * Follows IBM Carbon Design System principles.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useUsers } from '../hooks/useUsers';
 import './UserList.css';
 
-const UserList = ({ refreshKey, onEditUser }) => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const UserList = ({ onEditUser }) => {
+  const { users, isLoading, isError, error, updateUser, deleteUser, isDeleting } = useUsers();
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    fetchUsers();
-  }, [refreshKey]);
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/v1/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-
-      const data = await response.json();
-      setUsers(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleToggleActive = async (userId, currentStatus) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`/api/v1/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ is_active: !currentStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update user');
-      }
-
-      fetchUsers();
+      await updateUser({ userId, userData: { is_active: !currentStatus } });
     } catch (err) {
-      setError(err.message);
+      alert(err.message || '更新用户失败');
     }
   };
 
@@ -69,33 +24,22 @@ const UserList = ({ refreshKey, onEditUser }) => {
     if (!confirm(`确定要删除用户 "${username}" 吗？`)) {
       return;
     }
-
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`/api/v1/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete user');
-      }
-
-      fetchUsers();
+      await deleteUser(userId);
     } catch (err) {
-      setError(err.message);
+      alert(err.message || '删除用户失败');
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = (user.username || user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (user.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+  const filteredUsers = users.filter((user) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      (user.username || '').toLowerCase().includes(q) ||
+      (user.email || '').toLowerCase().includes(q)
+    );
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="user-list">
         <div className="empty-state">
@@ -106,11 +50,11 @@ const UserList = ({ refreshKey, onEditUser }) => {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="user-list">
         <h2 className="list-title">用户管理</h2>
-        <div className="user-list-error">错误: {error}</div>
+        <div className="user-list-error">错误: {error?.message || String(error)}</div>
       </div>
     );
   }
@@ -175,45 +119,36 @@ const UserList = ({ refreshKey, onEditUser }) => {
                     </span>
                   </td>
                   <td className="created-cell">
-                    {new Date(user.created_at).toLocaleDateString('zh-CN')}
+                    {user.created_at
+                      ? new Date(user.created_at).toLocaleDateString('zh-CN')
+                      : '-'}
                   </td>
                   <td className="actions-cell">
                     <div className="action-buttons">
                       <button
-                        onClick={() => onEditUser && onEditUser(user)}
+                        type="button"
                         className="action-btn edit-btn"
-                        title="编辑用户"
-                        aria-label="编辑用户"
+                        onClick={() => onEditUser(user)}
+                        title="编辑"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                        </svg>
+                        编辑
                       </button>
                       <button
+                        type="button"
+                        className="action-btn toggle-btn"
                         onClick={() => handleToggleActive(user.id, user.is_active)}
-                        className={`action-btn ${user.is_active ? 'deactivate-btn' : 'activate-btn'}`}
-                        title={user.is_active ? '停用用户' : '激活用户'}
-                        aria-label={user.is_active ? '停用用户' : '激活用户'}
+                        title={user.is_active ? '停用' : '启用'}
                       >
-                        {user.is_active ? (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                          </svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4 11H8v-2h8v2z"/>
-                          </svg>
-                        )}
+                        {user.is_active ? '停用' : '启用'}
                       </button>
                       <button
-                        onClick={() => handleDeleteUser(user.id, user.username || user.email || 'Unknown')}
+                        type="button"
                         className="action-btn delete-btn"
-                        title="删除用户"
-                        aria-label="删除用户"
+                        onClick={() => handleDeleteUser(user.id, user.username || user.email)}
+                        disabled={isDeleting}
+                        title="删除"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                        </svg>
+                        删除
                       </button>
                     </div>
                   </td>

@@ -22,26 +22,19 @@ CLI (Bun) → Claude Code SDK → Anthropic API
          Test State MCP (local HTTP server)
 ```
 
-### Microservices Architecture
+### Microservices Architecture (current: unified backend)
 ```
-Frontend (React/Vite) → Nginx (Port 8080) → Test Case API (FastAPI :8001)
-                                        ↓
-                                    Dashboard Service (Express :8003)
-                                        ↓
-                                    Scheduler API (FastAPI :8002)
-                                        ↓
-                    PostgreSQL (Port 5432) ← Celery Workers ← Redis Queue
-                                        ↑
-                                    Auth Service (FastAPI :8010)
+Frontend (React/Vite :5173) → Nginx (:8080) → Unified Backend (FastAPI :8001, host :8011)
+                                                    ↓
+                              PostgreSQL (:5432) ← Celery Worker + Beat ← Redis
 ```
 
 **Service Interactions:**
-- Test Case Service manages test definitions and steps
-- Scheduler Service creates test runs and coordinates execution
-- Celery Workers execute tests using Playwright and save results to PostgreSQL
-- Dashboard Service queries PostgreSQL for analytics and visualization
-- **Authentication Service** manages user authentication, MFA, password reset, and session management
+- **Unified Backend** (`service/backend/`): test definitions, schedules, jobs, analytics, auth (MFA, sessions), SSO config
+- **Celery Workers** execute tests via Playwright + Claude Agent SDK; load test data from PostgreSQL (not HTTP self-calls)
+- **Job metadata** stored in Redis (`app/core/job_store.py`) for status polling across API restarts
 - Frontend uses hash-based routing: `#dashboard`, `#tests`, `#schedules`
+- Use `docker compose` (not `docker-compose`) from `service/`
 
 ## Development Commands
 
@@ -57,17 +50,16 @@ bun test                      # Run tests
 
 ### Microservices Development
 ```bash
-cd docker-compose
-docker-compose up -d          # Start all services with hot-reload
-docker-compose ps             # Check service status
-docker-compose logs -f [service]  # View logs
-docker-compose restart [service]  # Restart specific service
+cd service
+docker compose up -d          # Start all services with hot-reload
+docker compose ps             # Check service status
+docker compose logs -f [service]  # View logs
+docker compose restart [service]  # Restart specific service
 ```
 
 **Hot-reload is enabled for:**
-- `scheduler-service/app:/app/app` (API and worker)
-- `dashboard-service/src:/app/src` (backend)
-- `dashboard-service/frontend/src:/app/frontend/src` (frontend)
+- `backend/app:/app/app` (API and Celery worker)
+- `frontend/src:/app/frontend` (Vite dev server)
 
 Changes to these directories are automatically reflected without rebuilding.
 
@@ -149,10 +141,9 @@ This project uses an IBM Carbon-inspired design system. Before creating or modif
 
 **Routing:** Hash-based (`#dashboard`, `#tests`, `#schedules`)
 
-**API Calls:** All go through dashboard service proxy on port 8013
-- Test Case API: `http://localhost:8011/api/v1/` (direct)
-- Scheduler API: `http://localhost:8012/api/v1/` (direct)
-- Dashboard API: `http://localhost:8013/api/` (analytics)
+**API Calls:** Via Nginx on port 8080 (or Vite dev with same-origin `/api/v1`)
+- Unified API: `http://localhost:8080/api/v1/` (or `http://localhost:8011/api/v1/` direct to backend)
+- Analytics: `http://localhost:8080/api/v1/analytics/`
 
 **Component Patterns:**
 - Table layouts for lists (TestList, ScheduleList, RecentTests)

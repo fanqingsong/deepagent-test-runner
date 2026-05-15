@@ -1,20 +1,7 @@
-// API Base URLs
-// TEMPORARY FIX: Hardcode the base URL to resolve caching issues
-// TODO: Revert to window.location.origin after cache issue is resolved
-const BASE_URL = 'http://localhost:8080';  // window.location.origin;
-
-// Debug logging to verify BASE_URL
-console.log('=== API Configuration ===');
-console.log('window.location.href:', window.location.href);
-console.log('window.location.origin:', window.location.origin);
-console.log('BASE_URL:', BASE_URL);
-console.log('TEST_API:', `${BASE_URL}/api/v1`);
-console.log('========================');
-
-// Set a global flag to verify this code is loaded
-window.__API_JS_LOADED__ = true;
-window.__API_BASE_URL__ = BASE_URL;
-window.__API_TEST_API__ = `${BASE_URL}/api/v1`;
+// API Base URLs — use same origin as the page (nginx proxy in dev/prod)
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ||
+  window.location.origin;
 
 const TEST_API = `${BASE_URL}/api/v1`;
 const DASHBOARD_API = `${BASE_URL}/api/v1/analytics`;
@@ -26,16 +13,61 @@ import authService from './services/authService';
 
 const getAuthHeaders = () => {
   const token = authService.getAccessToken();
-  console.log('getAuthHeaders - token exists:', !!token);
-  console.log('getAuthHeaders - token preview:', token ? token.substring(0, 20) + '...' : 'no token');
   if (!token) {
-    console.warn('getAuthHeaders - No token available, request may fail');
     return {};
   }
   return {
-    'Authorization': `Bearer ${token}`
+    Authorization: `Bearer ${token}`,
   };
 };
+
+async function parseApiError(response, fallback) {
+  const status = response?.status;
+  const statusText = response?.statusText || '';
+  let bodyText = '';
+  try {
+    bodyText = await response.text();
+  } catch {
+    bodyText = '';
+  }
+  let detail = '';
+  if (bodyText) {
+    try {
+      const json = JSON.parse(bodyText);
+      detail =
+        json?.detail ||
+        json?.error ||
+        json?.message ||
+        (typeof json === 'string' ? json : '') ||
+        bodyText;
+    } catch {
+      detail = bodyText;
+    }
+  }
+  const parts = [
+    typeof status === 'number' ? `HTTP ${status}` : null,
+    statusText || null,
+    (detail || '').toString().trim() || null,
+  ].filter(Boolean);
+  const base = fallback || '请求失败';
+  return parts.length ? `${base}（${parts.join(' - ')}）` : base;
+}
+
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, {
+    mode: 'cors',
+    ...options,
+    headers: {
+      ...getAuthHeaders(),
+      ...(options.headers || {}),
+    },
+  });
+  if (response.status === 401) {
+    window.location.hash = 'login';
+    throw new Error('登录已过期，请重新登录');
+  }
+  return response;
+}
 
 export const getTests = async () => {
   try {
@@ -109,26 +141,28 @@ export const createTest = async (testData) => {
 
     const test = await testResponse.json();
 
-    // Add steps
-    for (const step of test_steps) {
-      const stepResponse = await fetch(`${TEST_API}/test-steps/test-definition/${test.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({
-          type: 'action',
+    // Replace steps in one request (avoid N+1 calls)
+    const replaceStepsResponse = await fetch(`${TEST_API}/test-steps/test-definition/${test.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        test_steps: (test_steps || []).map((step, index) => ({
+          step_number: index + 1,
           description: step.description,
+          type: 'action',
           params: {},
-          step_number: step.id
-        }),
-        mode: 'cors'
-      });
+          expected_result: null
+        }))
+      }),
+      mode: 'cors'
+    });
 
-      if (!stepResponse.ok) {
-        throw new Error(`Failed to add step: ${stepResponse.statusText}`);
-      }
+    if (!replaceStepsResponse.ok) {
+      const errorText = await replaceStepsResponse.text();
+      throw new Error(`Failed to replace steps: ${replaceStepsResponse.statusText} - ${errorText}`);
     }
 
     return test;
@@ -166,46 +200,28 @@ export const updateTest = async (testId, testData) => {
     // Get the internal ID from the response
     const internalId = test.id;
 
-    // Update steps - delete existing steps and add new ones
-    // First, delete existing steps using internal ID
-    const existingStepsResponse = await fetch(`${TEST_API}/test-steps/test-definition/${internalId}`, {
-      headers: getAuthHeaders(),
+    // Replace steps in one request (avoid N+1 calls)
+    const replaceStepsResponse = await fetch(`${TEST_API}/test-steps/test-definition/${internalId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        test_steps: (test_steps || []).map((step, index) => ({
+          step_number: index + 1,
+          description: step.description,
+          type: 'action',
+          params: {},
+          expected_result: null
+        }))
+      }),
       mode: 'cors'
     });
 
-    if (existingStepsResponse.ok) {
-      const existingSteps = await existingStepsResponse.json();
-
-      // Delete each existing step
-      for (const step of existingSteps) {
-        await fetch(`${TEST_API}/test-steps/${step.id}`, {
-          method: 'DELETE',
-          headers: getAuthHeaders(),
-          mode: 'cors'
-        });
-      }
-    }
-
-    // Add new steps using internal ID
-    for (const step of test_steps) {
-      const stepResponse = await fetch(`${TEST_API}/test-steps/test-definition/${internalId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({
-          type: 'action',
-          description: step.description,
-          params: {},
-          step_number: step.id
-        }),
-        mode: 'cors'
-      });
-
-      if (!stepResponse.ok) {
-        throw new Error(`Failed to add step: ${stepResponse.statusText}`);
-      }
+    if (!replaceStepsResponse.ok) {
+      const errorText = await replaceStepsResponse.text();
+      throw new Error(`Failed to replace steps: ${replaceStepsResponse.statusText} - ${errorText}`);
     }
 
     return test;
@@ -316,38 +332,49 @@ export const getTestStats = async () => {
   }
 };
 
-export const getUsers = async () => {
-  try {
-    const response = await fetch(`${USERS_API}/users`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch users: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    throw error;
+export const getSchedules = async () => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, '加载调度列表失败'));
+  }
+  return response.json();
+};
+
+export const deleteSchedule = async (scheduleId) => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/${scheduleId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, '删除调度失败'));
   }
 };
 
+export const getUsers = async () => {
+  const response = await apiFetch(`${USERS_API}/users`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, '加载用户列表失败'));
+  }
+  return response.json();
+};
+
 export const updateUser = async (userId, userData) => {
-  try {
-    const response = await fetch(`${USERS_API}/users/${userId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify(userData)
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to update user: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error updating user:", error);
-    throw error;
+  const response = await apiFetch(`${USERS_API}/users/${userId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, '更新用户失败'));
+  }
+  return response.json();
+};
+
+export const deleteUser = async (userId) => {
+  const response = await apiFetch(`${USERS_API}/users/${userId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok && response.status !== 204) {
+    throw new Error(await parseApiError(response, '删除用户失败'));
   }
 };
 

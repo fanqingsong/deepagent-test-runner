@@ -7,8 +7,14 @@ All settings can be overridden via environment variables.
 
 from typing import List
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_SECRET_DEFAULTS = frozenset({
+    "changeme-in-production",
+    "your-jwt-secret-key-change-this-in-production",
+    "your-secret-key",
+})
 
 
 class Settings(BaseSettings):
@@ -29,6 +35,10 @@ class Settings(BaseSettings):
     # Server
     HOST: str = Field(default="0.0.0.0", description="Server host")
     PORT: int = Field(default=8001, description="Server port")
+    FRONTEND_BASE_URL: str = Field(
+        default="http://localhost:8080",
+        description="Public frontend base URL for email links and redirects",
+    )
 
     # Database
     DATABASE_URL: str = Field(
@@ -184,6 +194,21 @@ class Settings(BaseSettings):
     # Observability - Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
     LOG_FORMAT: str = Field(default="json", description="Log format (json or text)")
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        """Reject default secrets when not in debug mode."""
+        if self.DEBUG:
+            return self
+        for name, value in (
+            ("SECRET_KEY", self.SECRET_KEY),
+            ("JWT_SECRET_KEY", self.JWT_SECRET_KEY),
+        ):
+            if not value or value in _INSECURE_SECRET_DEFAULTS or len(value) < 32:
+                raise ValueError(
+                    f"{name} must be set to a secure value (>= 32 chars) when DEBUG=false"
+                )
+        return self
 
 
 # Global settings instance

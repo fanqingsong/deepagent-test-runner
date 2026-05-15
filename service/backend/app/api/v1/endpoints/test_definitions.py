@@ -46,39 +46,37 @@ async def list_test_definitions(
     - **tags**: Filter by tags (comma-separated)
     - **is_active**: Filter by active status
     """
-    # Build query
-    query = select(TestDefinition)
+    filters = []
 
-    # Apply role-based filtering
     is_admin = current_user.get("is_admin", False)
     if not is_admin and current_user.get("provider") == "local":
-        # Regular local users only see their own test definitions
-        query = query.where(TestDefinition.created_by == int(current_user["sub"]))
+        filters.append(TestDefinition.created_by == int(current_user["sub"]))
 
-    # Apply filters
     if search:
         search_pattern = f"%{search}%"
-        query = query.where(
+        filters.append(
             or_(
                 TestDefinition.name.ilike(search_pattern),
                 TestDefinition.description.ilike(search_pattern),
-                TestDefinition.test_id.ilike(search_pattern)
+                TestDefinition.test_id.ilike(search_pattern),
             )
         )
 
     if tags:
-        # Filter by tags (any match)
-        query = query.where(TestDefinition.tags.overlap(tags))
+        filters.append(TestDefinition.tags.overlap(tags))
 
     if is_active is not None:
-        query = query.where(TestDefinition.is_active == is_active)
+        filters.append(TestDefinition.is_active == is_active)
 
-    # Get total count
-    count_query = select(func.count()).select_from(query.subquery())
+    count_query = select(func.count()).select_from(TestDefinition)
+    if filters:
+        count_query = count_query.where(*filters)
     total_result = await db.execute(count_query)
-    total = total_result.scalar()
+    total = total_result.scalar() or 0
 
-    # Apply pagination and ordering
+    query = select(TestDefinition)
+    if filters:
+        query = query.where(*filters)
     query = query.order_by(TestDefinition.created_at.desc()).offset(skip).limit(limit)
 
     # Execute query

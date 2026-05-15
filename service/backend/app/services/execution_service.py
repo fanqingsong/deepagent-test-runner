@@ -92,9 +92,6 @@ class ExecutionService:
             return True
 
         # TODO: Implement proper concurrency check without schedule_id in TestRun
-        # For now, allow all executions
-        return True
-
         return True
 
     def build_environment(
@@ -190,9 +187,9 @@ class ExecutionService:
 
         # Validate status transitions
         valid_transitions = {
-            'pending': ['running', 'skipped'],
-            'running': ['passed', 'failed', 'skipped'],
-            'failed': ['pending']  # Only for retry
+            'pending': ['running', 'skipped', 'failed', 'error'],
+            'running': ['passed', 'failed', 'skipped', 'error'],
+            'failed': ['pending'],
         }
 
         current_status = test_run.status
@@ -275,9 +272,9 @@ class ExecutionService:
             duration_ms = test_run.end_time - test_run.start_time
             test_run.total_duration = int(duration_ms / 1000)  # Convert to seconds
 
-        # Save test case details
         test_cases_data = results.get('test_cases', [])
         if test_cases_data:
+            test_case_rows = []
             for idx, case_data in enumerate(test_cases_data):
                 test_case = TestCase(
                     run_id=test_run.id,
@@ -288,10 +285,11 @@ class ExecutionService:
                     duration=int(case_data.get('duration', 0)),
                     start_time=int(results.get('start_time', 0)),
                     end_time=int(results.get('end_time', 0)),
-                    error_message=case_data.get('error')
+                    error_message=case_data.get('error'),
                 )
-                self.db.add(test_case)
-                logger.info(f"Added test case {test_case.test_id} with status {test_case.status}")
+                test_case_rows.append(test_case)
+            self.db.add_all(test_case_rows)
+            logger.info("Saved %d test case rows for run %s", len(test_case_rows), run_id)
 
         await self.db.commit()
         await self.db.refresh(test_run)

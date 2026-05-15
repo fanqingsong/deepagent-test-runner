@@ -9,6 +9,7 @@ import logging
 from app.models.auth import UserAccount, UserSession
 from app.core.auth_security import verify_password, create_access_token, create_refresh_token, hash_password
 from app.core.auth_rate_limit import check_rate_limit
+from app.core.config import settings
 from app.schemas.user import Session as SessionSchema
 
 logger = logging.getLogger(__name__)
@@ -68,15 +69,22 @@ class SessionService:
             raise
 
     @staticmethod
-    async def enforce_concurrent_session_limit(db: AsyncSession, user_id: int, max_sessions: int = 5):
+    async def enforce_concurrent_session_limit(
+        db: AsyncSession,
+        user_id: int,
+        max_sessions: int | None = None,
+    ):
         """
-        Enforce maximum concurrent sessions (5). Terminate oldest inactive session if limit exceeded.
+        Enforce maximum concurrent sessions. Terminate oldest inactive session if limit exceeded.
 
         Args:
             db: Database session
             user_id: User ID
-            max_sessions: Maximum allowed concurrent sessions
+            max_sessions: Maximum allowed concurrent sessions (defaults to settings)
         """
+        if max_sessions is None:
+            max_sessions = settings.MAX_CONCURRENT_SESSIONS
+
         # Count active sessions for user
         query = select(UserSession).where(
             UserSession.user_id == user_id,
