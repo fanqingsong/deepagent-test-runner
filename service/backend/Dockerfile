@@ -56,6 +56,12 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 RUN playwright install chromium
 
+# Install Claude Code CLI (for Zhipu AI compatibility via HTTP API)
+# Install to system-wide location accessible to all users including appuser
+# Use npm prefix to install directly to /usr/local
+RUN npm config set prefix '/usr/local' && \
+    npm install -g @anthropic-ai/claude-code
+
 # Create non-root user and set permissions
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app && \

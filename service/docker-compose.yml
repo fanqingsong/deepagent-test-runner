@@ -43,6 +43,8 @@ services:
     container_name: cc-test-nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Mount screenshots directory for static file serving
+      - ./screenshots:/app/screenshots:ro
     ports:
       - "8080:80"
     depends_on:
@@ -74,8 +76,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://open.bigmodel.cn/api/paas/v4/}
       API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: ${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-1}
+      CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS: ${CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS:-300000}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-glm-4-flash}
+      CLAUDE_CLI_PATH: ${CLAUDE_CLI_PATH:-/usr/local/bin/claude}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000","http://localhost:8013","http://localhost:5173"]'
       # Authentication Settings
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
@@ -104,6 +113,8 @@ services:
     volumes:
       # Mount source for hot reload in development
       - ./backend/app:/app/app
+      # Mount screenshots directory for static file serving
+      - ./screenshots:/app/screenshots
     command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"]
     depends_on:
       postgres:
@@ -132,11 +143,23 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://open.bigmodel.cn/api/paas/v4/}
       API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: ${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-1}
+      CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS: ${CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS:-300000}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-glm-4-flash}
+      CLAUDE_CLI_PATH: ${CLAUDE_CLI_PATH:-/usr/local/bin/claude}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
     volumes:
       # Mount source for hot reload in development
       - ./backend/app:/app/app
+      # Mount screenshots directory for test execution artifacts
+      - ./screenshots:/app/screenshots
     depends_on:
       postgres:
         condition: service_healthy
@@ -164,8 +187,18 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://open.bigmodel.cn/api/paas/v4/}
       API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: ${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-1}
+      CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS: ${CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS:-300000}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-glm-4-flash}
+      CLAUDE_CLI_PATH: ${CLAUDE_CLI_PATH:-/usr/local/bin/claude}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
     volumes:
       # Mount source for hot reload in development
       - ./backend/app:/app/app
