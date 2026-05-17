@@ -4,9 +4,14 @@ Celery Application Configuration for Unified Backend Service
 Configures Celery for distributed task queue with Redis broker.
 """
 
+import logging
+
 from celery import Celery
+from celery.signals import worker_process_init
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Create Celery application
 celery_app = Celery(
@@ -42,6 +47,10 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_concurrency=2,
 
+    # Task timeout — kill tasks that run too long (5 min hard, 4 min soft)
+    task_time_limit=300,
+    task_soft_time_limit=240,
+
     # Task result settings
     result_expires=3600,  # 1 hour
     task_track_started=True,
@@ -50,6 +59,32 @@ celery_app.conf.update(
     task_acks_late=True,
     task_reject_on_worker_lost=True,
 )
+
+# After fork, recreate DB engine to avoid "Future attached to a different loop"
+@worker_process_init.connect
+def _on_worker_process_init(**kwargs):
+    try:
+        import app.core.database as db
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+        db.engine = create_async_engine(
+            settings.DATABASE_URL,
+            echo=settings.DEBUG,
+            future=True,
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+        )
+        db.async_session_maker = async_sessionmaker(
+            db.engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+        logger.info("Recreated DB engine after worker fork")
+    except Exception as exc:
+        logger.warning("Failed to recreate engine after fork: %s", exc)
+
 
 # Configure periodic tasks for Celery Beat
 from celery.schedules import crontab

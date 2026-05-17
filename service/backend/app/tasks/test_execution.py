@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.worker_db import run_async, run_with_session
 from app.models.test_definition import TestDefinition
 from app.models.test_step import TestStep
-from app.services import get_claude_interpreter
+from app.agents.executor_agent import interpret_and_execute_batch
 from app.services.execution_service import ExecutionService
 
 logger = logging.getLogger(__name__)
@@ -268,8 +268,8 @@ async def _load_test_from_db(
         if not test_def:
             return None, []
 
-        # Prioritize AI-generated plan if available and approved
-        if test_def.ai_generated_plan and test_def.plan_generation_status == "approved":
+        # Prioritize AI-generated plan if available (approved or generated)
+        if test_def.ai_generated_plan and test_def.plan_generation_status in ("approved", "generated"):
             logger.info(
                 "Using AI-generated plan for test definition %d (status: %s)",
                 test_definition_id,
@@ -392,16 +392,15 @@ async def _execute_test_async(
                 page.set_default_timeout(settings.TEST_TIMEOUT)
 
                 # Navigate to initial URL if provided
+                navigated_url = None
                 if test_url:
                     try:
-                        await page.goto(test_url)
-                        await page.wait_for_load_state("networkidle")
+                        await page.goto(test_url, wait_until="domcontentloaded", timeout=30000)
+                        navigated_url = page.url
+                        logger.info("Initial navigation to %s succeeded, final URL: %s", test_url, navigated_url)
                     except Exception as e:
-                        return {
-                            "status": "error",
-                            "error": f"Failed to navigate to initial URL {test_url}: {str(e)}",
-                            "run_id": run_id
-                        }
+                        logger.warning("Initial navigation to %s failed: %s, continuing anyway", test_url, e)
+                        navigated_url = page.url
 
                 # Execute ALL steps in a single Claude Code session (matches CLI architecture)
                 logger.info(
@@ -409,7 +408,8 @@ async def _execute_test_async(
                     len(test_steps),
                     run_id,
                 )
-                test_results = await _execute_all_steps_with_ai(page, test_steps, environment, run_id)
+                ctx = {**environment, "navigated_url": navigated_url}
+                test_results = await _execute_all_steps_with_ai(page, test_steps, ctx, run_id)
                 logger.info(
                     "Run %s finished: %d steps, %d passed",
                     run_id,
@@ -506,11 +506,9 @@ async def _execute_all_steps_with_ai(
         ))
 
         # Use Claude AI to interpret and execute ALL steps in a single session
-        context = {
-            "environment": environment
-        }
+        context = dict(environment) if isinstance(environment, dict) else {"environment": environment}
 
-        results = await get_claude_interpreter().interpret_and_execute_batch(
+        results = await interpret_and_execute_batch(
             page,
             test_steps,
             context
