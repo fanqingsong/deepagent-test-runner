@@ -130,7 +130,7 @@ uncompyle6 config.cpython-311.pyc > config_decompiled.py
 # 反编译后可看到
 DATABASE_URL="postgresql://cc_test_user:test_password_123@..."
 SECRET_KEY="your-secret-key-change-in-production"
-ANTHROPIC_API_KEY="33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf"
+ANTHROPIC_API_KEY=""
 ```
 
 **影响**:

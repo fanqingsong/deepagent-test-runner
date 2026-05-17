@@ -49,7 +49,7 @@ Claude interpreter initialized with base_url: https://open.bigmodel.cn/api/anthr
 
 ### ANTHROPIC_API_KEY
 - **描述**: 智谱AI的API密钥
-- **格式**: `id.secret` (例如: `33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf`)
+- **格式**: `id.secret` (例如: ``)
 - **必需**: 是 (用于AI功能)
 - **获取方式**: https://open.bigmodel.cn/
 
@@ -353,7 +353,7 @@ REDIS_PASSWORD=redis_password_123
 SECRET_KEY=your-secret-key-change-in-production-12345678
 
 # GLM AI配置 (智谱AI)
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+ANTHROPIC_API_KEY=
 ANTHROPIC_BASE_URL=https://open.bigmodel.cn/api/anthropic
 API_TIMEOUT_MS=3000000
 ```

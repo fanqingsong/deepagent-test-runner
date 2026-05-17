@@ -14,7 +14,7 @@
 
 ```bash
 # 智谱AI配置 (当前使用)
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+ANTHROPIC_API_KEY=
 ANTHROPIC_BASE_URL=https://open.bigmodel.cn/api/anthropic
 API_TIMEOUT_MS=3000000
 ```

@@ -24,7 +24,7 @@
 ### 1. 真实API密钥泄露
 **位置**: `service/.env:20`
 ```bash
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+ANTHROPIC_API_KEY=
 ```
 **风险**: API密钥暴露，可能导致费用产生和未授权访问
 **CVSS**: 9.8 (Critical)

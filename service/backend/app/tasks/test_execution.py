@@ -23,6 +23,172 @@ from app.services.execution_service import ExecutionService
 
 logger = logging.getLogger(__name__)
 
+# Screenshot directory configuration
+SCREENSHOT_BASE_DIR = Path("/app/screenshots")
+SCREENSHOT_BASE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+async def capture_step_screenshot(
+    page: Page,
+    run_id: str,
+    step_number: int,
+    description: str = "",
+    status: str = "passed"
+) -> str:
+    """
+    Capture screenshot for a test step.
+
+    Args:
+        page: Playwright page instance
+        run_id: Test run ID
+        step_number: Step number (can be None)
+        description: Step description for filename
+        status: Step status (passed/failed)
+
+    Returns:
+        str: Relative path to screenshot file
+    """
+    try:
+        # Handle None step_number
+        step_num = step_number if step_number is not None else 0
+
+        # Create directory for this run
+        run_dir = SCREENSHOT_BASE_DIR / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate filename with step info and status
+        safe_desc = description[:30].replace(" ", "_").replace("/", "_").replace("\\", "_")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"step_{step_num:02d}_{status}_{safe_desc}_{timestamp}.png"
+        screenshot_path = run_dir / filename
+
+        # Take screenshot
+        await page.screenshot(
+            path=str(screenshot_path),
+            full_page=False,  # Only capture viewport for faster performance
+            type="png"
+        )
+
+        # Return relative path for web access
+        web_path = f"/screenshots/{run_id}/{filename}"
+        logger.info(f"Screenshot saved: {web_path}")
+        return web_path
+
+    except Exception as e:
+        logger.error(f"Failed to capture screenshot for step {step_number}: {str(e)}")
+        return ""
+
+
+def create_execution_log(
+    step_number: int,
+    description: str,
+    action: str,
+    details: str = "",
+    status: str = "info"
+) -> Dict[str, Any]:
+    """
+    Create structured execution log entry.
+
+    Args:
+        step_number: Step number
+        description: Step description
+        action: Action performed (e.g., "navigate", "click", "fill")
+        details: Additional details
+        status: Log status (info, success, warning, error)
+
+    Returns:
+        dict: Structured log entry
+    """
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "step_number": step_number,
+        "description": description[:100],  # Truncate long descriptions
+        "action": action,
+        "details": details[:500],  # Limit detail length
+        "status": status
+    }
+
+
+async def verify_step_result(
+    page: Page,
+    step_description: str,
+    execution_details: str
+) -> Dict[str, Any]:
+    """
+    Verify step execution result and provide detailed feedback.
+
+    Args:
+        page: Playwright page instance
+        step_description: Original step description
+        execution_details: Details from AI execution
+
+    Returns:
+        dict: Verification results with assertions
+    """
+    assertions = []
+
+    try:
+        # Get current page state
+        current_url = page.url
+        page_title = await page.title()
+
+        # Basic verification assertions
+        assertions.append({
+            "type": "page_loaded",
+            "expected": "page successfully loaded",
+            "actual": f"current URL: {current_url}",
+            "passed": True,
+            "evidence": f"Page title: {page_title}"
+        })
+
+        # Check for common error indicators
+        error_keywords = ["error", "failed", "exception", "not found", "404", "500"]
+        page_content = await page.content()
+
+        for keyword in error_keywords:
+            if keyword.lower() in page_content.lower():
+                assertions.append({
+                    "type": "error_detection",
+                    "expected": f"no '{keyword}' on page",
+                    "actual": f"found '{keyword}' in page content",
+                    "passed": False,
+                    "evidence": f"Keyword '{keyword}' detected in page"
+                })
+
+        # Check if navigation occurred (for navigation steps)
+        if "navigate" in step_description.lower() or "go to" in step_description.lower():
+            target_url = execution_details
+            if target_url and target_url in current_url:
+                assertions.append({
+                    "type": "navigation_verification",
+                    "expected": f"navigate to {target_url}",
+                    "actual": f"successfully navigated to {current_url}",
+                    "passed": True,
+                    "evidence": "URL match confirmed"
+                })
+
+        return {
+            "verification_passed": all(a["passed"] for a in assertions),
+            "assertions": assertions,
+            "page_state": {
+                "url": current_url,
+                "title": page_title
+            }
+        }
+
+    except Exception as e:
+        return {
+            "verification_passed": False,
+            "assertions": [{
+                "type": "verification_error",
+                "expected": "successful page state verification",
+                "actual": f"verification failed: {str(e)}",
+                "passed": False,
+                "evidence": str(e)
+            }],
+            "page_state": {"url": "unknown", "title": "unknown"}
+        }
+
 
 @celery_app.task(bind=True, name="app.tasks.test_execution.execute_test",
                  autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
@@ -39,45 +205,49 @@ def execute_test(self, test_definition_id: int, run_id: str, environment: Dict[s
         dict: Test execution results
     """
     environment = environment or {}
+    return run_async(
+        lambda: _run_execute_test_task(test_definition_id, run_id, environment)
+    )
 
-    try:
-        run_async(lambda: _update_run_status(run_id, "running"))
-    except Exception as e:
-        logger.warning("Failed to set run %s to running: %s", run_id, e)
 
+async def _run_execute_test_task(
+    test_definition_id: int,
+    run_id: str,
+    environment: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Single async entrypoint for a Celery test task (one event loop per task)."""
+    await _ensure_run_running(run_id)
     try:
-        result = run_async(
-            lambda: _execute_test_async(test_definition_id, run_id, environment)
-        )
-        try:
-            final_status = result.get("status", "failed")
-            if final_status == "error":
-                final_status = "failed"
-            error_msg = result.get("error")
-            run_async(
-                lambda: _update_run_status(
-                    run_id, final_status, error_message=error_msg
-                )
-            )
-        except Exception as e:
-            logger.warning("Failed to update final status for run %s: %s", run_id, e)
+        result = await _execute_test_async(test_definition_id, run_id, environment)
+        await _finalize_run_status(run_id, result)
         return result
-    except Exception:
-        try:
-            run_async(lambda: _update_run_status(run_id, "failed"))
-        except Exception as e2:
-            logger.warning("Failed to set failed status for run %s: %s", run_id, e2)
+    except Exception as exc:
+        await _mark_run_failed(run_id, str(exc))
         raise
 
 
-async def _update_run_status(
-    run_id: str,
-    status: str,
-    error_message: Optional[str] = None,
-) -> None:
+async def _ensure_run_running(run_id: str) -> None:
     async def _op(db: AsyncSession) -> None:
-        svc = ExecutionService(db)
-        await svc.update_run_status(run_id, status, error_message=error_message)
+        await ExecutionService(db).ensure_run_running(run_id)
+
+    await run_with_session(_op)
+
+
+async def _finalize_run_status(run_id: str, result: Dict[str, Any]) -> None:
+    status = result.get("status", "failed")
+    error_msg = result.get("error")
+
+    async def _op(db: AsyncSession) -> None:
+        await ExecutionService(db).finalize_run_status_if_needed(
+            run_id, status, error_message=error_msg
+        )
+
+    await run_with_session(_op)
+
+
+async def _mark_run_failed(run_id: str, error_message: Optional[str] = None) -> None:
+    async def _op(db: AsyncSession) -> None:
+        await ExecutionService(db).mark_run_failed(run_id, error_message=error_message)
 
     await run_with_session(_op)
 
@@ -85,7 +255,10 @@ async def _update_run_status(
 async def _load_test_from_db(
     test_definition_id: int,
 ) -> Tuple[Optional[TestDefinition], List[Dict[str, Any]]]:
-    """Load test definition and steps directly from PostgreSQL."""
+    """Load test definition and steps directly from PostgreSQL.
+
+    Prioritizes AI-generated plans over traditional test_steps if available.
+    """
 
     async def _op(db: AsyncSession):
         def_result = await db.execute(
@@ -95,6 +268,49 @@ async def _load_test_from_db(
         if not test_def:
             return None, []
 
+        # Prioritize AI-generated plan if available and approved
+        if test_def.ai_generated_plan and test_def.plan_generation_status == "approved":
+            logger.info(
+                "Using AI-generated plan for test definition %d (status: %s)",
+                test_definition_id,
+                test_def.plan_generation_status
+            )
+            # Parse AI-generated plan into test_steps format
+            test_steps: List[Dict[str, Any]] = []
+            try:
+                # Assuming ai_generated_plan is a JSON string or dict with steps
+                import json
+                plan_data = test_def.ai_generated_plan
+                if isinstance(plan_data, str):
+                    plan_data = json.loads(plan_data)
+
+                # Extract steps from AI plan
+                ai_steps = plan_data.get("steps", [])
+                for idx, step in enumerate(ai_steps):
+                    test_steps.append({
+                        "step_number": idx + 1,
+                        "description": step.get("description", ""),
+                    })
+
+                logger.info(
+                    "Loaded %d steps from AI-generated plan for test definition %d",
+                    len(test_steps),
+                    test_definition_id
+                )
+                return test_def, test_steps
+            except Exception as e:
+                logger.warning(
+                    "Failed to parse AI-generated plan for test definition %d: %s. Falling back to traditional steps.",
+                    test_definition_id,
+                    str(e)
+                )
+                # Fall through to traditional steps below
+
+        # Use traditional test_steps
+        logger.info(
+            "Using traditional test_steps for test definition %d",
+            test_definition_id
+        )
         steps_result = await db.execute(
             select(TestStep)
             .where(TestStep.test_definition_id == test_definition_id)
@@ -117,6 +333,12 @@ async def _load_test_from_db(
                 "step_number": step.step_number,
                 "description": description,
             })
+
+        logger.info(
+            "Loaded %d traditional steps for test definition %d",
+            len(test_steps),
+            test_definition_id
+        )
         return test_def, test_steps
 
     return await run_with_session(_op)
@@ -187,7 +409,7 @@ async def _execute_test_async(
                     len(test_steps),
                     run_id,
                 )
-                test_results = await _execute_all_steps_with_ai(page, test_steps, environment)
+                test_results = await _execute_all_steps_with_ai(page, test_steps, environment, run_id)
                 logger.info(
                     "Run %s finished: %d steps, %d passed",
                     run_id,
@@ -250,27 +472,39 @@ async def _execute_test_async(
 async def _execute_all_steps_with_ai(
     page: Page,
     test_steps: List[Dict[str, Any]],
-    environment: Dict[str, Any]
+    environment: Dict[str, Any],
+    run_id: str
 ) -> List[Dict[str, Any]]:
     """
     Execute ALL test steps in a single Claude Code session (matches CLI architecture).
 
     This is the NEW method that replaces the old per-step approach.
 
+    Enhanced with screenshot capture, detailed logging, and verification.
+
     Args:
         page: Playwright page
         test_steps: List of test steps with natural language descriptions
         environment: Environment variables
+        run_id: Test run ID for screenshot organization
 
     Returns:
-        List of step execution results
+        List of step execution results with screenshots and logs
     """
     step_start = datetime.now(timezone.utc).timestamp() * 1000
 
     if not test_steps:
         return []
 
+    execution_logs = []
+
     try:
+        # Log test execution start
+        execution_logs.append(create_execution_log(
+            0, "Test Batch", "start_execution",
+            f"Starting {len(test_steps)} test steps", "info"
+        ))
+
         # Use Claude AI to interpret and execute ALL steps in a single session
         context = {
             "environment": environment
@@ -282,29 +516,118 @@ async def _execute_all_steps_with_ai(
             context
         )
 
-        # Add duration to each result
+        # Enhance each result with screenshots and verification
         step_end = datetime.utcnow().timestamp() * 1000
         total_duration = step_end - step_start
-
-        # Distribute total duration evenly across steps (or could track per-step timing)
         duration_per_step = total_duration // len(results) if results else total_duration
 
-        for result in results:
+        for idx, result in enumerate(results):
+            step_number = result.get("step_number", idx + 1)
+            step_status = result.get("status", "failed")
+            step_description = result.get("description", "")
+            step_details = result.get("details", "")
+
+            # Add duration if not present
             if "duration" not in result:
                 result["duration"] = duration_per_step
+
+            # Capture screenshot for this step
+            try:
+                screenshot_path = await capture_step_screenshot(
+                    page,
+                    run_id,
+                    step_number,
+                    step_description,
+                    step_status
+                )
+                result["screenshot_path"] = screenshot_path
+            except Exception as screenshot_error:
+                logger.warning(f"Screenshot capture failed for step {step_number}: {screenshot_error}")
+                result["screenshot_path"] = ""
+
+            # Verify step result and add assertions
+            try:
+                verification = await verify_step_result(
+                    page,
+                    step_description,
+                    step_details
+                )
+                result["verification"] = verification
+                result["assertions_passed"] = verification["verification_passed"]
+
+                # Add verification to execution log
+                execution_logs.append(create_execution_log(
+                    step_number,
+                    step_description,
+                    "verify_result",
+                    f"Verification: {verification['verification_passed']}, "
+                    f"Assertions: {len(verification['assertions'])}",
+                    "success" if verification["verification_passed"] else "warning"
+                ))
+            except Exception as verify_error:
+                logger.warning(f"Verification failed for step {step_number}: {verify_error}")
+                result["verification"] = None
+                result["assertions_passed"] = None
+
+            # Add detailed execution log
+            execution_logs.append(create_execution_log(
+                step_number,
+                step_description,
+                "step_completed",
+                f"Status: {step_status}, Details: {step_details[:200]}",
+                "success" if step_status == "passed" else "error"
+            ))
+
+        # Add execution logs to the last result for storage
+        if results:
+            results[-1]["execution_logs"] = execution_logs
 
         return results
 
     except Exception as e:
-        # On exception, mark all steps as failed
+        # Log the exception
+        execution_logs.append(create_execution_log(
+            0, "Test Batch", "execution_failed",
+            f"Batch execution failed: {str(e)}", "error"
+        ))
+
+        # On exception, mark all steps as failed with error screenshots
         step_end = datetime.utcnow().timestamp() * 1000
-        return [{
-            "step_number": step.get("step_number", idx + 1),
-            "description": step.get("description", ""),
-            "status": "failed",
-            "error": f"Batch execution failed: {str(e)}",
-            "duration": step_end - step_start
-        } for idx, step in enumerate(test_steps)]
+
+        failed_results = []
+        for idx, step in enumerate(test_steps):
+            step_number = step.get("step_number", idx + 1)
+            step_description = step.get("description", "")
+
+            # Try to capture error screenshot
+            error_screenshot = ""
+            try:
+                error_screenshot = await capture_step_screenshot(
+                    page,
+                    run_id,
+                    step_number,
+                    step_description,
+                    "failed"
+                )
+            except:
+                pass
+
+            failed_results.append({
+                "step_number": step_number,
+                "description": step_description,
+                "status": "failed",
+                "error": f"Batch execution failed: {str(e)}",
+                "duration": step_end - step_start,
+                "screenshot_path": error_screenshot,
+                "verification": None,
+                "assertions_passed": False
+            })
+
+        # Add execution logs even for failed results
+        if failed_results:
+            failed_results[-1]["execution_logs"] = execution_logs
+
+        return failed_results
 
 
 async def _execute_step_with_ai(
@@ -365,222 +688,3 @@ async def _execute_step_with_ai(
             "error": str(e),
             "duration": datetime.utcnow().timestamp() * 1000 - step_start
         }
-
-
-async def _interpret_and_execute(
-    page: Page,
-    description: str,
-    environment: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    Interpret natural language description and execute using Playwright.
-
-    This is a simplified rule-based interpreter. In production, this would use
-    Claude Code SDK or similar AI service for true natural language understanding.
-
-    Args:
-        page: Playwright page
-        description: Natural language description of the action
-        environment: Environment variables
-
-    Returns:
-        dict: Execution result with success status and details
-    """
-    desc_lower = description.lower()
-
-    try:
-        # Navigate actions
-        if "navigate" in desc_lower or "go to" in desc_lower:
-            # Extract URL from description
-            url = _extract_url(description)
-            if url:
-                await page.goto(url)
-                await page.wait_for_load_state("networkidle")
-                return {"success": True, "details": f"Navigated to {url}"}
-            else:
-                return {"success": False, "error": "Could not extract URL from description"}
-
-        # Click actions
-        elif "click" in desc_lower:
-            # Try to find element by text content, attribute, or common patterns
-            selector = _extract_selector(description)
-            if selector:
-                await page.click(selector)
-                await page.wait_for_load_state("networkidle")
-                return {"success": True, "details": f"Clicked {selector}"}
-            else:
-                return {"success": False, "error": "Could not determine element to click"}
-
-        # Fill/Type actions
-        elif "enter" in desc_lower or "fill" in desc_lower or "type" in desc_lower or "input" in desc_lower:
-            result = _extract_fill_details(description)
-            if result:
-                selector, value = result
-                await page.fill(selector, value)
-                return {"success": True, "details": f"Filled {selector} with '{value}'"}
-            else:
-                return {"success": False, "error": "Could not determine field and value for fill action"}
-
-        # Wait actions
-        elif "wait" in desc_lower:
-            # Extract wait time or selector
-            if "second" in desc_lower or "sec" in desc_lower:
-                # Wait for specific time
-                import re
-                time_match = re.search(r'(\d+)\s*(?:second|sec)', desc_lower)
-                if time_match:
-                    wait_time = int(time_match.group(1)) * 1000
-                    await page.wait_for_timeout(wait_time)
-                    return {"success": True, "details": f"Waited {wait_time}ms"}
-
-            # Wait for element
-            selector = _extract_selector(description)
-            if selector:
-                await page.wait_for_selector(selector)
-                return {"success": True, "details": f"Waited for {selector}"}
-
-            # Default wait
-            await page.wait_for_timeout(1000)
-            return {"success": True, "details": "Waited 1 second"}
-
-        # Screenshot actions
-        elif "screenshot" in desc_lower:
-            screenshot_dir = Path(settings.SCREENSHOT_DIR)
-            screenshot_dir.mkdir(parents=True, exist_ok=True)
-
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            screenshot_path = screenshot_dir / f"screenshot_{timestamp}.png"
-
-            await page.screenshot(path=str(screenshot_path))
-            return {"success": True, "details": f"Screenshot saved to {screenshot_path}"}
-
-        # Verify/Assert actions
-        elif "verify" in desc_lower or "assert" in desc_lower or "check" in desc_lower:
-            # Simple verification - check if page contains text or element exists
-            selector = _extract_selector(description)
-            if selector:
-                await page.wait_for_selector(selector, timeout=5000)
-                return {"success": True, "details": f"Verified {selector} exists"}
-            else:
-                # Check for text content
-                text = _extract_text(description)
-                if text:
-                    await page.wait_for_selector(f"text={text}", timeout=5000)
-                    return {"success": True, "details": f"Verified text '{text}' is present"}
-                else:
-                    return {"success": False, "error": "Could not determine what to verify"}
-
-        # Default: try to interpret as general action
-        else:
-            # For now, return success with a note that this step needs AI interpretation
-            return {
-                "success": True,
-                "details": f"AI interpretation needed for: {description}. "
-                          f"Currently using placeholder - integrate Claude Code SDK for true AI execution."
-            }
-
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-def _extract_url(description: str) -> str:
-    """Extract URL from natural language description."""
-    import re
-
-    # Look for http/https URLs
-    url_pattern = r'https?://[^\s]+'
-    urls = re.findall(url_pattern, description)
-    if urls:
-        return urls[0]
-
-    # Look for domain patterns
-    domain_pattern = r'(?:navigate to|go to)\s+([^\s,\.]+\.[^\s,\.]+)'
-    domains = re.findall(domain_pattern, description, re.IGNORECASE)
-    if domains:
-        domain = domains[0]
-        # Add https:// if not present
-        if not domain.startswith('http'):
-            domain = 'https://' + domain
-        return domain
-
-    return None
-
-
-def _extract_selector(description: str) -> str:
-    """Extract CSS selector from natural language description."""
-    import re
-
-    # Common button/link patterns
-    if "button" in description.lower():
-        # Extract button text
-        button_match = re.search(r'(?:button|btn)[s]?\s+["\']?([^"\']+)["\']?', description, re.IGNORECASE)
-        if button_match:
-            button_text = button_match.group(1).strip()
-            return f"button:has-text('{button_text}')"
-
-    if "link" in description.lower():
-        # Extract link text
-        link_match = re.search(r'link\s+["\']?([^"\']+)["\']?', description, re.IGNORECASE)
-        if link_match:
-            link_text = link_match.group(1).strip()
-            return f"a:has-text('{link_text}')"
-
-    # Look for quoted text (could be element text)
-    text_match = re.search(r'["\']([^"\']+)["\']', description)
-    if text_match:
-        return f"text={text_match.group(1)}"
-
-    # Look for common selectors
-    if "submit" in description.lower():
-        return "button[type='submit']"
-    if "login" in description.lower():
-        return "button:has-text('Login'), input[type='submit']"
-
-    return None
-
-
-def _extract_fill_details(description: str) -> tuple:
-    """Extract selector and value for fill actions."""
-    import re
-
-    # Pattern: "Enter <value> in/into <field>" or "Fill <field> with <value>"
-    fill_patterns = [
-        r'(?:enter|type|input)\s+(.+?)\s+(?:in|into)\s+(.+?)(?:\.|$)',
-        r'(?:fill)\s+(.+?)\s+(?:with)\s+(.+?)(?:\.|$)',
-    ]
-
-    for pattern in fill_patterns:
-        match = re.search(pattern, description, re.IGNORECASE)
-        if match:
-            value = match.group(1).strip().strip('"\'')
-            field = match.group(2).strip().strip('"\'')
-
-            # Convert field description to selector
-            if "email" in field.lower():
-                return "input[type='email'], input[name*='email'], input[id*='email']", value
-            elif "password" in field.lower():
-                return "input[type='password']", value
-            elif "username" in field.lower() or "user name" in field.lower():
-                return "input[name*='user'], input[id*='user']", value
-            else:
-                # Try to find by placeholder or label
-                return f"input[placeholder*='{field}'], input[aria-label*='{field}']", value
-
-    return None
-
-
-def _extract_text(description: str) -> str:
-    """Extract text content from description."""
-    import re
-
-    # Look for quoted text
-    text_match = re.search(r'["\']([^"\']+)["\']', description)
-    if text_match:
-        return text_match.group(1)
-
-    # Look for "text <something>" patterns
-    text_match = re.search(r'text\s+["\']?([^"\']+)["\']?', description, re.IGNORECASE)
-    if text_match:
-        return text_match.group(1)
-
-    return None

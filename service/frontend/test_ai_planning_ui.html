@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Planning UI Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #defbe6; color: #0e6027; border-left: 4px solid #198038; }
+        .error { background-color: #ffd7d9; color: #da1e28; border-left: 4px solid #da1e28; }
+        .info { background-color: #d0e2ff; color: #0043ce; border-left: 4px solid #0043ce; }
+        .loading { background-color: #fff4e5; color: #f1c21b; border-left: 4px solid #f1c21b; }
+
+        button {
+            background-color: #0f62fe;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0353e9; }
+        button:disabled { background-color: #c6c6c6; cursor: not-allowed; }
+
+        .json-display {
+            background-color: #262626;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .step-card {
+            background: #f4f4f4;
+            border-left: 4px solid #0f62fe;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 AI Planning Frontend UI Test Suite</h1>
+
+    <div class="test-section">
+        <h2>Test Configuration</h2>
+        <div>
+            <label>API Endpoint:</label>
+            <input type="text" id="apiEndpoint" value="http://localhost:8080/api/v1" style="width: 300px; padding: 5px;">
+        </div>
+        <div style="margin-top: 10px;">
+            <button onclick="runAllTests()">🚀 Run All Tests</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+    </div>
+
+    <div id="testResults"></div>
+
+    <div class="test-section">
+        <h2>Live Test: Create AI-Powered Test</h2>
+        <div>
+            <input type="text" id="testName" placeholder="Test Name" value="UI Test: Shopping Cart" style="width: 200px; padding: 5px; margin: 5px;">
+            <input type="text" id="testUrl" placeholder="Test URL" value="http://example.com/cart" style="width: 200px; padding: 5px; margin: 5px;">
+        </div>
+        <div style="margin: 10px 0;">
+            <textarea id="testGoal" rows="3" placeholder="Test Goal (natural language)" style="width: 600px; padding: 5px;">Test the complete shopping cart checkout flow including adding items, updating quantities, applying discount codes, and completing payment</textarea>
+        </div>
+        <button onclick="runLiveUITest()">▶️ Run Live Test</button>
+        <div id="liveTestResults"></div>
+    </div>
+
+    <script>
+        const API_BASE = document.getElementById('apiEndpoint').value;
+        let testResults = [];
+
+        function addResult(type, title, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+
+            let content = `<strong>${timestamp} - ${title}</strong><br>${message}`;
+            if (data) {
+                content += `<div class="json-display">${JSON.stringify(data, null, 2)}</div>`;
+            }
+
+            resultDiv.innerHTML = content;
+            document.getElementById('testResults').appendChild(resultDiv);
+
+            testResults.push({ type, title, message, data, timestamp });
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        async function testAPIConnectivity() {
+            addResult('info', 'API Connectivity Test', 'Testing connection to backend...');
+
+            try {
+                const response = await fetch(`${API_BASE}/test-definitions/`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('success', 'API Connectivity', `✅ Backend is reachable! Found ${data.items?.length || 0} existing test definitions.`);
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                addResult('error', 'API Connectivity', `❌ Failed to connect to backend: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testCreateTestWithGoal() {
+            addResult('info', 'Test Creation', 'Creating test definition with natural language goal...');
+
+            const testData = {
+                name: `AI UI Test ${Date.now()}`,
+                test_id: `ai-ui-test-${Date.now()}`,
+                test_goal: "Test user login functionality with valid credentials and verification of successful authentication",
+                url: "http://example.com/login",
+                environment: { ui_test: true, automated: true },
+                tags: ["ui-test", "ai-planning", "automated"]
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/test-definitions/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+
+                if (response.ok) {
+                    const createdTest = await response.json();
+                    addResult('success', 'Test Creation', `✅ Test created successfully! ID: ${createdTest.id}`, createdTest);
+                    return createdTest;
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                addResult('error', 'Test Creation', `❌ Failed to create test: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function testGenerateAIPlan(testDefinition) {
+            if (!testDefinition) {
+                addResult('error', 'AI Plan Generation', '❌ Cannot generate plan - no valid test definition');
+                return null;
+            }
+
+            addResult('info', 'AI Plan Generation', 'Generating AI-powered test plan...');
+
+            try {
+                const response = await fetch(`${API_BASE}/autonomous-planning/generate-plan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        goal: testDefinition.test_goal,
+                        url: testDefinition.url,
+                        context: testDefinition.environment,
+                        test_definition_id: testDefinition.id
+                    })
+                });
+
+                if (response.ok) {
+                    const plan = await response.json();
+                    const stepCount = plan.steps?.length || 0;
+                    const confidence = plan.steps?.reduce((acc, step) => acc + (step.confidence || 0), 0) / stepCount;
+
+                    addResult('success', 'AI Plan Generation',
+                        `✅ Generated ${stepCount}-step plan with ${Math.round(confidence * 100)}% average confidence`,
+                        plan);
+
+                    return plan;
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                addResult('error', 'AI Plan Generation', `❌ Failed to generate AI plan: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function testPlanApproval(testDefinition) {
+            if (!testDefinition) {
+                addResult('error', 'Plan Approval', '❌ Cannot approve plan - no valid test definition');
+                return false;
+            }
+
+            addResult('info', 'Plan Approval', 'Approving AI-generated plan...');
+
+            try {
+                const response = await fetch(`${API_BASE}/autonomous-planning/approve-plan/${testDefinition.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modifications: [] })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    addResult('success', 'Plan Approval', `✅ Plan approved successfully! Status: ${result.status}`, result);
+                    return true;
+                } else {
+                    const error = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${error}`);
+                }
+            } catch (error) {
+                addResult('error', 'Plan Approval', `❌ Failed to approve plan: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testDatabaseVerification(testDefinition) {
+            if (!testDefinition) {
+                addResult('error', 'Database Verification', '❌ Cannot verify database - no valid test definition');
+                return false;
+            }
+
+            addResult('info', 'Database Verification', 'Verifying data persistence in database...');
+
+            try {
+                const response = await fetch(`${API_BASE}/test-definitions/${testDefinition.test_id}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const verifiedTest = await response.json();
+                    const hasGoal = !!verifiedTest.test_goal;
+                    const hasStatus = !!verifiedTest.plan_generation_status;
+                    const hasPlan = !!verifiedTest.ai_generated_plan && Object.keys(verifiedTest.ai_generated_plan).length > 0;
+
+                    if (hasGoal && hasStatus && hasPlan) {
+                        addResult('success', 'Database Verification',
+                            `✅ All data persisted correctly! Goal: ✓, Status: ✓, Plan: ✓`,
+                            verifiedTest);
+                        return true;
+                    } else {
+                        addResult('error', 'Database Verification',
+                            `❌ Data incomplete! Goal: ${hasGoal ? '✓' : '✗'}, Status: ${hasStatus ? '✓' : '✗'}, Plan: ${hasPlan ? '✓' : '✗'}`);
+                        return false;
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                addResult('error', 'Database Verification', `❌ Verification failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+            addResult('info', 'Test Suite', '🚀 Starting AI Planning UI Test Suite...');
+
+            const connectivityOk = await testAPIConnectivity();
+            if (!connectivityOk) {
+                addResult('error', 'Test Suite', '❌ Cannot proceed - backend connectivity failed');
+                return;
+            }
+
+            const testDef = await testCreateTestWithGoal();
+            const plan = await testGenerateAIPlan(testDef);
+            await testPlanApproval(testDef);
+            await testDatabaseVerification(testDef);
+
+            const passed = testResults.filter(r => r.type === 'success').length;
+            const failed = testResults.filter(r => r.type === 'error').length;
+
+            setTimeout(() => {
+                addResult('info', 'Test Suite Complete',
+                    `📊 Results: ${passed} passed, ${failed} failed out of ${testResults.length} total tests`);
+            }, 500);
+        }
+
+        async function runLiveUITest() {
+            const liveResults = document.getElementById('liveTestResults');
+            liveResults.innerHTML = '<div class="test-result loading">⏳ Starting live UI test...</div>';
+
+            const testName = document.getElementById('testName').value;
+            const testUrl = document.getElementById('testUrl').value;
+            const testGoal = document.getElementById('testGoal').value;
+
+            if (!testName || !testUrl || !testGoal) {
+                liveResults.innerHTML = '<div class="test-result error">❌ Please fill in all fields</div>';
+                return;
+            }
+
+            try {
+                liveResults.innerHTML += '<div class="test-result info">Step 1: Creating test definition...</div>';
+
+                const createResponse = await fetch(`${API_BASE}/test-definitions/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: testName,
+                        test_id: `live-test-${Date.now()}`,
+                        test_goal: testGoal,
+                        url: testUrl,
+                        environment: { live_ui_test: true },
+                        tags: ["live-test", "ui-test"]
+                    })
+                });
+
+                if (!createResponse.ok) throw new Error('Failed to create test');
+                const test = await createResponse.json();
+
+                liveResults.innerHTML += `<div class="test-result success">✅ Test created! ID: ${test.id}</div>`;
+
+                liveResults.innerHTML += '<div class="test-result info">Step 2: Generating AI plan...</div>';
+
+                const planResponse = await fetch(`${API_BASE}/autonomous-planning/generate-plan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        goal: testGoal,
+                        url: testUrl,
+                        context: { live_ui_test: true },
+                        test_definition_id: test.id
+                    })
+                });
+
+                if (!planResponse.ok) throw new Error('Failed to generate plan');
+                const plan = await planResponse.json();
+
+                liveResults.innerHTML += `<div class="test-result success">✅ Plan generated! ${plan.steps?.length || 0} steps</div>`;
+
+                let stepsHTML = '<div class="test-result info">📋 Generated Test Steps:</div>';
+                plan.steps?.forEach((step, index) => {
+                    const confidence = Math.round((step.confidence || 0) * 100);
+                    const color = confidence > 80 ? '#198038' : confidence > 60 ? '#f1c21b' : '#da1e28';
+
+                    stepsHTML += `
+                        <div class="step-card">
+                            <strong>Step ${step.step_number}:</strong> ${step.description}<br>
+                            <span class="confidence-badge" style="background-color: ${color};">${confidence}% confidence</span><br>
+                            <small>${step.verification || ''}</small>
+                        </div>
+                    `;
+                });
+
+                liveResults.innerHTML += stepsHTML;
+
+                liveResults.innerHTML += '<div class="test-result info">Step 3: Approving plan...</div>';
+
+                const approveResponse = await fetch(`${API_BASE}/autonomous-planning/approve-plan/${test.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modifications: [] })
+                });
+
+                if (!approveResponse.ok) throw new Error('Failed to approve plan');
+                const approval = await approveResponse.json();
+
+                liveResults.innerHTML += `<div class="test-result success">✅ Plan approved! Status: ${approval.status}</div>`;
+                liveResults.innerHTML += `<div class="test-result success">🎉 Live UI test completed successfully!</div>`;
+
+            } catch (error) {
+                liveResults.innerHTML += `<div class="test-result error">❌ Test failed: ${error.message}</div>`;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('liveTestResults').innerHTML = '';
+            testResults = [];
+        }
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addResult('info', 'Test Suite Ready', '🧪 AI Planning UI Test Suite loaded. Click "Run All Tests" to begin.');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

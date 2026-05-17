@@ -135,7 +135,7 @@ allowed_tools=["Read", "Grep"]  # 移除Bash和Write
 
 **位置**: `service/.env`
 ```bash
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+ANTHROPIC_API_KEY=
 ```
 **影响**: 攻击者可使用此密钥访问Anthropic API，产生费用或窃取数据  
 **修复**: 立即撤销此密钥，使用环境变量
@@ -321,7 +321,7 @@ allowed_tools=["Read", "Grep"]
 **优先级2: 撤销API密钥** (15分钟)
 ```bash
 # 登录 https://console.anthropic.com/settings/keys
-# 撤销: 33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+# 撤销: 
 # 生成新密钥并添加到环境变量
 ```
 

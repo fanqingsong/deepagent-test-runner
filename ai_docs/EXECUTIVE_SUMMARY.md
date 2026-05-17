@@ -71,7 +71,7 @@ PostgreSQL数据库端口5433绑定到0.0.0.0，可从互联网直接访问。�
 **修复时间**: 15分钟
 
 **问题描述**:
-Anthropic API密钥 `33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf` 硬编码在代码中，攻击者可：
+Anthropic API密钥 `` 硬编码在代码中，攻击者可：
 - 使用该密钥调用Anthropic API
 - 产生巨额API费用
 - 访问AI功能进行攻击

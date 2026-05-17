@@ -20,7 +20,7 @@
 
 **Vulnerable Code:**
 ```bash
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+ANTHROPIC_API_KEY=
 ```
 
 **Issue:**
@@ -629,7 +629,7 @@ async def login(...):
 ## 📝 Remediation Priority
 
 ### Phase 0 (CRITICAL - Today):
-1. Revoke `33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf` API key
+1. Revoke `` API key
 2. Generate and set strong passwords for all databases
 3. Set `isDemo = false` in Casdoor config
 4. Remove port mappings for internal services

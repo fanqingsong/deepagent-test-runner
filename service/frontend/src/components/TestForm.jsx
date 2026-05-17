@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import authService from '../services/authService';
+import PlanReviewModal from './PlanReviewModal';
 // TEMPORARY: Directly define API functions here to bypass module caching
 
 const BASE_URL = 'http://localhost:8080';
@@ -14,27 +15,19 @@ const createTest = async (testData) => {
       testData.test_id = `test-${timestamp}-${random}`;
     }
 
-    // Parse textarea content into steps (one per line)
-    const stepDescriptions = testData.test_steps_text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-
-    const formattedSteps = stepDescriptions.map((desc, index) => ({
-      step_number: index + 1,
-      description: desc,
-      type: 'action',
-      params: {},
-      expected_result: null
-    }));
-
-    // Include test_steps in the creation payload
+    // Use new AI planning approach - send test_goal instead of steps
     const createPayload = {
-      ...testData,
-      test_steps: formattedSteps
+      name: testData.name,
+      description: testData.description,
+      test_id: testData.test_id,
+      url: testData.url,
+      environment: testData.environment,
+      tags: testData.tags,
+      test_goal: testData.test_goal,  // Send natural language goal
+      plan_generation_status: 'pending'
     };
 
-    console.log('=== Creating Test ===');
+    console.log('=== Creating Test with AI Planning ===');
     console.log('Payload:', createPayload);
     console.log('====================');
 
@@ -69,18 +62,20 @@ const updateTest = async (testId, testData) => {
     // Use test_id instead of numeric ID for PUT request
     const testIdString = testData.test_id || testId.toString();
 
-    // Parse textarea content into steps (one per line)
-    const stepDescriptions = testData.test_steps_text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-
-    // Update test basic info (excluding test_steps for now)
-    const { test_steps_text, ...testInfo } = testData;
+    // Update test with AI planning approach
+    const updatePayload = {
+      name: testData.name,
+      description: testData.description,
+      test_id: testData.test_id,
+      url: testData.url,
+      environment: testData.environment,
+      tags: testData.tags,
+      test_goal: testData.test_goal  // Update natural language goal
+    };
 
     console.log('=== Updating Test ===');
     console.log('Test ID:', testIdString);
-    console.log('Test info:', testInfo);
+    console.log('Update payload:', updatePayload);
     console.log('====================');
 
     const testResponse = await fetch(`${TEST_API}/test-definitions/${testIdString}`, {
@@ -89,7 +84,7 @@ const updateTest = async (testId, testData) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authService.getAccessToken()}`
       },
-      body: JSON.stringify(testInfo),
+      body: JSON.stringify(updatePayload),
       mode: 'cors'
     });
 
@@ -101,67 +96,6 @@ const updateTest = async (testId, testData) => {
     }
 
     const test = await testResponse.json();
-
-    // Get the internal ID from the response
-    const internalId = test.id;
-
-    // Update steps - delete existing steps and add new ones
-    // First, delete existing steps using internal ID
-    const existingStepsResponse = await fetch(`${TEST_API}/test-steps/test-definition/${internalId}`, {
-      headers: {
-        'Authorization': `Bearer ${authService.getAccessToken()}`
-      },
-      mode: 'cors'
-    });
-
-    if (existingStepsResponse.ok) {
-      const existingSteps = await existingStepsResponse.json();
-
-      // Delete each existing step
-      for (const step of existingSteps) {
-        await fetch(`${TEST_API}/test-steps/${step.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${authService.getAccessToken()}`
-          },
-          mode: 'cors'
-        });
-      }
-    }
-
-    // Add new steps using internal ID
-    for (let i = 0; i < stepDescriptions.length; i++) {
-      const desc = stepDescriptions[i];
-      const stepData = {
-        type: 'action',
-        description: desc,
-        params: {},
-        step_number: i + 1,
-        expected_result: null
-      };
-
-      console.log('=== Creating Step ===');
-      console.log('Step data:', stepData);
-      console.log('=====================');
-
-      const stepResponse = await fetch(`${TEST_API}/test-steps/test-definition/${internalId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authService.getAccessToken()}`
-        },
-        body: JSON.stringify(stepData),
-        mode: 'cors'
-      });
-
-      if (!stepResponse.ok) {
-        const errorText = await stepResponse.text();
-        console.error('Failed to add step. Status:', stepResponse.status);
-        console.error('Error response:', errorText);
-        throw new Error(`Failed to add step: ${stepResponse.statusText} - ${errorText}`);
-      }
-    }
-
     return test;
   } catch (error) {
     console.error('Error updating test:', error);
@@ -184,7 +118,7 @@ function TestForm(props) {
     url: '',
     environment: {},
     tags: [],
-    test_steps_text: ''
+    test_goal: ''  // Changed from test_steps_text to test_goal
   });
 
   const [envKey, setEnvKey] = useState('');
@@ -193,38 +127,23 @@ function TestForm(props) {
   const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
+  // AI Planning state
+  const [showPlanReview, setShowPlanReview] = useState(false);
+  const [generatedPlan, setGeneratedPlan] = useState(null);
+  const [modifications, setModifications] = useState([]);
+
   // Load test data when editing
   useEffect(() => {
     if (editingTest) {
-      const loadTestData = async () => {
-        try {
-          const stepsResponse = await fetch(`/api/v1/test-steps/test-definition/${editingTest.id}`, {
-            headers: getAuthHeadersSafe()
-          });
-          if (stepsResponse.ok) {
-            const steps = await stepsResponse.json();
-            // Join step descriptions with newlines for editing
-            const stepsText = steps
-              .map(step => step.description || '')
-              .filter(desc => desc.length > 0)
-              .join('\n');
-
-            setFormData({
-              name: editingTest.name || '',
-              description: editingTest.description || '',
-              test_id: editingTest.test_id || '',
-              url: editingTest.url || '',
-              environment: editingTest.environment || {},
-              tags: editingTest.tags || [],
-              test_steps_text: stepsText || ''
-            });
-          }
-        } catch (error) {
-          console.error('Failed to load test data:', error);
-        }
-      };
-
-      loadTestData();
+      setFormData({
+        name: editingTest.name || '',
+        description: editingTest.description || '',
+        test_id: editingTest.test_id || '',
+        url: editingTest.url || '',
+        environment: editingTest.environment || {},
+        tags: editingTest.tags || [],
+        test_goal: editingTest.test_goal || ''  // Load test_goal instead of steps
+      });
     }
   }, [editingTest]);
 
@@ -245,14 +164,11 @@ function TestForm(props) {
       errors.url = 'URL is required';
     }
 
-    // Validate that test steps textarea has at least one non-empty line
-    const stepDescriptions = formData.test_steps_text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-
-    if (stepDescriptions.length === 0) {
-      errors.steps = 'At least one test step is required. Please enter at least one step in the test steps field.';
+    // Validate that test goal is provided
+    if (!formData.test_goal || formData.test_goal.trim().length === 0) {
+      errors.test_goal = 'Test goal is required. Please describe what you want to test.';
+    } else if (formData.test_goal.trim().length < 10) {
+      errors.test_goal = 'Test goal is too short. Please provide more details (at least 10 characters).';
     }
 
     // If there are validation errors, display them and stop submission
@@ -263,22 +179,51 @@ function TestForm(props) {
 
     setSubmitting(true);
     try {
-      // Debug: Check current origin before API call
-      console.log('=== TestForm Submit Debug ===');
-      console.log('window.location.origin:', window.location.origin);
-      console.log('About to call createTest with:', formData);
-      console.log('============================');
-
       if (editingTest) {
+        // For editing, just update the test goal directly
         await updateTest(editingTest.id, formData);
         alert('Test updated successfully!');
       } else {
-        await createTest(formData);
-        alert('Test created successfully!');
+        // For new tests, use AI planning flow
+        // Step 1: Create test definition with goal
+        const test = await createTest(formData);
+
+        // Step 2: Generate AI plan
+        setShowPlanReview(true);
+        setGeneratedPlan(null); // Will be populated by the plan generation
+
+        try {
+          const planResponse = await fetch(`${TEST_API}/autonomous-planning/generate-plan`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authService.getAccessToken()}`
+            },
+            body: JSON.stringify({
+              goal: formData.test_goal,
+              url: formData.url,
+              context: formData.environment,
+              test_definition_id: test.id
+            }),
+            mode: 'cors'
+          });
+
+          if (planResponse.ok) {
+            const plan = await planResponse.json();
+            setGeneratedPlan(plan);
+          } else {
+            throw new Error('Failed to generate AI plan');
+          }
+        } catch (planError) {
+          console.error('Plan generation failed:', planError);
+          // Continue anyway - the test was created successfully
+          alert(`Test created successfully! (AI plan generation failed: ${planError.message})`);
+          setShowPlanReview(false);
+        }
       }
 
       // Reset form if creating new test
-      if (!editingTest) {
+      if (!editingTest && !showPlanReview) {
         setFormData({
           name: '',
           description: '',
@@ -286,11 +231,13 @@ function TestForm(props) {
           url: '',
           environment: {},
           tags: [],
-          test_steps_text: ''
+          test_goal: ''
         });
       }
 
-      onTestCreated();
+      if (!showPlanReview) {
+        onTestCreated();
+      }
     } catch (error) {
       alert(`Failed to ${editingTest ? 'update' : 'create'} test: ` + error.message);
     } finally {
@@ -303,6 +250,82 @@ function TestForm(props) {
       onCancel();
     }
   };
+
+  const handlePlanApprove = async (modifications) => {
+    try {
+      // Approve the plan with optional modifications
+      const testId = generatedPlan.test_definition_id;
+
+      if (modifications.length > 0) {
+        await fetch(`${TEST_API}/autonomous-planning/approve-plan/${testId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authService.getAccessToken()}`
+          },
+          body: JSON.stringify({ modifications }),
+          mode: 'cors'
+        });
+      }
+
+      setShowPlanReview(false);
+      setGeneratedPlan(null);
+      setModifications([]);
+
+      // Trigger execution
+      alert('Plan approved! Test will be executed with AI-powered adaptive execution.');
+      onTestCreated();
+    } catch (error) {
+      alert(`Failed to approve plan: ${error.message}`);
+    }
+  };
+
+  const handlePlanModify = (modifications) => {
+    // Update the generated plan with user modifications
+    if (modifications.length > 0) {
+      const updatedSteps = generatedPlan.steps.map(step => {
+        const mod = modifications.find(m => m.step_number === step.step_number);
+        if (mod) {
+          return { ...step, ...mod };
+        }
+        return step;
+      });
+
+      setGeneratedPlan({
+        ...generatedPlan,
+        steps: updatedSteps
+      });
+    }
+  };
+
+  const handlePlanRegenerate = async () => {
+    try {
+      // Regenerate the plan with the same goal
+      const planResponse = await fetch(`${TEST_API}/autonomous-planning/generate-plan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getAccessToken()}`
+        },
+        body: JSON.stringify({
+          goal: formData.test_goal,
+          url: formData.url,
+          context: formData.environment
+        }),
+        mode: 'cors'
+      });
+
+      if (planResponse.ok) {
+        const newPlan = await planResponse.json();
+        setGeneratedPlan(newPlan);
+      } else {
+        throw new Error('Failed to regenerate plan');
+      }
+    } catch (error) {
+      alert(`Failed to regenerate plan: ${error.message}`);
+    }
+  };
+
 
   const addEnvironmentVar = () => {
     if (!envKey.trim()) {
@@ -604,19 +627,21 @@ function TestForm(props) {
 
         <div style={{marginBottom: 'var(--cds-spacing-lg)'}}>
           <label style={{display: 'block', fontWeight: 'var(--cds-font-weight-regular)', marginBottom: 'var(--cds-spacing-xs)', fontSize: 'var(--cds-caption-01)', letterSpacing: 'var(--cds-letter-spacing-caption)'}}>
-            Test Steps (one per line) <span style={{color: 'var(--cds-support-error)'}}>*</span>
+            Test Goal / Requirements <span style={{color: 'var(--cds-support-error)'}}>*</span>
           </label>
           <textarea
-            value={formData.test_steps_text}
-            onChange={(e) => setFormData({...formData, test_steps_text: e.target.value})}
-            placeholder="Enter each test step on a new line&#10;Example:&#10;Navigate to login page&#10;Enter username: admin&#10;Enter password: password123&#10;Click login button"
-            rows={10}
+            value={formData.test_goal}
+            onChange={(e) => setFormData({...formData, test_goal: e.target.value})}
+            placeholder="Describe what you want to test in natural language...
+
+Example: I want to test the user login flow. Verify that users can successfully log in with valid credentials and cannot log in with invalid credentials. Also check that the 'Remember Me' feature works correctly and that the password reset functionality is accessible from the login page."
+            rows={8}
             required
             style={{
               width: '100%',
               padding: 'var(--cds-spacing-sm) 16px',
-              border: validationErrors.steps ? '2px solid var(--cds-support-error)' : 'none',
-              borderBottom: validationErrors.steps ? '2px solid var(--cds-support-error)' : '2px solid transparent',
+              border: validationErrors.test_goal ? '2px solid var(--cds-support-error)' : 'none',
+              borderBottom: validationErrors.test_goal ? '2px solid var(--cds-support-error)' : '2px solid transparent',
               borderRadius: 'var(--cds-border-radius)',
               background: 'var(--cds-input-background)',
               boxSizing: 'border-box',
@@ -626,13 +651,13 @@ function TestForm(props) {
               lineHeight: '1.5'
             }}
           />
-          {validationErrors.steps && (
+          {validationErrors.test_goal && (
             <div style={{color: 'var(--cds-support-error)', fontSize: 'var(--cds-label-01)', marginTop: 'var(--cds-spacing-xs)'}}>
-              {validationErrors.steps}
+              {validationErrors.test_goal}
             </div>
           )}
           <div style={{fontSize: 'var(--cds-caption-01)', color: 'var(--cds-text-secondary)', marginTop: 'var(--cds-spacing-xs)'}}>
-            💡 Each line will become a separate test step. Empty lines will be ignored.
+            💡 AI will analyze your goal and generate an optimal test plan automatically. Be specific about what you want to test.
           </div>
         </div>
 
@@ -676,6 +701,22 @@ function TestForm(props) {
           </button>
         </div>
       </form>
+
+      {/* AI Plan Review Modal */}
+      {showPlanReview && generatedPlan && (
+        <PlanReviewModal
+          testGoal={formData.test_goal}
+          generatedPlan={generatedPlan}
+          onApprove={handlePlanApprove}
+          onModify={handlePlanModify}
+          onRegenerate={handlePlanRegenerate}
+          onClose={() => {
+            setShowPlanReview(false);
+            setGeneratedPlan(null);
+            setModifications([]);
+          }}
+        />
+      )}
     </div>
   );
 }

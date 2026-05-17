@@ -42,6 +42,13 @@ class TestDefinition(Base):
     environment: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)
     tags: Mapped[List[str]] = mapped_column(ARRAY(String), default=[], nullable=False)
 
+    # AI Planning fields
+    test_goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # User's natural language goal
+    test_context: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)  # Additional context for planning
+    plan_generation_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)  # pending/generated/approved
+    ai_generated_plan: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)  # Store AI-generated plan
+    plan_metadata: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)  # Plan generation metadata
+
     # Metadata
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

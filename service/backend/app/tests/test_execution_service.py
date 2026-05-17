@@ -159,3 +159,82 @@ async def test_update_run_status_invalid_transition(db_session: AsyncSession):
     # Try invalid transition: pending -> passed
     with pytest.raises(ValueError, match="Invalid status transition"):
         await service.update_run_status(run_id, "passed")
+
+
+@pytest.mark.asyncio
+async def test_ensure_run_running_from_failed(db_session: AsyncSession):
+    """Celery retry can restart a previously failed run."""
+    import time
+
+    service = ExecutionService(db_session)
+    run_id = f"test_run_retry_{int(time.time() * 1000)}"
+    await service.create_test_run(
+        run_id=run_id,
+        test_definition_ids=[1],
+        environment={},
+        db=db_session,
+        schedule_id=1,
+    )
+    await service.update_run_status(run_id, "running")
+    await service.update_run_status(run_id, "failed")
+
+    restarted = await service.ensure_run_running(run_id)
+    assert restarted.status == "running"
+
+
+@pytest.mark.asyncio
+async def test_finalize_run_status_if_needed_skips_when_already_set(
+    db_session: AsyncSession,
+):
+    """save_test_results sets status directly; finalize must not failed->failed."""
+    import time
+
+    service = ExecutionService(db_session)
+    run_id = f"test_run_finalize_{int(time.time() * 1000)}"
+    await service.create_test_run(
+        run_id=run_id,
+        test_definition_ids=[1],
+        environment={},
+        db=db_session,
+        schedule_id=1,
+    )
+    await service.update_run_status(run_id, "running")
+    await service.save_test_results(
+        run_id,
+        {
+            "test_definition_id": 1,
+            "status": "failed",
+            "total_tests": 1,
+            "passed": 0,
+            "failed": 1,
+            "skipped": 0,
+            "test_cases": [],
+        },
+    )
+
+    updated = await service.finalize_run_status_if_needed(run_id, "failed")
+    assert updated is not None
+    assert updated.status == "failed"
+
+
+@pytest.mark.asyncio
+async def test_mark_run_failed_idempotent(db_session: AsyncSession):
+    """mark_run_failed must not raise on failed->failed."""
+    import time
+
+    service = ExecutionService(db_session)
+    run_id = f"test_run_mark_{int(time.time() * 1000)}"
+    await service.create_test_run(
+        run_id=run_id,
+        test_definition_ids=[1],
+        environment={},
+        db=db_session,
+        schedule_id=1,
+    )
+    await service.update_run_status(run_id, "running")
+    await service.update_run_status(run_id, "failed")
+
+    again = await service.mark_run_failed(run_id, "still broken")
+    assert again is not None
+    assert again.status == "failed"
+    assert again.error_message == "still broken"

@@ -288,6 +288,28 @@ The existing UI components were built using Material Design patterns and need to
 3. Verify status transitions: pending → running → passed/failed
 4. Confirm timestamps and durations are saved correctly
 
+## AI-Generated Files Convention
+
+**⚠️ IMPORTANT: All AI-generated files must be organized in dedicated directories**
+
+When generating files for this project, follow these conventions:
+
+- **Test Code**: Place all test files in `ai_test/`
+  - Test scripts (`test_*.py`, `*_test.py`)
+  - Test fixtures and mocks
+  - Integration test files
+  - Test screenshots in `ai_test/images/`
+
+- **Documentation**: Place all AI-generated documentation in `ai_docs`
+  - Test reports (`*_REPORT.md`)
+  - Security audits (`*_AUDIT*.md`)
+  - Implementation summaries (`*_SUMMARY*.md`)
+  - Status documents (`*_STATUS.md`, `*_READY.md`)
+  - Migration guides (`MIGRATION*.md`)
+  - Any other AI-generated markdown documentation
+
+**Core documentation** (CLAUDE.md, README.md, ARCHITECTURE.md, DESIGN.md) should remain in the root directory.
+
 ## Performance Considerations
 
 **Dashboard Queries:**

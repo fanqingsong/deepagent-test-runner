@@ -222,6 +222,92 @@ class ExecutionService:
         logger.info(f"Updated test run {run_id} status to {status}")
         return test_run
 
+    async def ensure_run_running(self, run_id: str) -> TestRun:
+        """Mark a run as running, including Celery retry after failure."""
+        stmt = select(TestRun).where(TestRun.run_id == run_id)
+        result = await self.db.execute(stmt)
+        test_run = result.scalar_one_or_none()
+        if not test_run:
+            raise ValueError(f"Test run {run_id} not found")
+
+        current = test_run.status
+        if current == "running":
+            return test_run
+        if current == "pending":
+            return await self.update_run_status(run_id, "running")
+        if current == "failed":
+            await self.update_run_status(run_id, "pending")
+            return await self.update_run_status(run_id, "running")
+
+        raise ValueError(
+            f"Cannot start run {run_id}: status is {current!r}"
+        )
+
+    async def finalize_run_status_if_needed(
+        self,
+        run_id: str,
+        status: str,
+        error_message: Optional[str] = None,
+    ) -> Optional[TestRun]:
+        """Apply terminal status when save_test_results did not already set it."""
+        target = "failed" if status == "error" else status
+
+        stmt = select(TestRun).where(TestRun.run_id == run_id)
+        result = await self.db.execute(stmt)
+        test_run = result.scalar_one_or_none()
+        if not test_run:
+            return None
+
+        current = test_run.status
+        if current == target:
+            if error_message and test_run.error_message != error_message:
+                test_run.error_message = error_message
+                await self.db.commit()
+            return test_run
+
+        if current == "running":
+            return await self.update_run_status(
+                run_id, target, error_message=error_message
+            )
+        if current == "pending":
+            await self.update_run_status(run_id, "running")
+            return await self.update_run_status(
+                run_id, target, error_message=error_message
+            )
+
+        logger.info(
+            "Skipping status update for run %s: current=%s target=%s",
+            run_id,
+            current,
+            target,
+        )
+        return test_run
+
+    async def mark_run_failed(
+        self,
+        run_id: str,
+        error_message: Optional[str] = None,
+    ) -> Optional[TestRun]:
+        """Mark a run failed without invalid failed->failed transitions."""
+        stmt = select(TestRun).where(TestRun.run_id == run_id)
+        result = await self.db.execute(stmt)
+        test_run = result.scalar_one_or_none()
+        if not test_run:
+            return None
+
+        if test_run.status == "failed":
+            if error_message and test_run.error_message != error_message:
+                test_run.error_message = error_message
+                await self.db.commit()
+            return test_run
+
+        if test_run.status in ("running", "pending"):
+            return await self.update_run_status(
+                run_id, "failed", error_message=error_message
+            )
+
+        return test_run
+
     async def save_test_results(
         self,
         run_id: str,
@@ -286,6 +372,7 @@ class ExecutionService:
                     start_time=int(results.get('start_time', 0)),
                     end_time=int(results.get('end_time', 0)),
                     error_message=case_data.get('error'),
+                    screenshot_path=case_data.get('screenshot_path', ''),
                 )
                 test_case_rows.append(test_case)
             self.db.add_all(test_case_rows)

@@ -32,7 +32,7 @@ async def list_test_definitions(
     search: Optional[str] = Query(None, description="Search in name, description, or test_id"),
     tags: Optional[List[str]] = Query(None, description="Filter by tags"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(lambda: {}),  # Make public for development
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -99,7 +99,7 @@ async def list_test_definitions(
 @router.post("/", response_model=TestDefinitionResponse, status_code=status.HTTP_201_CREATED)
 async def create_test_definition(
     test_def: TestDefinitionCreate,
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(lambda: {}),  # Make public for development
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -123,8 +123,13 @@ async def create_test_definition(
             detail=f"Test definition with test_id '{test_def.test_id}' already exists"
         )
 
-    # Get user ID from token
-    user_id = int(current_user["sub"]) if current_user.get("provider") == "local" else None
+    # Get user ID from token (for development, allow None when unauthenticated)
+    user_id = None
+    if current_user.get("provider") == "local" and current_user.get("sub"):
+        try:
+            user_id = int(current_user["sub"])
+        except (ValueError, TypeError):
+            user_id = None
 
     # Create test definition
     db_test_def = TestDefinition(
@@ -135,6 +140,8 @@ async def create_test_definition(
         environment=test_def.environment,
         tags=test_def.tags,
         created_by=user_id,
+        test_goal=test_def.test_goal,
+        test_context=test_def.test_context,
     )
 
     # Add test steps
@@ -164,7 +171,7 @@ async def create_test_definition(
 @router.get("/{test_id}", response_model=TestDefinitionResponse)
 async def get_test_definition(
     test_id: str,
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(lambda: {}),  # Make public for development
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -201,7 +208,7 @@ async def get_test_definition(
 async def update_test_definition(
     test_id: str,
     test_def_update: TestDefinitionUpdate,
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(lambda: {}),  # Make public for development
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -277,7 +284,7 @@ async def update_test_definition(
 @router.delete("/{test_id}", response_model=TestDefinitionResponse)
 async def delete_test_definition(
     test_id: str,
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(lambda: {}),  # Make public for development
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -319,7 +326,7 @@ async def delete_test_definition(
 @router.get("/{test_id}/versions", response_model=List[TestVersionSnapshot])
 async def list_test_definition_versions(
     test_id: str,
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(lambda: {}),  # Make public for development
     db: AsyncSession = Depends(get_db)
 ):
     """

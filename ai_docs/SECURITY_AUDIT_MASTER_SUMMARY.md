@@ -174,7 +174,7 @@ allowed_tools=[
 ```bash
 # 登录 Anthropic Console
 # 访问: https://console.anthropic.com/settings/keys
-# 撤销密钥: 33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+# 撤销密钥: 
 # 生成新密钥并添加到环境变量
 ```
 

@@ -570,7 +570,7 @@ POSTGRES_PASSWORD=test_password_123  # ⚠️ 弱密码
 REDIS_URL=redis://redis:6379/0  # ⚠️ 无密码
 REDIS_PASSWORD=redis_password_123  # ⚠️ 弱密码
 SECRET_KEY=your-secret-key-change-in-production-12345678  # ⚠️ 默认密钥
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf  # ⚠️ 已泄露
+ANTHROPIC_API_KEY=  # ⚠️ 已泄露
 CASDOOR_CLIENT_SECRET=change-this-in-casdoor-admin  # ⚠️ 默认值
 CASDOOR_POSTGRES_PASSWORD=casdoor_password_123  # ⚠️ 弱密码
 ```

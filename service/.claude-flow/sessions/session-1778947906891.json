@@ -1,0 +1,14 @@
+{
+  "id": "session-1778947906891",
+  "startedAt": "2026-05-16T16:11:46.891Z",
+  "cwd": "/home/fqs/workspace/self/claude-code-test-runner/service",
+  "context": {},
+  "metrics": {
+    "edits": 9,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-05-17T00:13:20.985Z",
+  "duration": 28894095
+}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import authService from '../services/authService';
-import TestRunModal from './TestRunModal';
+import TestExecutionProgress from './TestExecutionProgress';
 import TestDetailModal from './TestDetailModal';
 import RunHistoryModal from './RunHistoryModal';
 import './TestList.css';
@@ -234,9 +234,9 @@ function TestList({ tests, onRunTest, onEditTest }) {
         </div>
       )}
 
-      {/* Test Run Status Modal */}
+      {/* Test Execution Progress Modal */}
       {runningJob && (
-        <TestRunModal
+        <TestExecutionProgress
           jobId={runningJob.jobId}
           testInfo={runningJob.testInfo}
           onClose={handleCloseModal}

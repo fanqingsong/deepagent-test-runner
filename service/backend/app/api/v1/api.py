@@ -19,6 +19,7 @@ from app.api.v1.endpoints import (
     test_suites,
     test_generation,
     sso_config,
+    autonomous_planning,
 )
 
 api_router = APIRouter()
@@ -85,6 +86,13 @@ api_router.include_router(
     test_generation.router,
     prefix="/test-generation",
     tags=["test-generation"]
+)
+
+# AI-powered autonomous planning endpoints
+api_router.include_router(
+    autonomous_planning.router,
+    prefix="/autonomous-planning",
+    tags=["autonomous-planning"]
 )
 
 # Analytics and dashboard endpoints

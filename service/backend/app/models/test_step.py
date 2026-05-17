@@ -7,7 +7,7 @@ Represents individual steps within a test definition.
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,6 +44,11 @@ class TestStep(Base):
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     params: Mapped[dict] = mapped_column(JSONB, nullable=False)
     expected_result: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # AI Planning fields
+    is_ai_generated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    parent_step_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("test_steps.id"), nullable=True)
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(

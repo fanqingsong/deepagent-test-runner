@@ -67,7 +67,7 @@ docker-compose logs backend | grep "permission_mode"
 # https://console.anthropic.com/settings/keys
 
 # 2. 找到并撤销密钥
-# 33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+# 
 
 # 3. 生成新密钥并复制
 # 记住：新密钥只显示一次！
@@ -320,7 +320,7 @@ echo "✅ 修复1完成"
 
 echo "📍 修复2: 请手动撤销API密钥"
 echo "   访问: https://console.anthropic.com/settings/keys"
-echo "   撤销: 33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf"
+echo "   撤销: "
 echo "   生成新密钥并更新 service/.env"
 
 echo "📍 修复3: 轮换数据库密码"

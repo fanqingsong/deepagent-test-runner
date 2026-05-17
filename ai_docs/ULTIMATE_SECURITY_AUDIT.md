@@ -39,7 +39,7 @@
 ### 1. 真实API密钥暴露
 **文件**: `service/.env:20`
 ```bash
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+ANTHROPIC_API_KEY=
 ```
 **CWE**: CWE-798 (Hardcoded Credentials)  
 **CVSS**: 9.8 (Critical)  
@@ -593,7 +593,7 @@ set -e
 echo "🚨 开始紧急安全修复..."
 
 # 1. 撤销API密钥提醒
-echo "⚠️  请立即访问 https://console.anthropic.com/settings/keys 撤销密钥: 33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf"
+echo "⚠️  请立即访问 https://console.anthropic.com/settings/keys 撤销密钥: "
 echo ""
 read -p "按Enter确认已撤销密钥..."
 

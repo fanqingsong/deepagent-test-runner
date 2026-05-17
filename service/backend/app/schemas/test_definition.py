@@ -59,13 +59,15 @@ class TestDefinitionBase(BaseModel):
     url: Optional[str] = Field(None, max_length=500, description="Base URL for test")
     environment: dict = Field(default_factory=dict, description="Environment variables")
     tags: List[str] = Field(default_factory=list, description="Test tags")
+    test_goal: Optional[str] = Field(None, description="AI planning: Natural language test goal")
+    test_context: dict = Field(default_factory=dict, description="AI planning: Additional context")
 
 
 class TestDefinitionCreate(TestDefinitionBase):
     """Schema for creating a test definition."""
     test_steps: List[TestStepCreate] = Field(
         default_factory=list,
-        description="Test steps for this definition"
+        description="Test steps for this definition (optional if using AI planning)"
     )
 
 
@@ -77,6 +79,8 @@ class TestDefinitionUpdate(BaseModel):
     environment: Optional[dict] = None
     tags: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    test_goal: Optional[str] = Field(None, description="AI planning: Natural language test goal")
+    test_context: Optional[dict] = Field(None, description="AI planning: Additional context")
 
     @field_validator("tags")
     @classmethod
@@ -92,7 +96,7 @@ class TestDefinitionResponse(TestDefinitionBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    created_by: int
+    created_by: Optional[int] = None  # Allow None for unauthenticated/system-created tests
     version: int
     is_active: bool
     test_steps: List[TestStepResponse] = []

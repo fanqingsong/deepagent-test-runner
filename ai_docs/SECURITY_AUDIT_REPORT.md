@@ -11,7 +11,7 @@
 ### 1. 硬编码的真实API密钥泄露
 **位置**: `service/.env:20`
 ```bash
-ANTHROPIC_API_KEY=33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+ANTHROPIC_API_KEY=
 ```
 
 **风险等级**: 🔴 严重  

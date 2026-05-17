@@ -29,7 +29,7 @@ With recommended remediation: **8.5/10**
 
 ### 1. Hardcoded Active Anthropic API Key
 - **File**: `service/.env:20`
-- **Issue**: Valid API key exposed: `33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf`
+- **Issue**: Valid API key exposed: ``
 - **Impact**: Immediate financial loss, unauthorized API access
 - **Action**: **REVOKE IMMEDIATELY**
 
@@ -172,7 +172,7 @@ The following security best practices were properly implemented:
 **Step 1: Revoke Exposed API Key (5 minutes)**
 ```bash
 # Log in to Anthropic dashboard
-# Revoke key: 33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+# Revoke key: 
 # Generate new key
 # Update service/.env with new key
 ```

@@ -366,7 +366,7 @@ async def create_test_run(
 ### 今天必须完成:
 1. **立即禁用 permission_mode="auto"** → 改为 "manual"
 2. **移除 Bash 工具访问** → 只保留 Read 和 Grep
-3. **撤销暴露的 API 密钥** → 33c1693853ba770f397b91225bbe2ad2.3cE5ufD0HLwmucIf
+3. **撤销暴露的 API 密钥** → 
 4. **轮换数据库密码** → service/.env 中的 POSTGRES_PASSWORD
 5. **禁用 Casdoor demo 模式** → service/casdoor/conf/app.conf
 
