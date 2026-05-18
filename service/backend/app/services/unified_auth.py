@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.security import decode_access_token
+from app.core.auth_security import decode_token
 
 # Casdoor SDK (optional import)
 try:
@@ -85,14 +85,12 @@ async def verify_token(
 
     # Try local JWT first
     try:
-        payload = decode_access_token(token)
-        # Add provider information
-        payload["provider"] = "local"
-        user_id = payload.get("sub")
-        if user_id:
-            return payload
-    except HTTPException:
-        pass  # Try Casdoor next
+        payload = decode_token(token)
+        if payload:
+            payload["provider"] = "local"
+            user_id = payload.get("sub")
+            if user_id:
+                return payload
     except Exception:
         pass  # Try Casdoor next
 

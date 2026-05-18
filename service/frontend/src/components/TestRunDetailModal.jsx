@@ -7,6 +7,7 @@ function TestRunDetailModal({ run, onClose }) {
   const [testCases, setTestCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [screenshotUrl, setScreenshotUrl] = useState(null);
 
   useEffect(() => {
     loadTestCases();
@@ -141,6 +142,7 @@ function TestRunDetailModal({ run, onClose }) {
                       <th>测试ID</th>
                       <th>描述</th>
                       <th>状态</th>
+                      <th>截图</th>
                       <th>执行时长</th>
                       <th>开始时间</th>
                       <th>结束时间</th>
@@ -158,6 +160,18 @@ function TestRunDetailModal({ run, onClose }) {
                         </td>
                         <td className="status-cell">
                           {getStatusBadge(testCase.status)}
+                        </td>
+                        <td className="screenshot-cell">
+                          {testCase.screenshot_path ? (
+                            <img
+                              src={testCase.screenshot_path}
+                              alt={`步骤 ${index + 1} 截图`}
+                              className="screenshot-thumbnail"
+                              onClick={() => setScreenshotUrl(testCase.screenshot_path)}
+                            />
+                          ) : (
+                            <span className="no-screenshot">-</span>
+                          )}
                         </td>
                         <td className="duration-cell">
                           {formatDuration(testCase.duration / 1000)}
@@ -182,6 +196,15 @@ function TestRunDetailModal({ run, onClose }) {
             关闭
           </button>
         </div>
+
+        {screenshotUrl && (
+          <div className="screenshot-lightbox" onClick={() => setScreenshotUrl(null)}>
+            <div className="screenshot-lightbox-content" onClick={(e) => e.stopPropagation()}>
+              <button className="screenshot-lightbox-close" onClick={() => setScreenshotUrl(null)}>✕</button>
+              <img src={screenshotUrl} alt="截图" className="screenshot-fullsize" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

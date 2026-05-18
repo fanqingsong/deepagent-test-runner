@@ -9,12 +9,14 @@ import logging
 from typing import Any, Dict, Optional
 
 from langchain_core.tools import tool
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
 @tool
-def save_test_plan(test_definition_id: int, plan_json: str) -> str:
+async def save_test_plan(test_definition_id: int, plan_json: str) -> str:
     """Save a generated test plan to the database.
 
     Args:
@@ -22,10 +24,7 @@ def save_test_plan(test_definition_id: int, plan_json: str) -> str:
         plan_json: JSON string with keys: plan_id, steps[], estimated_duration, risk_factors, success_criteria.
     """
     from app.core.worker_db import run_with_session
-    from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import AsyncSession
     from app.models.test_definition import TestDefinition
-    import asyncio
 
     plan_data = json.loads(plan_json)
 
@@ -42,29 +41,21 @@ def save_test_plan(test_definition_id: int, plan_json: str) -> str:
         return f"Plan saved for test definition {test_definition_id}"
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return loop.run_in_executor(pool, lambda: asyncio.run(_save_session()))
-        return asyncio.run(_save(None))
+        return await run_with_session(_save)
     except Exception as e:
-        logger.error(f"Failed to save plan: {e}")
+        logger.error("Failed to save plan: %s", e)
         return f"Error saving plan: {str(e)}"
 
 
 @tool
-def get_test_results(run_id: str) -> str:
+async def get_test_results(run_id: str) -> str:
     """Get test execution results for a given run_id.
 
     Returns JSON string with test run summary and individual step results.
     """
     from app.core.worker_db import run_with_session
-    from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import AsyncSession
     from app.models.test_run import TestRun
     from app.models.test_case import TestCase
-    import asyncio
 
     async def _get(db: AsyncSession):
         run_result = await db.execute(
@@ -99,12 +90,9 @@ def get_test_results(run_id: str) -> str:
         })
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return json.dumps({"error": "Cannot run sync DB query from async context"})
-        return asyncio.run(_get(None))
+        return await run_with_session(_get)
     except Exception as e:
-        logger.error(f"Failed to get results: {e}")
+        logger.error("Failed to get results: %s", e)
         return json.dumps({"error": str(e)})
 
 

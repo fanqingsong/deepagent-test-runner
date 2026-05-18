@@ -161,15 +161,22 @@ async def browser_select_option(selector: str, value: str) -> str:
 
 @tool
 async def browser_evaluate(expression: str) -> str:
-    """Execute a JavaScript expression in the browser and return the result."""
+    """Execute a JavaScript expression in the browser and return the result.
+
+    Prefer using browser_get_text, browser_click, browser_fill for common
+    operations instead of writing raw JavaScript.
+    """
     expr_lower = expression.lower()
     for pattern in _DANGEROUS_JS_PATTERNS:
         if pattern.lower() in expr_lower:
             logger.warning("Blocked JS expression containing dangerous pattern: %s", pattern)
             return json.dumps({"error": f"Expression contains blocked pattern: {pattern}"})
     page = _get_page()
-    result = await page.evaluate(expression)
-    return json.dumps(result) if not isinstance(result, str) else result
+    try:
+        result = await page.evaluate(expression)
+        return json.dumps(result) if not isinstance(result, str) else result
+    except Exception as e:
+        return json.dumps({"error": f"JS execution failed: {str(e)}. Try using browser_get_text or browser_click instead."})
 
 
 @tool

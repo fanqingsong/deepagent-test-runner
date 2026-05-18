@@ -211,10 +211,10 @@ class ExecutionService:
         if error_message:
             test_run.error_message = error_message
 
-        # Calculate duration if both times are present
+        # Calculate duration if both times are present (both are millisecond ints)
         if test_run.start_time and test_run.end_time:
             delta = test_run.end_time - test_run.start_time
-            test_run.total_duration = int(delta.total_seconds())  # Store as seconds, not milliseconds
+            test_run.total_duration = int(delta)  # Already in milliseconds
 
         await self.db.commit()
         await self.db.refresh(test_run)

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.models import TestDefinition
-from app.services.autonomous_planner import get_autonomous_planner
+from app.agents.planner_agent import generate_test_plan as agent_generate_test_plan
 
 router = APIRouter()
 
@@ -105,14 +105,11 @@ async def generate_test_plan(
     Returns a comprehensive test plan with 3-8 structured steps.
     """
     try:
-        planner = get_autonomous_planner()
-
-        # Generate plan
-        plan = await planner.generate_test_plan(
+        # Generate plan using LangGraph planner agent
+        plan = await agent_generate_test_plan(
             goal=request.goal,
             url=request.url,
             context=request.context,
-            db=db
         )
 
         # Associate with test definition if provided

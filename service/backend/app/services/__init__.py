@@ -4,7 +4,6 @@ from app.core.celery_app import celery_app
 _schedule_manager = None
 _execution_service = None
 _test_case_generator = None
-_claude_interpreter = None
 
 
 def get_schedule_manager():
@@ -35,15 +34,6 @@ def get_test_case_generator():
     return _test_case_generator
 
 
-def get_claude_interpreter():
-    """Get or create ClaudeInterpreter instance"""
-    global _claude_interpreter
-    if _claude_interpreter is None:
-        from app.services.claude_interpreter import ClaudeTestInterpreter
-        _claude_interpreter = ClaudeTestInterpreter()
-    return _claude_interpreter
-
-
 # Property-style accessors for backwards compatibility
 class ServiceContainer:
     """Container for service instances"""
@@ -59,10 +49,6 @@ class ServiceContainer:
     def test_case_generator(self):
         return get_test_case_generator()
 
-    @property
-    def claude_interpreter(self):
-        return get_claude_interpreter()
-
 
 # Global container instance - properties are lazy, no instantiation at import time
 services = ServiceContainer()
@@ -71,6 +57,5 @@ __all__ = [
     "get_schedule_manager",
     "get_execution_service",
     "get_test_case_generator",
-    "get_claude_interpreter",
     "services"
 ]
