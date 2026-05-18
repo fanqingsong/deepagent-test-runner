@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTests } from './api';
+import { parseApiError } from './api';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
@@ -72,42 +73,6 @@ function AppContent() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  const buildHttpErrorMessage = async (response, fallback) => {
-    const status = response?.status;
-    const statusText = response?.statusText || '';
-    let bodyText = '';
-    try {
-      bodyText = await response.text();
-    } catch {
-      bodyText = '';
-    }
-
-    let detail = '';
-    if (bodyText) {
-      try {
-        const json = JSON.parse(bodyText);
-        detail =
-          json?.detail ||
-          json?.error ||
-          json?.message ||
-          (typeof json === 'string' ? json : '') ||
-          bodyText;
-      } catch {
-        detail = bodyText;
-      }
-    }
-
-    const normalized = (detail || '').toString().trim();
-    const base = fallback || '请求失败';
-    const suffixParts = [
-      typeof status === 'number' ? `HTTP ${status}` : null,
-      statusText ? statusText : null,
-      normalized ? normalized : null,
-    ].filter(Boolean);
-
-    return suffixParts.length ? `${base}（${suffixParts.join(' - ')}）` : base;
-  };
-
   const handleTestRun = async (testId) => {
     try {
       const response = await fetch('/api/v1/jobs/', {
@@ -160,7 +125,7 @@ function AppContent() {
       if (response.ok) {
         alert('调度已触发！');
       } else {
-        alert(await buildHttpErrorMessage(response, '触发失败'));
+        alert(await parseApiError(response, '触发失败'));
       }
     } catch (err) {
       alert('错误: ' + err.message);

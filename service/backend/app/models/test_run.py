@@ -7,7 +7,7 @@ Records the execution history of scheduled tests.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,6 +22,10 @@ class TestRun(Base):
     """
 
     __tablename__ = "test_runs"
+    __table_args__ = (
+        Index("ix_test_runs_created_at", "created_at"),
+        Index("ix_test_runs_status_created_at", "status", "created_at"),
+    )
 
     # Primary key
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

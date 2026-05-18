@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
+from app.core.worker_db import run_async
 from app.models.schedule import Schedule
 from app.models.test_run import TestRun
 from app.services import get_execution_service
@@ -104,9 +105,6 @@ def execute_scheduled_tests(schedule_id: int):
     logger.info(f"Executing scheduled tests for schedule_id={schedule_id}, run_id={run_id}")
 
     try:
-        # Use async engine for database operations
-        import asyncio
-
         async def execute_async():
             async_engine = create_async_engine(settings.DATABASE_URL)
             async_session_maker = sessionmaker(
@@ -186,13 +184,7 @@ def execute_scheduled_tests(schedule_id: int):
 
             await async_engine.dispose()
 
-        # Run async code in event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(execute_async())
-        finally:
-            loop.close()
+        run_async(lambda: execute_async())
 
     except Exception as e:
         logger.error(
@@ -253,13 +245,7 @@ def check_overdue_schedules():
 
             await async_engine.dispose()
 
-        # Run async code in event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(check_async())
-        finally:
-            loop.close()
+        run_async(lambda: check_async())
 
     except Exception as e:
         logger.error(f"Error checking overdue schedules: {str(e)}", exc_info=True)
@@ -308,13 +294,7 @@ def cleanup_old_test_runs(days_to_keep: int = 30):
 
             await async_engine.dispose()
 
-        # Run async code in event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(cleanup_async())
-        finally:
-            loop.close()
+        run_async(lambda: cleanup_async())
 
     except Exception as e:
         logger.error(f"Error cleaning up old test runs: {str(e)}", exc_info=True)

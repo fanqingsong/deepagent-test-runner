@@ -360,21 +360,24 @@ class ExecutionService:
 
         test_cases_data = results.get('test_cases', [])
         if test_cases_data:
-            test_case_rows = []
-            for idx, case_data in enumerate(test_cases_data):
-                test_case = TestCase(
+            test_definition_id = results.get('test_definition_id')
+            start_time = int(results.get('start_time', 0))
+            end_time = int(results.get('end_time', 0))
+            test_case_rows = [
+                TestCase(
                     run_id=test_run.id,
-                    test_definition_id=results.get('test_definition_id'),
-                    test_id=f"{results.get('test_definition_id')}_step_{idx + 1}",
+                    test_definition_id=test_definition_id,
+                    test_id=f"{test_definition_id}_step_{idx + 1}",
                     description=case_data.get('description', f"Step {idx + 1}"),
                     status=case_data.get('status', 'unknown'),
                     duration=int(case_data.get('duration', 0)),
-                    start_time=int(results.get('start_time', 0)),
-                    end_time=int(results.get('end_time', 0)),
+                    start_time=start_time,
+                    end_time=end_time,
                     error_message=case_data.get('error'),
                     screenshot_path=case_data.get('screenshot_path', ''),
                 )
-                test_case_rows.append(test_case)
+                for idx, case_data in enumerate(test_cases_data)
+            ]
             self.db.add_all(test_case_rows)
             logger.info("Saved %d test case rows for run %s", len(test_case_rows), run_id)
 

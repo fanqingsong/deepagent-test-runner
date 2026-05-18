@@ -11,12 +11,26 @@ context, set by the executor agent before invoking the LLM.
 
 import asyncio
 import json
+import logging
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Optional
 
 from langchain_core.tools import tool
+
+logger = logging.getLogger(__name__)
+
+# Dangerous JS patterns that should be blocked in browser_evaluate
+_DANGEROUS_JS_PATTERNS = [
+    "document.write",
+    "eval(",
+    "Function(",
+    "new Function",
+    "import(",
+    "require(",
+    "XMLHttpRequest",
+]
 
 # Thread-local page reference — set by executor_agent before each invocation
 _current_page = None
@@ -148,6 +162,11 @@ async def browser_select_option(selector: str, value: str) -> str:
 @tool
 async def browser_evaluate(expression: str) -> str:
     """Execute a JavaScript expression in the browser and return the result."""
+    expr_lower = expression.lower()
+    for pattern in _DANGEROUS_JS_PATTERNS:
+        if pattern.lower() in expr_lower:
+            logger.warning("Blocked JS expression containing dangerous pattern: %s", pattern)
+            return json.dumps({"error": f"Expression contains blocked pattern: {pattern}"})
     page = _get_page()
     result = await page.evaluate(expression)
     return json.dumps(result) if not isinstance(result, str) else result
@@ -164,6 +183,11 @@ async def execute_playwright_script(script: str) -> str:
       console.log(await page.title());
       await browser.close();
     """
+    script_lower = script.lower()
+    for pattern in _DANGEROUS_JS_PATTERNS:
+        if pattern.lower() in script_lower:
+            logger.warning("Blocked Playwright script containing dangerous pattern: %s", pattern)
+            return json.dumps({"error": f"Script contains blocked pattern: {pattern}"})
     with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
         f.write(f"const {{ chromium }} = require('playwright');\n(async () => {{\n{script}\n}})();")
         script_path = f.name

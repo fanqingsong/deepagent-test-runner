@@ -70,46 +70,11 @@ async function apiFetch(url, options = {}) {
 }
 
 export const getTests = async () => {
-  try {
-    const response = await fetch(`${TEST_API}/test-definitions/`, {
-      headers: getAuthHeaders(),
-      mode: 'cors'
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch tests: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching tests:', error);
-    // Return mock data if API fails
-    return {
-      items: [
-        {
-          id: 1,
-          name: 'Sample Login Test',
-          description: 'A sample test for login functionality',
-          test_id: 'sample-login-test',
-          url: 'https://example.com/login',
-          environment: {},
-          tags: ['sample', 'login'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 2,
-          name: 'Checkout Test',
-          description: 'Test the checkout process',
-          test_id: 'checkout-test',
-          url: 'https://example.com/checkout',
-          environment: {},
-          tags: ['e2e', 'checkout'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ],
-      total: 2
-    };
+  const response = await apiFetch(`${TEST_API}/test-definitions/`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, '加载测试列表失败'));
   }
+  return response.json();
 };
 
 export const createTest = async (testData) => {

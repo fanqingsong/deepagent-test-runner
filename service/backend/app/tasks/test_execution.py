@@ -71,11 +71,11 @@ async def capture_step_screenshot(
 
         # Return relative path for web access
         web_path = f"/screenshots/{run_id}/{filename}"
-        logger.info(f"Screenshot saved: {web_path}")
+        logger.info("Screenshot saved: %s", web_path)
         return web_path
 
     except Exception as e:
-        logger.error(f"Failed to capture screenshot for step {step_number}: {str(e)}")
+        logger.error("Failed to capture screenshot for step %s: %s", step_number, str(e))
         return ""
 
 
@@ -298,7 +298,7 @@ async def _load_test_from_db(
                     test_definition_id
                 )
                 return test_def, test_steps
-            except Exception as e:
+            except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
                 logger.warning(
                     "Failed to parse AI-generated plan for test definition %d: %s. Falling back to traditional steps.",
                     test_definition_id,
@@ -540,7 +540,7 @@ async def _execute_all_steps_with_ai(
                 )
                 result["screenshot_path"] = screenshot_path
             except Exception as screenshot_error:
-                logger.warning(f"Screenshot capture failed for step {step_number}: {screenshot_error}")
+                logger.warning("Screenshot capture failed for step %s: %s", step_number, screenshot_error)
                 result["screenshot_path"] = ""
 
             # Verify step result and add assertions
@@ -563,7 +563,7 @@ async def _execute_all_steps_with_ai(
                     "success" if verification["verification_passed"] else "warning"
                 ))
             except Exception as verify_error:
-                logger.warning(f"Verification failed for step {step_number}: {verify_error}")
+                logger.warning("Verification failed for step %s: %s", step_number, verify_error)
                 result["verification"] = None
                 result["assertions_passed"] = None
 
@@ -607,8 +607,8 @@ async def _execute_all_steps_with_ai(
                     step_description,
                     "failed"
                 )
-            except:
-                pass
+            except Exception as screenshot_err:
+                logger.warning("Failed to capture error screenshot for step %d: %s", step_number, screenshot_err)
 
             failed_results.append({
                 "step_number": step_number,

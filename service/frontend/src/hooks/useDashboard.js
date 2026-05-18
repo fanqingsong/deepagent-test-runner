@@ -15,15 +15,15 @@ export const useDashboard = (timeRange = '30d') => {
   const dashboardQuery = useQuery({
     queryKey: ['dashboard', days],
     queryFn: () => getDashboardData(days),
-    staleTime: 5000, // 5秒内数据视为新鲜
+    staleTime: 30000, // 30秒内数据视为新鲜
   });
 
   // 获取最近测试运行
   const testRunsQuery = useQuery({
     queryKey: ['testRuns', 20],
     queryFn: () => getTestRuns(20),
-    staleTime: 5000,
-    refetchInterval: 10000, // 10秒自动刷新
+    staleTime: 15000,
+    refetchInterval: 30000, // 30秒自动刷新
   });
 
   return {

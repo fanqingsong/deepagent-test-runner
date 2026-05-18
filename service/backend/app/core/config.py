@@ -5,6 +5,7 @@ Uses pydantic-settings for environment-based configuration.
 All settings can be overridden via environment variables.
 """
 
+import re
 from typing import List
 
 from pydantic import Field, field_validator, model_validator
@@ -12,9 +13,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_SECRET_DEFAULTS = frozenset({
     "changeme-in-production",
+    "changeme",
     "your-jwt-secret-key-change-this-in-production",
+    "your-jwt-secret-key",
     "your-secret-key",
+    "secret",
 })
+
+_WEAK_SECRET_PATTERNS = re.compile(
+    r"changeme|secret|password|1234|your.*secret|jwt.*key",
+    re.IGNORECASE,
+)
 
 
 class Settings(BaseSettings):
@@ -201,7 +210,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
-        """Reject default secrets when not in debug mode."""
+        """Reject default/weak secrets when not in debug mode."""
         if self.DEBUG:
             return self
         for name, value in (
@@ -211,6 +220,14 @@ class Settings(BaseSettings):
             if not value or value in _INSECURE_SECRET_DEFAULTS or len(value) < 32:
                 raise ValueError(
                     f"{name} must be set to a secure value (>= 32 chars) when DEBUG=false"
+                )
+            if _WEAK_SECRET_PATTERNS.search(value):
+                raise ValueError(
+                    f"{name} contains a weak/placeholder pattern — generate a random secret"
+                )
+            if len(set(value)) < 16:
+                raise ValueError(
+                    f"{name} has low entropy (< 16 unique chars) — use a more random string"
                 )
         return self
 
