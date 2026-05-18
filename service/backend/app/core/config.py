@@ -152,19 +152,6 @@ class Settings(BaseSettings):
         description="Celery result backend URL"
     )
 
-    # Anthropic API
-    ANTHROPIC_API_KEY: str = Field(
-        default="",
-        description="Anthropic API key for Claude"
-    )
-    ANTHROPIC_BASE_URL: str = Field(
-        default="https://api.anthropic.com",
-        description="Anthropic API base URL"
-    )
-    ANTHROPIC_MODEL: str = Field(
-        default="claude-3-5-sonnet-20241022",
-        description="Anthropic model to use"
-    )
     API_TIMEOUT_MS: int = Field(
         default=300000,
         description="API timeout in milliseconds"

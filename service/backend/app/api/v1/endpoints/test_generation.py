@@ -173,5 +173,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "test-generation",
-        "ai_enabled": bool(get_test_case_generator().anthropic_api_key)
+        "ai_enabled": bool(get_test_case_generator().llm_api_key)
     }

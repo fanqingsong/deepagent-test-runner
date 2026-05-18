@@ -79,12 +79,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.z.ai/api/anthropic}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-glm-4-flash}
       API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
-      # LLM Configuration (LangGraph agents)
+      # LLM Configuration
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
       LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
@@ -153,12 +149,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.z.ai/api/anthropic}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-glm-4-flash}
       API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
-      # LLM Configuration (LangGraph agents)
+      # LLM Configuration
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
       LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
@@ -204,12 +196,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_AUTH_TOKEN: ${ANTHROPIC_AUTH_TOKEN:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.z.ai/api/anthropic}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-glm-4-flash}
       API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
-      # LLM Configuration (LangGraph agents)
+      # LLM Configuration
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
       LLM_MODEL: ${LLM_MODEL:-glm-4-plus}

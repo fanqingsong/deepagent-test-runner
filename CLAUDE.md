@@ -4,49 +4,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Code Test Runner is an AI-powered E2E testing framework with two deployment models:
+AI-powered E2E testing framework using GLM LLM + LangGraph + Playwright for browser automation.
 
-1. **CLI Tool** (`cli/`): Standalone test runner using Claude Code SDK + Playwright
-2. **Microservices** (`service/`): Multi-service architecture with PostgreSQL, Redis, and web dashboard
-
-The system executes natural language test definitions using Claude Code's AI to perform browser automation through Playwright MCP.
+The system executes natural language test definitions using AI to perform browser automation through Playwright tools.
 
 ## Architecture
 
-### CLI Architecture
-```
-CLI (Bun) → Claude Code SDK → Anthropic API
-                ↓
-         Playwright MCP → Browser
-                ↓
-         Test State MCP (local HTTP server)
-```
-
-### Microservices Architecture (current: unified backend)
+### Microservices Architecture (unified backend)
 ```
 Frontend (React/Vite :5173) → Nginx (:8080) → Unified Backend (FastAPI :8001, host :8011)
                                                     ↓
                               PostgreSQL (:5432) ← Celery Worker + Beat ← Redis
 ```
 
+**Test Execution Pipeline:**
+```
+Celery Task → LangGraph Supervisor Graph → Executor Agent (create_react_agent)
+                         ↓                           ↓
+                    Planner Node              Playwright Tools → Browser
+                         ↓
+                    Reviewer Node → Result Builder
+```
+
+**LLM Integration:**
+- All AI features use GLM via OpenAI-compatible API (`ChatOpenAI` from `langchain_openai`)
+- Config: `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` env vars
+- Factory: `app/core/agent_config.py` → `get_llm()`
+
 **Service Interactions:**
 - **Unified Backend** (`service/backend/`): test definitions, schedules, jobs, analytics, auth (MFA, sessions), SSO config
-- **Celery Workers** execute tests via Playwright + Claude Agent SDK; load test data from PostgreSQL (not HTTP self-calls)
+- **Celery Workers** execute tests via LangGraph + Playwright; load test data from PostgreSQL (not HTTP self-calls)
 - **Job metadata** stored in Redis (`app/core/job_store.py`) for status polling across API restarts
 - Frontend uses hash-based routing: `#dashboard`, `#tests`, `#schedules`
 - Use `docker compose` (not `docker-compose`) from `service/`
 
 ## Development Commands
-
-### CLI Development
-```bash
-cd cli
-bun install                    # Install dependencies
-./init.dev.sh                 # Initialize development environment
-bun run build                 # Build CLI
-./dist/cc-test-runner -t ./samples/pdca-e2e-tests.json -v
-bun test                      # Run tests
-```
 
 ### Microservices Development
 ```bash
@@ -62,28 +54,6 @@ docker compose restart [service]  # Restart specific service
 - `frontend/src:/app/frontend` (Vite dev server)
 
 Changes to these directories are automatically reflected without rebuilding.
-
-### Service-Specific Commands
-
-**Dashboard Service:**
-```bash
-cd service/dashboard-service
-npm run dev                    # Backend hot-reload
-npm run frontend:dev           # Frontend dev server
-npm run dev:full               # Both backend and frontend
-```
-
-**Test Case Service:**
-```bash
-docker-compose exec test-case-service pytest
-docker-compose exec test-case-service pytest tests/test_endpoints.py -v
-```
-
-**Scheduler Service:**
-```bash
-docker-compose exec scheduler-service pytest
-docker-compose exec scheduler-worker celery -A app.core.celery_app inspect active
-```
 
 ### Database Operations
 ```bash
@@ -156,21 +126,6 @@ This project uses an IBM Carbon-inspired design system. Before creating or modif
 - `on*Created` callbacks to close modals and refresh lists
 - Direct state updates, no Redux/context for simple cases
 
-**Current UI Migration Status:**
-The existing UI components were built using Material Design patterns and need to be migrated to the IBM Carbon-inspired design system:
-
-- ❌ **Border-radius**: Currently uses 4-8px (should be 0px)
-- ❌ **Colors**: Uses Material Design palette (#1976d2 blue, #4caf50 green) - needs IBM Blue 60
-- ❌ **Typography**: Uses Arial fallback - needs IBM Plex Sans
-- ❌ **Shadows**: Cards have box-shadows - should be flat with background-color layering
-- ❌ **Buttons**: Rounded with gradients - should be rectangular, flat colors
-
-**Migration Priority:**
-1. Create global CSS design token system (`--cds-*` variables)
-2. Update App.jsx with IBM Plex Sans and design tokens
-3. Migrate shared components (Modal, Button, Input, Table)
-4. Update page-specific components to use new design system
-
 **When modifying UI:**
 - Always check DESIGN.md first for the correct patterns
 - Prefer creating new components following the design system over patching old ones
@@ -178,16 +133,14 @@ The existing UI components were built using Material Design patterns and need to
 
 ## Backend Development
 
-**Scheduler Service (FastAPI):**
+**Unified Backend (FastAPI):**
 - `app/api/v1/endpoints/`: REST endpoints
 - `app/services/`: Business logic (execution_service.py, schedule_manager.py)
 - `app/tasks/`: Celery tasks (test_execution.py, schedule_sync.py)
 - `app/models/`: SQLAlchemy ORM models (test_run.py, schedule.py, test_case.py)
-
-**Dashboard Service (Express):**
-- `src/db.js`: Database queries using pg
-- `src/server.js`: Express server with API routes
-- `frontend/src/`: React frontend
+- `app/agents/`: LangGraph agent pipeline (supervisor_graph.py, executor_agent.py, nodes.py)
+- `app/agent_tools/`: Playwright tools for browser automation
+- `app/core/agent_config.py`: LLM factory (`get_llm()`)
 
 **Authentication Service (FastAPI):**
 - `app/api/v1/endpoints/`: REST endpoints (auth.py, mfa.py, password.py, admin.py)
@@ -212,37 +165,21 @@ The existing UI components were built using Material Design patterns and need to
 - **Audit Logging:** All security events logged to audit_logs table with IP address, user agent, auto-deletion after 90 days
 - **Email Queue:** Celery tasks with exponential backoff retry (30s, 5m, 15m), failure tracking after 3 attempts
 
-**Critical Authentication Service Methods:**
-- `AuthService.register_user()`: Creates user, validates password strength, queues verification email
-- `AuthService.authenticate_user()`: Validates credentials, checks account status, enforces lockout, tracks failed attempts
-- `SessionService.create_user_session()`: Creates session, enforces concurrent limit, sets remember_me expiry (30 days vs 24 hours)
-- `MFAService.setup_mfa()`: Generates TOTP secret (pyotp), QR code (otpauth URI), 10 backup codes (bcrypt hashed)
-- `MFAService.verify_mfa()`: Validates TOTP code with ±1 step tolerance, updates last_verified_at
-- `AuditService.log_security_event()`: Logs security events with IP, user agent, details, 90-day retention
-
-**Authentication Database Schema:**
-- `user_accounts`: id, email, password_hash (bcrypt), is_verified, status (active/suspended), failed_login_attempts, account_locked_until, mfa_enabled
-- `user_sessions`: id, user_id, session_token, ip_address, user_agent, expires_at, remember_me, created_at, last_active
-- `mfa_secrets`: id, user_id, secret (bcrypt), enabled, verified_at, last_verified_at
-- `recovery_codes`: id, user_id, code (bcrypt), used_at, created_at
-- `email_tokens`: id, user_id, token (SHA256 hash), token_type (verification/password_reset), expires_at, used_at
-- `audit_logs`: id, user_id, event_type, details (JSON), ip_address, user_agent, created_at, auto_delete_at
-
 **Critical Service Methods:**
 - `ExecutionService.save_test_results()`: Saves both test_runs summary AND test_cases details
 - `ScheduleManager.parse_cron_expression()`: Validates cron expressions
-- `DatabaseManager.getRecentTestRuns()`: Must JOIN with test_definitions to get test names
 
 ## Test Execution Flow
 
 1. **Schedule Trigger:** Celery Beat detects due schedule → calls `schedule_sync.execute_scheduled_tests()`
 2. **Job Creation:** Creates TestRun record with status='pending'
 3. **Test Execution:** Worker calls `test_execution.execute_test()` with test_definition_id
-4. **Browser Automation:** Playwright executes steps using AI interpretation
-5. **Result Saving:** `ExecutionService.save_test_results()` saves:
+4. **LangGraph Pipeline:** `supervisor_graph.py` routes to planner/executor/reviewer nodes
+5. **Browser Automation:** `executor_agent.py` uses `create_react_agent` with Playwright tools
+6. **Result Saving:** `ExecutionService.save_test_results()` saves:
    - Summary to `test_runs` table
    - Individual step results to `test_cases` table
-6. **Dashboard Update:** Frontend queries PostgreSQL for latest results
+7. **Dashboard Update:** Frontend queries PostgreSQL for latest results
 
 **Key Timing Fields:**
 - All timestamps in PostgreSQL are naive datetime (no timezone)
@@ -268,47 +205,25 @@ The existing UI components were built using Material Design patterns and need to
 
 ## Configuration Files
 
-**CLI:** `cli/cc-test.yaml` (YAML configuration with environment detection)
-**Microservices:** `service/.env` (PostgreSQL, Redis, API keys)
+**Microservices:** `service/.env` (PostgreSQL, Redis, LLM API keys)
 
 **Environment Variables:**
-- `ANTTHROPIC_API_KEY`: Required for Claude Code access
+- `LLM_API_KEY`: Required for GLM LLM access
+- `LLM_BASE_URL`: LLM API endpoint (default: `https://open.bigmodel.cn/api/paas/v4`)
+- `LLM_MODEL`: Model name (default: `glm-4-plus`)
 - `POSTGRES_PASSWORD`: Database credentials
 - `SECRET_KEY`: JWT signing key
 
 ## Testing Strategy
 
 **Unit Tests:** Co-located with source files
-**Integration Tests:** `cli/tests/integration/`
-**E2E Tests:** Use the CLI itself to test the framework
+**Integration Tests:** `tests/`
 
 **Test Execution Verification:**
 1. Check test_runs table for summary records
 2. Check test_cases table for step-by-step results
 3. Verify status transitions: pending → running → passed/failed
 4. Confirm timestamps and durations are saved correctly
-
-## AI-Generated Files Convention
-
-**⚠️ IMPORTANT: All AI-generated files must be organized in dedicated directories**
-
-When generating files for this project, follow these conventions:
-
-- **Test Code**: Place all test files in `ai_test/`
-  - Test scripts (`test_*.py`, `*_test.py`)
-  - Test fixtures and mocks
-  - Integration test files
-  - Test screenshots in `ai_test/images/`
-
-- **Documentation**: Place all AI-generated documentation in `ai_docs`
-  - Test reports (`*_REPORT.md`)
-  - Security audits (`*_AUDIT*.md`)
-  - Implementation summaries (`*_SUMMARY*.md`)
-  - Status documents (`*_STATUS.md`, `*_READY.md`)
-  - Migration guides (`MIGRATION*.md`)
-  - Any other AI-generated markdown documentation
-
-**Core documentation** (CLAUDE.md, README.md, ARCHITECTURE.md, DESIGN.md) should remain in the root directory.
 
 ## Performance Considerations
 
@@ -319,22 +234,13 @@ When generating files for this project, follow these conventions:
 
 **Celery Workers:**
 - Default concurrency: 2 workers
-- Scale with: `docker-compose up -d --scale scheduler-worker=4`
+- Scale with: `docker compose up -d --scale celery-worker=4`
 - Task routing: test_execution tasks go to workers, schedule_sync to beat
 
 ## API Port Mappings
 
 - **8080:** Nginx reverse proxy (routes to backend services)
-- **8010:** Authentication Service (FastAPI)
-- **8011:** Test Case Service (FastAPI)
-- **8012:** Scheduler Service (FastAPI)
-- **8013:** Dashboard Service (Express + Vite)
+- **8011:** Unified Backend (FastAPI)
 - **5173:** Vite dev server (for React frontend hot-reload)
 - **5433:** PostgreSQL (external access)
 - **6380:** Redis (external access)
-
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-specs/001-user-auth-mfa/plan.md
-<!-- SPECKIT END -->

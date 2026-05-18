@@ -1,11 +1,12 @@
 """
 Test Case Generator Service
 
-Uses Claude AI to generate comprehensive test cases from natural language requirements.
+Uses LLM (GLM) to generate comprehensive test cases from natural language requirements.
 """
 
 import json
 import logging
+import os
 import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -13,7 +14,6 @@ from datetime import datetime
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.schemas.test_generation import (
     TestCaseGenerateRequest,
     GeneratedTestCase,
@@ -26,16 +26,17 @@ logger = logging.getLogger(__name__)
 
 class TestCaseGenerator:
     """
-    Service for generating test cases using Claude AI.
+    Service for generating test cases using LLM.
 
     Converts natural language requirements into structured test cases
     with detailed steps that can be executed by Playwright.
     """
 
     def __init__(self):
-        self.anthropic_api_key = settings.ANTHROPIC_API_KEY
-        self.anthropic_base_url = getattr(settings, 'ANTHROPIC_BASE_URL', 'https://api.anthropic.com')
-        self.timeout = getattr(settings, 'API_TIMEOUT_MS', 300000) / 1000  # Convert to seconds
+        self.llm_api_key = os.getenv("LLM_API_KEY", "")
+        self.llm_base_url = os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+        self.llm_model = os.getenv("LLM_MODEL", "glm-4-plus")
+        self.timeout = 300.0
 
     async def generate_test_case(
         self,
@@ -53,8 +54,8 @@ class TestCaseGenerator:
         # Build prompt for Claude
         prompt = self._build_prompt(request)
 
-        # Call Claude API
-        ai_response = await self._call_claude(prompt)
+        # Call LLM API
+        ai_response = await self._call_llm(prompt)
 
         # Parse response
         generated_case = self._parse_ai_response(ai_response, request)
@@ -67,7 +68,7 @@ class TestCaseGenerator:
             "test_case": generated_case,
             "metadata": {
                 "generated_at": datetime.utcnow().isoformat(),
-                "ai_model": "claude-sonnet-4-20250514",
+                "ai_model": self.llm_model,
                 "test_type": request.test_type,
                 "total_steps": len(generated_case.steps)
             }
@@ -148,21 +149,19 @@ Important:
 
         return prompt
 
-    async def _call_claude(self, prompt: str) -> str:
-        """Call Anthropic Claude API."""
+    async def _call_llm(self, prompt: str) -> str:
+        """Call LLM via OpenAI-compatible Chat Completions API."""
 
-        if not self.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY is not configured")
+        if not self.llm_api_key:
+            raise ValueError("LLM_API_KEY is not configured")
 
         headers = {
-            "x-api-key": self.anthropic_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-            "dangerously-allow-browser": "true"
+            "Authorization": f"Bearer {self.llm_api_key}",
+            "Content-Type": "application/json",
         }
 
         data = {
-            "model": "claude-sonnet-4-20250514",
+            "model": self.llm_model,
             "max_tokens": 4096,
             "messages": [
                 {
@@ -175,19 +174,19 @@ Important:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.anthropic_base_url}/v1/messages",
+                    f"{self.llm_base_url}/chat/completions",
                     headers=headers,
                     json=data
                 )
                 response.raise_for_status()
                 result = response.json()
-                return result["content"][0]["text"]
+                return result["choices"][0]["message"]["content"]
 
         except httpx.HTTPError as e:
-            logger.error(f"HTTP error calling Claude API: {str(e)}")
+            logger.error(f"HTTP error calling LLM API: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Error calling Claude API: {str(e)}")
+            logger.error(f"Error calling LLM API: {str(e)}")
             raise
 
     def _parse_ai_response(self, ai_response: str, request: TestCaseGenerateRequest) -> GeneratedTestCase:

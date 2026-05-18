@@ -1,7 +1,0 @@
-{
-    "ignoreDependencies": [
-        "@anthropic-ai/sdk",
-        "@playwright/mcp",
-        "playwright"
-    ]
-}

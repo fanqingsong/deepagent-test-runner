@@ -5,13 +5,13 @@ AI-powered test planning and adaptive execution decision-making.
 """
 
 import json
+import os
 import uuid
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.models import TestDefinition, TestStep
 
 
@@ -27,11 +27,9 @@ class AutonomousTestPlanner:
     """
 
     def __init__(self):
-        self.api_key = (
-            getattr(settings, 'ANTHROPIC_AUTH_TOKEN', None) or
-            getattr(settings, 'ANTHROPIC_API_KEY', None)
-        )
-        self.base_url = getattr(settings, 'ANTHROPIC_BASE_URL', 'https://api.anthropic.com')
+        self.api_key = os.getenv("LLM_API_KEY", "")
+        self.base_url = os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+        self.model = os.getenv("LLM_MODEL", "glm-4-plus")
 
     async def generate_test_plan(
         self,
@@ -65,8 +63,8 @@ class AutonomousTestPlanner:
         planning_prompt = self._build_planning_prompt(goal, url, context, page_screenshot)
 
         try:
-            # Use Anthropic API to generate plan
-            generated_plan = await self._call_claude_api(planning_prompt)
+            # Use LLM to generate plan
+            generated_plan = await self._call_llm_api(planning_prompt)
 
             # Parse and structure the response
             structured_plan = self._parse_generated_plan(generated_plan, plan_id)
@@ -128,18 +126,17 @@ Generate the plan now:"""
 
         return prompt
 
-    async def _call_claude_api(self, prompt: str) -> str:
-        """Call Claude API for plan generation."""
+    async def _call_llm_api(self, prompt: str) -> str:
+        """Call LLM via OpenAI-compatible Chat Completions API."""
         import httpx
 
         headers = {
-            "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
         }
 
         data = {
-            "model": getattr(settings, 'ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+            "model": self.model,
             "max_tokens": 4096,
             "messages": [
                 {
@@ -151,13 +148,13 @@ Generate the plan now:"""
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{self.base_url}/v1/messages",
+                f"{self.base_url}/chat/completions",
                 headers=headers,
                 json=data
             )
             response.raise_for_status()
             result = response.json()
-            return result["content"][0]["text"]
+            return result["choices"][0]["message"]["content"]
 
     def _parse_generated_plan(self, generated_text: str, plan_id: str) -> Dict[str, Any]:
         """Parse AI-generated plan into structured format."""

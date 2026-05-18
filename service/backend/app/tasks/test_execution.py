@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.worker_db import run_async, run_with_session
 from app.models.test_definition import TestDefinition
 from app.models.test_step import TestStep
-from app.agents.executor_agent import interpret_and_execute_batch
+from app.agents.supervisor_graph import build_pipeline_graph
 from app.services.execution_service import ExecutionService
 
 logger = logging.getLogger(__name__)
@@ -352,6 +352,8 @@ async def _execute_test_async(
     """
     Async implementation of AI-powered test execution.
 
+    Uses the LangGraph supervisor pipeline to orchestrate sub-agents.
+
     Args:
         test_definition_id: Test definition internal ID
         run_id: Unique run identifier
@@ -370,16 +372,20 @@ async def _execute_test_async(
 
     test_url = test_def.url
 
-    if not test_steps:
+    # Determine pipeline mode
+    mode = "execute_only"
+    if not test_steps and getattr(test_def, "test_goal", None):
+        mode = "full_pipeline"
+
+    if mode == "execute_only" and not test_steps:
         return {
             "status": "error",
             "error": f"No test steps found for test definition {test_definition_id}",
             "run_id": run_id
         }
 
-    # Execute test using AI interpretation
-    start_time = datetime.now(timezone.utc).timestamp() * 1000  # milliseconds
-    test_results = []
+    # Execute test via supervisor graph
+    start_time = datetime.now(timezone.utc).timestamp() * 1000
 
     try:
         async with async_playwright() as p:
@@ -388,7 +394,6 @@ async def _execute_test_async(
             page = await context.new_page()
 
             try:
-                # Set default timeout
                 page.set_default_timeout(settings.TEST_TIMEOUT)
 
                 # Navigate to initial URL if provided
@@ -402,27 +407,50 @@ async def _execute_test_async(
                         logger.warning("Initial navigation to %s failed: %s, continuing anyway", test_url, e)
                         navigated_url = page.url
 
-                # Execute ALL steps in a single Claude Code session (matches CLI architecture)
+                # Build and invoke supervisor graph
+                graph = build_pipeline_graph()
+                initial_state = {
+                    "mode": mode,
+                    "goal": getattr(test_def, "test_goal", None),
+                    "target_url": test_url,
+                    "test_definition_id": test_definition_id,
+                    "run_id": run_id,
+                    "environment": {**environment, "navigated_url": navigated_url},
+                    "test_steps": test_steps if test_steps else None,
+                    "retry_count": 0,
+                    "max_retries": 1,
+                    "current_phase": "init",
+                    "messages": [],
+                }
+
                 logger.info(
-                    "Executing %d test steps in a single Claude session for run %s",
-                    len(test_steps),
-                    run_id,
+                    "Supervisor: invoking pipeline mode=%s for run %s (%d steps)",
+                    mode, run_id, len(test_steps or []),
                 )
-                ctx = {**environment, "navigated_url": navigated_url}
-                test_results = await _execute_all_steps_with_ai(page, test_steps, ctx, run_id)
+
+                graph_result = await graph.ainvoke(
+                    initial_state,
+                    config={"configurable": {"page": page, "run_id": run_id}},
+                )
+
+                result = graph_result.get("final_result")
+                if not result:
+                    # Fallback: build result from state
+                    result = _build_result_from_state(graph_result, test_definition_id, run_id, start_time)
+
                 logger.info(
-                    "Run %s finished: %d steps, %d passed",
-                    run_id,
-                    len(test_results),
-                    sum(1 for r in test_results if r.get("status") == "passed"),
+                    "Supervisor: run %s completed with status %s",
+                    run_id, result.get("status"),
                 )
 
             except Exception as e:
-                test_results.append({
-                    "step_number": 0,
+                result = {
+                    "run_id": run_id,
+                    "test_definition_id": test_definition_id,
                     "status": "error",
-                    "error": str(e)
-                })
+                    "error": str(e),
+                    "test_cases": [],
+                }
 
             finally:
                 await browser.close()
@@ -434,28 +462,7 @@ async def _execute_test_async(
             "run_id": run_id
         }
 
-    end_time = datetime.now(timezone.utc).timestamp() * 1000  # milliseconds
-    total_duration = end_time - start_time
-
-    # Calculate summary
-    passed = sum(1 for r in test_results if r["status"] == "passed")
-    failed = sum(1 for r in test_results if r["status"] == "failed")
-    total = len(test_results)
-
-    result = {
-        "run_id": run_id,
-        "test_definition_id": test_definition_id,
-        "start_time": start_time,
-        "end_time": end_time,
-        "total_duration": total_duration,
-        "total_tests": total,
-        "passed": passed,
-        "failed": failed,
-        "skipped": 0,
-        "status": "passed" if failed == 0 else "failed",
-        "test_cases": test_results
-    }
-
+    # Save results to database
     try:
         async def _save(db: AsyncSession) -> None:
             svc = ExecutionService(db)
@@ -469,220 +476,32 @@ async def _execute_test_async(
     return result
 
 
-async def _execute_all_steps_with_ai(
-    page: Page,
-    test_steps: List[Dict[str, Any]],
-    environment: Dict[str, Any],
-    run_id: str
-) -> List[Dict[str, Any]]:
-    """
-    Execute ALL test steps in a single Claude Code session (matches CLI architecture).
-
-    This is the NEW method that replaces the old per-step approach.
-
-    Enhanced with screenshot capture, detailed logging, and verification.
-
-    Args:
-        page: Playwright page
-        test_steps: List of test steps with natural language descriptions
-        environment: Environment variables
-        run_id: Test run ID for screenshot organization
-
-    Returns:
-        List of step execution results with screenshots and logs
-    """
-    step_start = datetime.now(timezone.utc).timestamp() * 1000
-
-    if not test_steps:
-        return []
-
-    execution_logs = []
-
-    try:
-        # Log test execution start
-        execution_logs.append(create_execution_log(
-            0, "Test Batch", "start_execution",
-            f"Starting {len(test_steps)} test steps", "info"
-        ))
-
-        # Use Claude AI to interpret and execute ALL steps in a single session
-        context = dict(environment) if isinstance(environment, dict) else {"environment": environment}
-
-        results = await interpret_and_execute_batch(
-            page,
-            test_steps,
-            context
-        )
-
-        # Enhance each result with screenshots and verification
-        step_end = datetime.utcnow().timestamp() * 1000
-        total_duration = step_end - step_start
-        duration_per_step = total_duration // len(results) if results else total_duration
-
-        for idx, result in enumerate(results):
-            step_number = result.get("step_number", idx + 1)
-            step_status = result.get("status", "failed")
-            step_description = result.get("description", "")
-            step_details = result.get("details", "")
-
-            # Add duration if not present
-            if "duration" not in result:
-                result["duration"] = duration_per_step
-
-            # Capture screenshot for this step
-            try:
-                screenshot_path = await capture_step_screenshot(
-                    page,
-                    run_id,
-                    step_number,
-                    step_description,
-                    step_status
-                )
-                result["screenshot_path"] = screenshot_path
-            except Exception as screenshot_error:
-                logger.warning("Screenshot capture failed for step %s: %s", step_number, screenshot_error)
-                result["screenshot_path"] = ""
-
-            # Verify step result and add assertions
-            try:
-                verification = await verify_step_result(
-                    page,
-                    step_description,
-                    step_details
-                )
-                result["verification"] = verification
-                result["assertions_passed"] = verification["verification_passed"]
-
-                # Add verification to execution log
-                execution_logs.append(create_execution_log(
-                    step_number,
-                    step_description,
-                    "verify_result",
-                    f"Verification: {verification['verification_passed']}, "
-                    f"Assertions: {len(verification['assertions'])}",
-                    "success" if verification["verification_passed"] else "warning"
-                ))
-            except Exception as verify_error:
-                logger.warning("Verification failed for step %s: %s", step_number, verify_error)
-                result["verification"] = None
-                result["assertions_passed"] = None
-
-            # Add detailed execution log
-            execution_logs.append(create_execution_log(
-                step_number,
-                step_description,
-                "step_completed",
-                f"Status: {step_status}, Details: {step_details[:200]}",
-                "success" if step_status == "passed" else "error"
-            ))
-
-        # Add execution logs to the last result for storage
-        if results:
-            results[-1]["execution_logs"] = execution_logs
-
-        return results
-
-    except Exception as e:
-        # Log the exception
-        execution_logs.append(create_execution_log(
-            0, "Test Batch", "execution_failed",
-            f"Batch execution failed: {str(e)}", "error"
-        ))
-
-        # On exception, mark all steps as failed with error screenshots
-        step_end = datetime.utcnow().timestamp() * 1000
-
-        failed_results = []
-        for idx, step in enumerate(test_steps):
-            step_number = step.get("step_number", idx + 1)
-            step_description = step.get("description", "")
-
-            # Try to capture error screenshot
-            error_screenshot = ""
-            try:
-                error_screenshot = await capture_step_screenshot(
-                    page,
-                    run_id,
-                    step_number,
-                    step_description,
-                    "failed"
-                )
-            except Exception as screenshot_err:
-                logger.warning("Failed to capture error screenshot for step %d: %s", step_number, screenshot_err)
-
-            failed_results.append({
-                "step_number": step_number,
-                "description": step_description,
-                "status": "failed",
-                "error": f"Batch execution failed: {str(e)}",
-                "duration": step_end - step_start,
-                "screenshot_path": error_screenshot,
-                "verification": None,
-                "assertions_passed": False
-            })
-
-        # Add execution logs even for failed results
-        if failed_results:
-            failed_results[-1]["execution_logs"] = execution_logs
-
-        return failed_results
-
-
-async def _execute_step_with_ai(
-    page: Page,
-    step: Dict[str, Any],
-    environment: Dict[str, Any]
+def _build_result_from_state(
+    state: Dict[str, Any],
+    test_definition_id: int,
+    run_id: str,
+    start_time: float,
 ) -> Dict[str, Any]:
-    """
-    Execute a single test step using AI interpretation of natural language.
+    """Build a result dict from supervisor state when result_builder didn't run."""
+    step_results = state.get("step_results") or []
+    now_ms = datetime.now(timezone.utc).timestamp() * 1000
 
-    DEPRECATED: Use _execute_all_steps_with_ai instead for better token efficiency.
-    This method is kept for backward compatibility.
+    passed = sum(1 for r in step_results if r.get("status") == "passed")
+    failed = sum(1 for r in step_results if r.get("status") == "failed")
 
-    Args:
-        page: Playwright page
-        step: Test step dict with natural language description
-        environment: Environment variables
+    return {
+        "run_id": run_id,
+        "test_definition_id": test_definition_id,
+        "start_time": start_time,
+        "end_time": now_ms,
+        "total_duration": now_ms - start_time,
+        "total_tests": len(step_results),
+        "passed": passed,
+        "failed": failed,
+        "skipped": 0,
+        "status": "passed" if failed == 0 else "failed",
+        "test_cases": step_results,
+        "review": state.get("review"),
+    }
 
-    Returns:
-        dict: Step execution result
-    """
-    step_start = datetime.now(timezone.utc).timestamp() * 1000
 
-    description = step.get("description", "").strip()
-
-    if not description:
-        return {
-            "step_number": step.get("step_number", 0),
-            "description": "Empty step description",
-            "status": "failed",
-            "error": "Empty step description",
-            "duration": datetime.utcnow().timestamp() * 1000 - step_start
-        }
-
-    try:
-        # Use Claude AI to interpret and execute the natural language step
-        context = {
-            "step_number": step.get("step_number", 0),
-            "environment": environment
-        }
-
-        result = await get_claude_interpreter().interpret_and_execute(page, description, context)
-
-        return {
-            "step_number": step.get("step_number", 0),
-            "description": description,
-            "status": "passed" if result.get("success") else "failed",
-            "details": result.get("details", description),
-            "error": result.get("error"),
-            "duration": datetime.utcnow().timestamp() * 1000 - step_start
-        }
-
-    except Exception as e:
-        return {
-            "step_number": step.get("step_number", 0),
-            "description": description,
-            "status": "failed",
-            "error": str(e),
-            "duration": datetime.utcnow().timestamp() * 1000 - step_start
-        }
