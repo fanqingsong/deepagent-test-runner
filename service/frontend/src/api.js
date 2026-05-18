@@ -21,7 +21,7 @@ const getAuthHeaders = () => {
   };
 };
 
-async function parseApiError(response, fallback) {
+export async function parseApiError(response, fallback) {
   const status = response?.status;
   const statusText = response?.statusText || '';
   let bodyText = '';
