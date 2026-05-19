@@ -50,7 +50,7 @@ services:
       # Mount screenshots directory for static file serving
       - ./screenshots:/app/screenshots:ro
     ports:
-      - "8080:80"
+      - "8085:80"
     depends_on:
       - backend
       - frontend
@@ -232,7 +232,7 @@ services:
     environment:
       NODE_ENV: development
     ports:
-      - "5173:5173"  # Vite dev server port for development
+      - "5174:5173"  # Vite dev server port for development (changed from 5173 to avoid conflict)
     volumes:
       # Mount frontend source for hot reload in development
       - ./frontend/src:/app/frontend
@@ -266,7 +266,7 @@ services:
     image: casbin/casdoor:latest
     container_name: cc-test-casdoor
     ports:
-      - "8002:8000"
+      - "8006:8000"
     volumes:
       - ./casdoor/conf/app.conf:/conf/app.conf:ro
     depends_on:
@@ -310,7 +310,7 @@ services:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_extensions:/opt/sonarqube/extensions
     ports:
-      - "9000:9000"
+      - "9002:9000"
     networks:
       - test-network
     restart: unless-stopped
@@ -327,7 +327,7 @@ services:
     container_name: cc-test-owasp-zap
     command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=true
     ports:
-      - "8090:8080"
+      - "8091:8080"
     volumes:
       - zap_data:/zap/wrk
       - ../infrastructure/ci/zap:/zap/scripts:ro
