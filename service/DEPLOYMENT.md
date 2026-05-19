@@ -1,6 +1,6 @@
-# Deployment Guide - Claude Code Tests Microservices
+# Deployment Guide - AI Tests Microservices
 
-This guide covers deploying the Claude Code Tests microservices architecture to production.
+This guide covers deploying the AI Tests microservices architecture to production.
 
 ## Table of Contents
 

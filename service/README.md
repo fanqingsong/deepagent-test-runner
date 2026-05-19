@@ -1,6 +1,6 @@
-# Claude Code Tests - Microservices Architecture
+# AI Tests - Microservices Architecture
 
-This directory contains the Docker Compose configuration for running Claude Code Tests as microservices.
+This directory contains the Docker Compose configuration for running AI Tests as microservices.
 
 ## Architecture Overview
 

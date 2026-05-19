@@ -1,44 +1,44 @@
-# Claude Code Test Runner
+# AI Test Runner
 
-This project enables full E2E test automation using Claude Code.
+This project enables full E2E test automation using AI-powered natural language processing.
 
 Tests are defined using simple natural language steps.
-Claude Code performs these steps sequentially in a browser through the Playwright MCP,
+The AI agent performs these steps sequentially in a browser through Playwright automation,
 making decisions about element selection, timing,
 and validation based on the test descriptions.
 
-## Why Claude Code as a test runner?
+## Why AI as a test runner?
 
 Professional software engineers have been successfully writing automated tests for decades.
-With the introduction of tools like Claude Code, traditional tests can be written even faster.
-Why would anyone use Claude Code as a test runner?
+With the introduction of AI-powered tools, traditional tests can be written even faster.
+Why would anyone use an AI test runner?
 
 First, this test runner was not made to replace traditional unit, integration, or manual testing strategies.
 It is meant to bolster confidence in the final end-to-end experience of your web application.
-Ideally, the Claude Code Test Runner sits somewhere between traditional automated E2E tests
+Ideally, the AI Test Runner sits somewhere between traditional automated E2E tests
 and manual E2E sanity tests.
 
-### Claude Code can execute tests like a real human
+### AI can execute tests like a real human
 
-Imagine performing manual E2E tests with human-like intuition dozens or hundreds of times each day. That's what Claude Code Test Runner can deliver.
+Imagine performing manual E2E tests with human-like intuition dozens or hundreds of times each day. That's what AI Test Runner can deliver.
 
 - **Natural language test definitions**: Tests describe what to test rather than how to test it
 - **Visual understanding**: Can validate UI states based on visual appearance
-- **Highly scalable**: Run as many tests as you are willing to pay for (requires Claude Code subscriptions or incurs API costs).
+- **Highly scalable**: Run as many tests as you are willing to pay for (requires AI model API subscriptions or incurs API costs).
 
-### Claude Code can roll with the punches
+### AI can roll with the punches
 
 E2E tests typically tie together a large number of discrete systems.
 A lot can happen in the span of a single test,
 and it is difficult to write traditional E2E tests that account for every edge case. 
 
-Claude Code is highly adaptive. It is not tripped up by network blips, minor UX updates, 
+AI is highly adaptive. It is not tripped up by network blips, minor UX updates,
 or other innocuous changes and hiccups. It's the perfect test runner for environments
 where a lot can go wrong.
 
 - **Adaptive element selection**: Finds elements based on context rather than fixed selectors
-- **UI change adaptation**: When elements move or change appearance, Claude Code uses context and visual cues to locate them rather than failing on selector mismatches
-- **Resilient to transient issues**: Claude Code can retry failed actions, wait for loading states, and handle network delays without explicit instructions
+- **UI change adaptation**: When elements move or change appearance, AI uses context and visual cues to locate them rather than failing on selector mismatches
+- **Resilient to transient issues**: AI can retry failed actions, wait for loading states, and handle network delays without explicit instructions
 
 ## Usage
 
@@ -68,10 +68,10 @@ Build the CLI: `bun run build`
 |----------|-------|------|----------|---------|-------------|
 | `--testsPath` | `-t` | string | Yes | - | Path to the JSON file containing test definitions |
 | `--resultsPath` | `-o` | string | No | `./results` | Directory where test results will be saved |
-| `--verbose` | `-v` | boolean | No | `false` | Enable verbose output including all Claude Code messages |
-| `--maxTurns` | - | number | No | `30` | Maximum number of interactions Claude Code can make per test case |
-| `--screenshots` | - | boolean | No | `false` | Whether to take screenshots upon completion of each test step. Note: this can significantly increase the number of tool calls made by Claude and slow test execution. |
-| `--model` | `-m` | string | No | Claude Code default | Override the default model with one from https://docs.anthropic.com/en/docs/about-claude/models/overview. Depending on the complexity of the test case, Claude Haiku 3.5 can do a solid job. |
+| `--verbose` | `-v` | boolean | No | `false` | Enable verbose output including all AI messages |
+| `--maxTurns` | - | number | No | `30` | Maximum number of interactions AI can make per test case |
+| `--screenshots` | - | boolean | No | `false` | Whether to take screenshots upon completion of each test step. Note: this can significantly increase the number of tool calls made by AI and slow test execution. |
+| `--model` | `-m` | string | No | AI default | Override the default model with one from https://docs.anthropic.com/en/docs/about-claude/models/overview. Depending on the complexity of the test case, AI Haiku 3.5 can do a solid job. |
 
 #### Example Commands
 
@@ -107,7 +107,7 @@ bun run build
 # Run the sample tests
 ./dist/cc-test-runner --testsPath=./samples/pdca-e2e-tests.json
 
-# Run with verbose output to see all Claude Code messages
+# Run with verbose output to see all AI messages
 ./dist/cc-test-runner -t ./samples/pdca-e2e-tests.json -v
 
 # Run with custom results directory
@@ -361,7 +361,7 @@ The results directory for each test run contains the following:
     - CTRF format: `{results path}/ctrf-report.json`
     - Markdown: `{results path}/test-summary.md`
 - Per test Playwright traces: `{results path}/{test case id}/traces`
-- Per test screenshots taken by Claude Code at critical points of the test: `{results path}/{test case id}/*.png`
+- Per test screenshots taken by AI at critical points of the test: `{results path}/{test case id}/*.png`
 
 ## Architecture
 
@@ -370,7 +370,7 @@ graph LR
     subgraph Host
         subgraph CLI
             RUNNER["Test Runner"]
-            SDK["Claude Code SDK"]
+            SDK["AI SDK"]
             STATE["Test State MCP (custom)"]
         end
         MCP["Playwright MCP"]
@@ -399,15 +399,15 @@ The system has three main components:
 1. **Test Runner CLI**: Bun-based orchestrator that manages test execution.
 2. **MCP Servers**: Model Context Protocol implementations for:
    - **Playwright MCP**: Provides browser automation capabilities through standard MCP tools
-   - **Test State MCP**: A local HTTP server that maintains test execution state, tracks step completion, and enables Claude Code to query the current test plan and update progress in real-time
-3. **Claude Code Integration**: Executes test steps using the Claude Code SDK
+   - **Test State MCP**: A local HTTP server that maintains test execution state, tracks step completion, and enables AI to query the current test plan and update progress in real-time
+3. **AI Integration**: Executes test steps using the AI SDK
 
-The Test State MCP server is particularly important as it provides a feedback loop between the test runner and Claude Code. 
+The Test State MCP server is particularly important as it provides a feedback loop between the test runner and AI. 
 It exposes two main tools:
 - `get_test_plan`: Returns the current test case definition and step statuses
-- `update_test_step`: Allows Claude Code to mark steps as passed/failed with error details
+- `update_test_step`: Allows AI to mark steps as passed/failed with error details
 
-This architecture ensures Claude Code always knows what test it's executing and can report results back to the runner, 
+This architecture ensures AI always knows what test it's executing and can report results back to the runner, 
 enabling proper test orchestration and reporting.
 
 ## Observability Stack
@@ -571,18 +571,18 @@ Enable tracing by setting `JAEGER_ENABLED=true` in backend environment.
 
 Pre-configured dashboards included:
 
-1. **Claude Test Runner - Overview**
+1. **AI Test Runner - Overview**
    - Request rate (requests/second)
    - P95 latency gauge (ms)
    - Active connections
    - Error rate chart
 
-2. **Claude Test Runner - API Performance**
+2. **AI Test Runner - API Performance**
    - Latency percentiles (P50, P95, P99)
    - Request rate by HTTP method
    - Response status distribution
 
-3. **Claude Test Runner - Database Metrics**
+3. **AI Test Runner - Database Metrics**
    - Connection pool size
    - Query duration percentiles
    - Query rate

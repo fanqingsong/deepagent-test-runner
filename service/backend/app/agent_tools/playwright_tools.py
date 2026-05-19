@@ -2,8 +2,7 @@
 Playwright CLI tools for LangGraph agents.
 
 Provides LangChain @tool functions for browser automation via Playwright.
-These replace the Claude Agent SDK's Bash/Read/Write tools that were previously
-used for Playwright automation.
+These tools enable AI agents to perform browser automation for testing purposes.
 
 Each tool operates on a shared Playwright Page instance passed via a thread-local
 context, set by the executor agent before invoking the LLM.

@@ -51,7 +51,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://cc_test_user:changeme@localhost:5432/claude_code_tests",
+        default="postgresql+asyncpg://cc_test_user:changeme@localhost:5432/ai_test_runner",
         description="PostgreSQL database URL"
     )
 

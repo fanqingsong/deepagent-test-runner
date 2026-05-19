@@ -26,7 +26,7 @@ function LoginView() {
       <div className="login-view-card">
         {/* Header */}
         <div className="login-view-header">
-          <h1>Claude Code Test Runner</h1>
+          <h1>AI Test Runner</h1>
           <p>Sign in to your account</p>
         </div>
 

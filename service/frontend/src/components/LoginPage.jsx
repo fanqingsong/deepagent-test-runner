@@ -60,7 +60,7 @@ function LoginPage() {
         {!showRegister && !showPasswordReset ? (
           <>
             <div className="login-header">
-              <h1>Claude Code Test Runner</h1>
+              <h1>AI Test Runner</h1>
               <p>Sign in to your account</p>
             </div>
 
@@ -89,7 +89,7 @@ function LoginPage() {
         ) : showRegister ? (
           <>
             <div className="login-header">
-              <h1>Claude Code Test Runner</h1>
+              <h1>AI Test Runner</h1>
               <p>Create a new account</p>
             </div>
 
@@ -101,7 +101,7 @@ function LoginPage() {
         ) : (
           <>
             <div className="login-header">
-              <h1>Claude Code Test Runner</h1>
+              <h1>AI Test Runner</h1>
               <p>Reset Your Password</p>
             </div>
 

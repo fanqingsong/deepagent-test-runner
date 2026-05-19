@@ -1,8 +1,8 @@
-# Claude Code Test Runner - 架构详解
+# AI Test Runner - 架构详解
 
 ## 概述
 
-Claude Code Test Runner 是一个使用 Claude Code SDK 和 MCP (Model Context Protocol) 服务器实现的端到端自动化测试框架。它通过自然语言描述测试步骤，利用 AI 的理解能力和决策能力来执行浏览器自动化测试。
+AI Test Runner 是一个使用 AI SDK 和 MCP (Model Context Protocol) 服务器实现的端到端自动化测试框架。它通过自然语言描述测试步骤，利用 AI 的理解能力和决策能力来执行浏览器自动化测试。
 
 ## 核心架构
 
@@ -32,7 +32,7 @@ Claude Code Test Runner 是一个使用 Claude Code SDK 和 MCP (Model Context P
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  3. Claude Code 执行流程：                                       │
+│  3. AI 执行流程：                                       │
 │     a) 接收系统提示词（system prompt）                           │
 │     b) 调用 get_test_plan 获取测试步骤                           │
 │     c) 使用 Playwright MCP 工具执行每个步骤                      │
@@ -65,9 +65,9 @@ for (const testCase of inputs.testCases) {
     // 设置当前测试状态
     server.setTestState(testCase);
     
-    // 启动 Claude Code 执行测试
+    // 启动 AI 执行测试
     for await (const message of startTest(testCase)) {
-        logger.debug("Received Claude Code message", {...});
+        logger.debug("Received AI message", {...});
     }
     
     // 收集结果
@@ -80,13 +80,13 @@ reporter.saveResults(inputs.resultsPath);
 ```
 
 **关键点**:
-- 在 [index.ts:22-27](cli/src/index.ts#L22-L27) 使用异步生成器接收 Claude Code 的消息流
+- 在 [index.ts:22-27](cli/src/index.ts#L22-L27) 使用异步生成器接收 AI 的消息流
 - 在 [index.ts:29](cli/src/index.ts#L29) 通过 `server.getState()` 获取最终测试状态
 - 使用 TestReporter 生成 CTRF 和 Markdown 报告
 
 #### 2. MCP State Server ([cli/src/mcp/test-state/server.ts](cli/src/mcp/test-state/server.ts))
 
-**职责**: 维护测试执行状态，提供 Test Runner 和 Claude Code 之间的双向通信
+**职责**: 维护测试执行状态，提供 Test Runner 和 AI 之间的双向通信
 
 **技术实现**:
 - 使用 Express 创建 HTTP 服务器（端口 3001）
@@ -126,7 +126,7 @@ case "update_test_step": {
 ```
 
 **为什么需要 MCP State Server**:
-- **状态同步**: Claude Code 是无状态的，需要外部存储测试进度
+- **状态同步**: AI 是无状态的，需要外部存储测试进度
 - **双向通信**: Test Runner 需要实时获取测试结果
 - **工具隔离**: 通过 MCP 协议隔离状态管理逻辑
 
@@ -135,7 +135,7 @@ case "update_test_step": {
 #### 核心问题：为什么需要专门的状态服务器？
 
 **问题背景**：
-Claude Code 的设计理念是作为**无状态**的 AI 助手，它：
+AI 的设计理念是作为**无状态**的 AI 助手，它：
 - 不维护内部状态
 - 每次调用都是独立的
 - 不能保证在同一会话中记住之前的信息
@@ -147,13 +147,13 @@ Claude Code 的设计理念是作为**无状态**的 AI 助手，它：
 Test Runner:  "执行步骤1：导航到首页"
      │
      ▼
-Claude Code:  [执行导航] "完成"
+AI:  [执行导航] "完成"
      │
      ▼
 Test Runner:  "执行步骤2：点击登录按钮"
      │
      ▼
-Claude Code:  "等等，我要执行什么步骤？当前在哪？"
+AI:  "等等，我要执行什么步骤？当前在哪？"
               (因为它是无状态的，不记得之前的上下文)
 ```
 
@@ -167,7 +167,7 @@ Test Runner:  "执行步骤1：导航到首页"
      │                              │
      │                              │
      ▼                              │
-Claude Code:  [调用 get_test_plan]  │
+AI:  [调用 get_test_plan]  │
      │<─────────────────────────────┤
      │  返回: {                     │
      │    steps: [                  │
@@ -185,7 +185,7 @@ Claude Code:  [调用 get_test_plan]  │
 Test Runner:  "继续执行步骤2"        │
      │                              │
      ▼                              │
-Claude Code:  [调用 get_test_plan]  │
+AI:  [调用 get_test_plan]  │
      │<─────────────────────────────┤
      │  返回: {                     │
      │    steps: [                  │
@@ -213,7 +213,7 @@ public getState(): TestCase | null {
 ```
 
 **为什么重要**：
-- 避免状态不一致（Test Runner 和 Claude Code 看到不同的状态）
+- 避免状态不一致（Test Runner 和 AI 看到不同的状态）
 - 简化状态管理（只有一个地方存储状态）
 - 易于调试和监控
 
@@ -228,10 +228,10 @@ server.setTestState(testCase);  // 设置初始状态
 const testState = server.getState();  // 获取最终状态
 ```
 
-**Claude Code → State Server**：
+**AI → State Server**：
 ```typescript
 // 通过 MCP 工具调用
-// Claude Code 调用 get_test_plan
+// AI 调用 get_test_plan
 case "get_test_plan":
     return {
         content: [{
@@ -240,7 +240,7 @@ case "get_test_plan":
         }],
     };
 
-// Claude Code 调用 update_test_step
+// AI 调用 update_test_step
 case "update_test_step": {
     const { stepId, status, error } = updateTestPlanToolInput.parse(args);
     const step = this.testState?.steps.find((s) => s.id === stepId);
@@ -309,7 +309,7 @@ this.mcpServer.connect(this.transport);
 
 **请求流程**：
 ```
-Claude Code                MCP State Server              Express
+AI                MCP State Server              Express
      │                            │                          │
      │ 1. HTTP POST               │                          │
      ├───────────────────────────>│                          │
@@ -397,9 +397,9 @@ await server.start();
 server.setTestState(testCase);
 // → 测试用例加载到内存
 
-// 3. 测试执行中 (Claude Code 通过 MCP 工具)
-// → Claude Code 调用 get_test_plan 获取步骤
-// → Claude Code 调用 update_test_step 更新状态
+// 3. 测试执行中 (AI 通过 MCP 工具)
+// → AI 调用 get_test_plan 获取步骤
+// → AI 调用 update_test_step 更新状态
 // → 实时同步测试进度
 
 // 4. 测试结束后 ([index.ts:29](cli/src/index.ts#L29))
@@ -413,7 +413,7 @@ server.stop();
 
 #### 如果没有 MCP State Server 会怎样？
 
-**方案 A：Claude Code 内部维护状态**
+**方案 A：AI 内部维护状态**
 ```typescript
 // ❌ 不可行的方案
 const systemPrompt = `
@@ -422,7 +422,7 @@ Mark each step as passed/failed as you complete them.
 `;
 
 // 问题：
-// 1. Claude Code 可能忘记状态
+// 1. AI 可能忘记状态
 // 2. Test Runner 无法知道实时进度
 // 3. 无法生成准确的测试报告
 // 4. 调试困难（无法查看内部状态）
@@ -433,7 +433,7 @@ Mark each step as passed/failed as you complete them.
 // ⚠️ 可行但不优雅
 fs.writeFileSync('test-state.json', JSON.stringify(testCase));
 
-// Claude Code 读取文件
+// AI 读取文件
 const testState = JSON.parse(fs.readFileSync('test-state.json'));
 
 // 问题：
@@ -474,7 +474,7 @@ app.post('/api/test-state/:stepId', (req, res) => {
 - **工具发现**：MCP 支持自动工具发现和文档生成
 - **类型安全**：强类型输入验证
 - **标准化**：符合 MCP 生态系统
-- **集成性**：与 Claude Code 无缝集成
+- **集成性**：与 AI 无缝集成
 
 **3. 为什么存储在内存而不是数据库？**
 - **简单性**：当前用例不需要持久化
@@ -547,9 +547,9 @@ class MCPStateServer {
 
 MCP State Server 是整个测试框架的**状态管理中心**，它：
 
-1. **解决核心问题**：为无状态的 Claude Code 提供状态存储
+1. **解决核心问题**：为无状态的 AI 提供状态存储
 2. **标准化接口**：通过 MCP 协议提供统一的工具接口
-3. **双向通信**：支持 Test Runner 和 Claude Code 之间的状态同步
+3. **双向通信**：支持 Test Runner 和 AI 之间的状态同步
 4. **简单高效**：内存存储提供快速访问
 5. **易于扩展**：可以升级到持久化存储或支持并发
 
@@ -557,15 +557,15 @@ MCP State Server 是整个测试框架的**状态管理中心**，它：
 - 追踪测试进度
 - 生成准确的测试报告
 - 实时监控测试状态
-- 在 Claude Code 无状态的情况下维护测试上下文
+- 在 AI 无状态的情况下维护测试上下文
 
-它是连接 Test Runner 和 Claude Code 的**关键桥梁**，使整个测试架构成为可能。
+它是连接 Test Runner 和 AI 的**关键桥梁**，使整个测试架构成为可能。
 
-#### 3. Claude Code 集成 ([cli/src/prompts/start-test.ts](cli/src/prompts/start-test.ts))
+#### 3. AI 集成 ([cli/src/prompts/start-test.ts](cli/src/prompts/start-test.ts))
 
-**职责**: 启动和管理 Claude Code 进程，配置 MCP 服务器
+**职责**: 启动和管理 AI 进程，配置 MCP 服务器
 
-#### Claude Code SDK 工作原理
+#### AI SDK 工作原理
 
 **架构层次**：
 ```
@@ -582,7 +582,7 @@ MCP State Server 是整个测试框架的**状态管理中心**，它：
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Claude Code CLI (/home/fqs/.nvm/.../bin/claude)     │
+│         AI CLI (/home/fqs/.nvm/.../bin/claude)     │
 │         独立的进程，处理 MCP 服务器、工具调用等                │
 └────────────────┬────────────────────────────────────────────┘
                  │
@@ -594,14 +594,14 @@ MCP State Server 是整个测试框架的**状态管理中心**，它：
 ```
 
 **核心概念**：
-- **SDK 是对 Claude Code CLI 的程序化封装**
-- `query()` 函数启动独立的 Claude Code 进程
-- 通过进程间通信 (IPC) 与 Claude Code 交互
+- **SDK 是对 AI CLI 的程序化封装**
+- `query()` 函数启动独立的 AI 进程
+- 通过进程间通信 (IPC) 与 AI 交互
 - 返回异步生成器，流式返回消息
 
 **消息流**：
 ```
-Claude Code 进程                    SDK (异步生成器)              你的代码
+AI 进程                    SDK (异步生成器)              你的代码
      │                                  │                          │
      │ 1. 启动进程                       │                          │
      ├─────────────────────────────────>│                          │
@@ -633,19 +633,19 @@ Claude Code 进程                    SDK (异步生成器)              你的�
 |------|------|------|
 | **你的代码** | Test Runner | 业务逻辑、测试编排 |
 | **SDK** | `query()` 函数 | 进程管理、消息流封装、配置传递 |
-| **CLI** | Claude Code | MCP 服务器管理、工具调用、API 通信 |
+| **CLI** | AI | MCP 服务器管理、工具调用、API 通信 |
 | **API** | Anthropic API | 模型推理、响应生成 |
 
 **为什么需要这种架构？**
 
-1. **进程隔离**：Claude Code 运行在独立进程，崩溃不影响主程序
-2. **资源复用**：多个 `query()` 调用可以共享同一个 Claude Code 进程
+1. **进程隔离**：AI 运行在独立进程，崩溃不影响主程序
+2. **资源复用**：多个 `query()` 调用可以共享同一个 AI 进程
 3. **简化集成**：开发者不需要直接处理 MCP 协议、进程通信等细节
 4. **流式响应**：异步生成器提供实时的消息流
 
 **启动流程**:
 
-1. **查找 Claude Code 可执行文件** ([start-test.ts:14](cli/src/prompts/start-test.ts#L14)):
+1. **查找 AI 可执行文件** ([start-test.ts:14](cli/src/prompts/start-test.ts#L14)):
 ```typescript
 const claudePath = which("claude");
 if (!claudePath) {
@@ -653,7 +653,7 @@ if (!claudePath) {
 }
 ```
 
-2. **配置 Claude Code SDK** ([start-test.ts:18-44](cli/src/prompts/start-test.ts#L18-L44)):
+2. **配置 AI SDK** ([start-test.ts:18-44](cli/src/prompts/start-test.ts#L18-L44)):
 ```typescript
 return query({
     prompt: "Query the test plan from mcp__testState__get_test_plan MCP tool to get started.",
@@ -697,9 +697,9 @@ return query({
 ```
 
 **关键配置说明**:
-- **customSystemPrompt**: 定义 Claude Code 的角色和行为规则
+- **customSystemPrompt**: 定义 AI 的角色和行为规则
 - **maxTurns**: 限制每轮测试的最大交互次数，防止无限循环
-- **pathToClaudeCodeExecutable**: 指向 Claude Code CLI 的路径
+- **pathToClaudeCodeExecutable**: 指向 AI CLI 的路径
 - **model**: 可选，覆盖默认模型（如使用 Haiku 加快速度）
 - **mcpServers**: 配置两个 MCP 服务器的连接参数
 - **allowedTools**: 白名单机制，只允许使用必要的工具
@@ -738,14 +738,14 @@ Do not deviate from the test plan. Do not ask any follow up questions.
 4. **状态管理**: 强制使用 MCP 工具管理步骤状态
 5. **安全提醒**: 防止泄露敏感信息
 
-## Claude Code SDK 深度解析
+## AI SDK 深度解析
 
 ### SDK 的本质
 
-**@anthropic-ai/claude-code SDK** 是对 Claude Code CLI 的程序化封装，它：
+**@anthropic-ai/claude-code SDK** 是对 AI CLI 的程序化封装，它：
 - 不是直接调用 Anthropic API
-- 而是启动和管理 Claude Code CLI 进程
-- 通过进程间通信 (IPC) 与 Claude Code 交互
+- 而是启动和管理 AI CLI 进程
+- 通过进程间通信 (IPC) 与 AI 交互
 - 提供异步生成器接口，流式返回消息
 
 ### 与直接使用 CLI 的区别
@@ -774,7 +774,7 @@ for await (const message of messages) {
 
 1. **类型安全**：完整的 TypeScript 类型定义
 2. **错误处理**：统一的错误处理机制
-3. **消息解析**：自动解析 Claude Code 的输出格式
+3. **消息解析**：自动解析 AI 的输出格式
 4. **配置管理**：结构化的配置选项
 5. **集成便利**：轻松嵌入到现有应用中
 6. **流式响应**：异步生成器提供实时消息流
@@ -800,7 +800,7 @@ function query(options: {
 ```typescript
 class ClaudeCodeSDK {
   async *query(options: QueryOptions): AsyncGenerator<Message> {
-    // 1. 启动 Claude Code 进程
+    // 1. 启动 AI 进程
     const process = spawn(options.pathToClaudeCodeExecutable, [
       '--mcp-servers', JSON.stringify(options.mcpServers),
       '--allowed-tools', JSON.stringify(options.allowedTools),
@@ -880,7 +880,7 @@ mcpServers: {
 #### MCP 通信流程
 
 ```
-Test Runner                    Claude Code CLI                MCP Server
+Test Runner                    AI CLI                MCP Server
      │                              │                            │
      │ 1. 启动时配置 mcpServers     │                            │
      ├────────────────────────────>│                            │
@@ -928,8 +928,8 @@ allowedTools: [
 ```
 
 **白名单机制**：
-1. SDK 将白名单传递给 Claude Code CLI
-2. Claude Code 只能使用列出的工具
+1. SDK 将白名单传递给 AI CLI
+2. AI 只能使用列出的工具
 3. 任何未列出的工具调用都会被拒绝
 4. 提高了测试的可预测性和安全性
 
@@ -944,7 +944,7 @@ allowedTools: [
 
 ```typescript
 for await (const message of startTest(testCase)) {
-    logger.debug("Received Claude Code message", {
+    logger.debug("Received AI message", {
         test_id: testCase.id,
         message: JSON.stringify(message),
     });
@@ -975,7 +975,7 @@ maxTurns: inputs.maxTurns,  // 默认 30
 ```
 
 **作用**：
-- 限制 Claude Code 的最大交互次数
+- 限制 AI 的最大交互次数
 - 防止无限循环
 - 控制成本（API 调用次数）
 - 超过后会自动终止测试
@@ -1007,7 +1007,7 @@ maxTurns: inputs.maxTurns,  // 默认 30
 ### 执行时序
 
 ```
-Test Runner                    MCP State Server              Claude Code                    Playwright MCP
+Test Runner                    MCP State Server              AI                    Playwright MCP
      │                                │                              │                               │
      │ 1. setTestState(testCase)      │                              │                               │
      ├──────────────────────────────>│                              │                               │
@@ -1057,22 +1057,22 @@ Test Runner                    MCP State Server              Claude Code        
 ### 关键创新点
 
 #### 1. **状态同步机制**
-- 通过 MCP State Server 实现 Test Runner 和 Claude Code 之间的双向通信
-- Claude Code 无需维护内部状态，所有状态通过 MCP 工具管理
+- 通过 MCP State Server 实现 Test Runner 和 AI 之间的双向通信
+- AI 无需维护内部状态，所有状态通过 MCP 工具管理
 - Test Runner 可以随时获取测试进度
 
 #### 2. **工具白名单机制**
-- `allowedTools` 配置限制 Claude Code 只能使用必要的工具
-- 防止 Claude Code 使用其他可能干扰测试的工具
+- `allowedTools` 配置限制 AI 只能使用必要的工具
+- 防止 AI 使用其他可能干扰测试的工具
 - 提高测试的可预测性和稳定性
 
 #### 3. **异步生成器模式**
-- `startTest()` 返回异步生成器，产生 Claude Code 的消息流
+- `startTest()` 返回异步生成器，产生 AI 的消息流
 - Test Runner 可以实时监控执行过程
 - 支持日志记录和调试
 
 #### 4. **自适应测试执行**
-- Claude Code 根据实际情况调整操作，而不是硬编码选择器
+- AI 根据实际情况调整操作，而不是硬编码选择器
 - 可以处理网络延迟、动态内容等变化
 - 利用 AI 的理解能力进行智能验证
 
@@ -1091,12 +1091,12 @@ Test Runner (index.ts)
   ↓
 MCP State Server (内存)
   ↓
-Claude Code (通过 get_test_plan)
+AI (通过 get_test_plan)
 ```
 
 ### 输出数据
 ```
-Claude Code 执行步骤
+AI 执行步骤
   ↓
 调用 update_test_step (更新状态)
   ↓
@@ -1135,7 +1135,7 @@ CTRF JSON + Markdown
 
 ## 调试技巧
 
-1. **启用 verbose 模式**: `--verbose` 查看所有 Claude Code 消息
+1. **启用 verbose 模式**: `--verbose` 查看所有 AI 消息
 2. **检查 Playwright traces**: 在 `{resultsPath}/{testId}/playwright` 目录
 3. **查看截图**: 启用 `--screenshots` 保存关键步骤截图
 4. **查看 MCP 通信**: 在代码中添加更多日志记录
@@ -1149,28 +1149,28 @@ CTRF JSON + Markdown
 
 ## 总结
 
-Claude Code Test Runner 通过巧妙的架构设计，将 AI 的理解能力与传统浏览器自动化结合：
+AI Test Runner 通过巧妙的架构设计，将 AI 的理解能力与传统浏览器自动化结合：
 
 - **MCP 协议**: 实现了组件间的松耦合通信
 - **状态管理**: 通过独立的 MCP Server 解决了状态同步问题
 - **工具约束**: 白名单机制确保测试的可控性
 - **异步流式**: 生成器模式实现了实时监控
-- **AI 决策**: Claude Code 自适应执行，提高测试鲁棒性
+- **AI 决策**: AI 自适应执行，提高测试鲁棒性
 
-### Claude Code SDK 的关键作用
+### AI SDK 的关键作用
 
-在整个架构中，**Claude Code SDK 扮演了桥梁的角色**：
+在整个架构中，**AI SDK 扮演了桥梁的角色**：
 
 1. **程序化接口**: 将命令行工具转换为可编程的 SDK
-2. **进程管理**: 优雅地启动和管理 Claude Code 进程
+2. **进程管理**: 优雅地启动和管理 AI 进程
 3. **通信封装**: 隐藏了进程间通信的复杂性
 4. **流式响应**: 通过异步生成器提供实时的消息流
 5. **配置管理**: 结构化的配置选项，易于使用和维护
 
 **没有 SDK 的情况下**，我们需要：
-- 手动启动 Claude Code 进程
+- 手动启动 AI 进程
 - 处理进程间的 stdin/stdout 通信
-- 解析 Claude Code 的输出格式
+- 解析 AI 的输出格式
 - 管理进程生命周期
 - 处理错误和异常情况
 
@@ -1187,7 +1187,7 @@ for await (const message of query({ prompt, options })) {
 
 - [@anthropic-ai/claude-code - npm](https://www.npmjs.com/package/@anthropic-ai/claude-code)
 - [Introducing advanced tool use on the Claude Developer Platform](https://www.anthropic.com/engineering/advanced-tool-use)
-- [Claude Code Documentation](https://code.claude.com/docs)
+- [AI Documentation](https://code.claude.com/docs)
 - [Model Context Protocol (MCP) Specification](https://modelcontextprotocol.io/)
 - [Playwright MCP Documentation](https://github.com/microsoft/playwright-mcp)
 

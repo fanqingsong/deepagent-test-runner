@@ -25,7 +25,7 @@ async def test_generate_test_case_basic(db_session: AsyncSession):
         tags=["authentication", "smoke"]
     )
 
-    # Mock Claude API response
+    # Mock AI API response
     mock_response = """```json
 {
   "name": "User Login with Valid Credentials",
@@ -70,7 +70,7 @@ async def test_generate_test_case_basic(db_session: AsyncSession):
 }
 ```"""
 
-    with patch.object(service, '_call_claude', return_value=mock_response):
+    with patch.object(service, '_call_llm', return_value=mock_response):
         result = await service.generate_test_case(request)
 
         assert result["test_definition_id"] > 0
@@ -188,7 +188,7 @@ async def test_batch_generation(db_session: AsyncSession):
         )
     ]
 
-    with patch.object(service, '_call_claude', return_value=mock_response):
+    with patch.object(service, '_call_llm', return_value=mock_response):
         result = await service.generate_batch(requests)
 
         assert result["summary"]["total"] == 2
@@ -211,8 +211,8 @@ def test_get_prompt_templates():
 
 
 @pytest.mark.asyncio
-async def test_claude_api_error_handling(db_session: AsyncSession):
-    """Test error handling when Claude API fails"""
+async def test_ai_api_error_handling(db_session: AsyncSession):
+    """Test error handling when AI API fails"""
     service = TestCaseGenerator()
 
     request = TestCaseGenerateRequest(
@@ -223,7 +223,7 @@ async def test_claude_api_error_handling(db_session: AsyncSession):
     )
 
     # Mock API error
-    with patch.object(service, '_call_claude', side_effect=Exception("API Error")):
+    with patch.object(service, '_call_llm', side_effect=Exception("API Error")):
         with pytest.raises(Exception):
             await service.generate_test_case(request, db_session)
 

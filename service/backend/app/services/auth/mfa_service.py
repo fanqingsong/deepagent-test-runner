@@ -82,7 +82,7 @@ class MFAService:
             user = user_result.scalar_one()
 
             # Generate provisioning URI for QR code
-            provisioning_uri = f"otpauth://totp/Claude Code Test Runner:{user.email}?secret={secret}&issuer=Claude+Code+Test+Runner"
+            provisioning_uri = f"otpauth://totp/AI Test Runner:{user.email}?secret={secret}&issuer=AI+Test+Runner"
 
             # Generate QR code
             qr = qrcode.QRCode(version=1, box_size=10, border=5)

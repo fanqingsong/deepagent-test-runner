@@ -54,4 +54,4 @@ class MFASecret(Base):
         # Reconstruct the secret from hash (not possible in production, would need to store plaintext temporarily)
         # In production, store plaintext during setup phase, then hash after verification
         # For now, return the URI format
-        return f"otpauth://totp/Claude Code Test Runner:{email}?secret={self.secret_hash}&issuer=Claude+Code+Test+Runner"
+        return f"otpauth://totp/AI Test Runner:{email}?secret={self.secret_hash}&issuer=AI+Test+Runner"
