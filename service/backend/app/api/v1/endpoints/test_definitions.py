@@ -6,6 +6,7 @@ CRUD operations for test case definitions.
 
 from typing import List, Optional
 
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +22,7 @@ from app.schemas import (
     TestVersionSnapshot,
 )
 from app.services.unified_auth import verify_token
+from app.services.regression_service import RegressionService
 
 router = APIRouter()
 
@@ -166,6 +168,69 @@ async def create_test_definition(
         .where(TestDefinition.id == db_test_def.id)
     )
     return result.scalar_one()
+
+
+class RegressionSaveRequest(BaseModel):
+    """Request body for saving a passed run as a regression test."""
+    run_id: str = Field(..., min_length=1, description="Run ID of the passed test run")
+    user_id: int = Field(..., description="ID of the user creating the regression test")
+
+
+@router.get("/regression", response_model=TestDefinitionListResponse)
+async def list_regression_tests(
+    current_user: dict = Depends(lambda: {}),  # Make public for development
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all regression test definitions.
+
+    Returns all test definitions where is_regression is True,
+    ordered by creation date (newest first).
+    """
+    regression_service = RegressionService()
+
+    items = await regression_service.list_regression_tests(db=db)
+
+    total = len(items)
+    return TestDefinitionListResponse(
+        items=items,
+        total=total,
+        page=1,
+        page_size=total,
+        total_pages=1,
+    )
+
+
+@router.post("/regression/save", response_model=TestDefinitionResponse, status_code=status.HTTP_201_CREATED)
+async def save_regression_test(
+    request: RegressionSaveRequest,
+    current_user: dict = Depends(lambda: {}),  # Make public for development
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Save a passed test run as a reusable regression test definition.
+
+    Creates a new test definition based on the original test, marked as a
+    regression test, with steps derived from the passing test cases.
+
+    - **run_id**: The string run identifier of the passed test run
+    - **user_id**: ID of the user creating the regression test
+    """
+    regression_service = RegressionService()
+
+    try:
+        new_definition = await regression_service.save_as_regression(
+            db=db,
+            run_id=request.run_id,
+            user_id=request.user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    return new_definition
 
 
 @router.get("/{test_id}", response_model=TestDefinitionResponse)
@@ -364,3 +429,9 @@ async def list_test_definition_versions(
     versions = result.scalars().all()
 
     return versions
+
+
+# ---------------------------------------------------------------------------
+# Regression Test Endpoints (kept for backwards compat — see top of file for
+# the actual route definitions that must come before /{test_id})
+# ---------------------------------------------------------------------------

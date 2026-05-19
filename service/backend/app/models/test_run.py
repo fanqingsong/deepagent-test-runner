@@ -55,6 +55,11 @@ class TestRun(Base):
     # Error information
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Human-in-the-loop fields
+    approved_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    failure_notified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

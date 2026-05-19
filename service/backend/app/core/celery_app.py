@@ -38,6 +38,7 @@ celery_app.conf.update(
     # Task routing
     task_routes={
         "app.tasks.test_execution.execute_test": {"queue": "test_execution"},
+        "app.tasks.test_execution.retry_test_with_modifications": {"queue": "test_execution"},
         "app.tasks.schedule_sync.*": {"queue": "schedule_sync"},
         "app.tasks.email_tasks.*": {"queue": "email_tasks"},
         "app.tasks.maintenance_tasks.*": {"queue": "maintenance"},

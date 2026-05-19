@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import authService from '../services/authService';
-import PlanReviewModal from './PlanReviewModal';
+import ConversationPanel from './ConversationPanel';
 // TEMPORARY: Directly define API functions here to bypass module caching
 
 const BASE_URL = 'http://localhost:8080';
@@ -127,10 +127,9 @@ function TestForm(props) {
   const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
-  // AI Planning state
-  const [showPlanReview, setShowPlanReview] = useState(false);
-  const [generatedPlan, setGeneratedPlan] = useState(null);
-  const [modifications, setModifications] = useState([]);
+  // AI Conversation state
+  const [showConversation, setShowConversation] = useState(false);
+  const [createdTestId, setCreatedTestId] = useState(null);
 
   // Load test data when editing
   useEffect(() => {
@@ -184,46 +183,16 @@ function TestForm(props) {
         await updateTest(editingTest.id, formData);
         alert('Test updated successfully!');
       } else {
-        // For new tests, use AI planning flow
-        // Step 1: Create test definition with goal
+        // For new tests, create test definition then open conversation panel
         const test = await createTest(formData);
 
-        // Step 2: Generate AI plan
-        setShowPlanReview(true);
-        setGeneratedPlan(null); // Will be populated by the plan generation
-
-        try {
-          const planResponse = await fetch(`${TEST_API}/autonomous-planning/generate-plan`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authService.getAccessToken()}`
-            },
-            body: JSON.stringify({
-              goal: formData.test_goal,
-              url: formData.url,
-              context: formData.environment,
-              test_definition_id: test.id
-            }),
-            mode: 'cors'
-          });
-
-          if (planResponse.ok) {
-            const plan = await planResponse.json();
-            setGeneratedPlan(plan);
-          } else {
-            throw new Error('Failed to generate AI plan');
-          }
-        } catch (planError) {
-          console.error('Plan generation failed:', planError);
-          // Continue anyway - the test was created successfully
-          alert(`Test created successfully! (AI plan generation failed: ${planError.message})`);
-          setShowPlanReview(false);
-        }
+        // Open the conversation panel for multi-turn AI planning
+        setCreatedTestId(test.id);
+        setShowConversation(true);
       }
 
-      // Reset form if creating new test
-      if (!editingTest && !showPlanReview) {
+      // Reset form if creating new test and not showing conversation
+      if (!editingTest && !showConversation) {
         setFormData({
           name: '',
           description: '',
@@ -233,9 +202,6 @@ function TestForm(props) {
           tags: [],
           test_goal: ''
         });
-      }
-
-      if (!showPlanReview) {
         onTestCreated();
       }
     } catch (error) {
@@ -251,79 +217,28 @@ function TestForm(props) {
     }
   };
 
-  const handlePlanApprove = async (modifications) => {
-    try {
-      // Approve the plan with optional modifications
-      const testId = generatedPlan.test_definition_id;
+  const handleConversationApproved = (approvedPlan) => {
+    setShowConversation(false);
+    setCreatedTestId(null);
 
-      if (modifications.length > 0) {
-        await fetch(`${TEST_API}/autonomous-planning/approve-plan/${testId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authService.getAccessToken()}`
-          },
-          body: JSON.stringify({ modifications }),
-          mode: 'cors'
-        });
-      }
+    // Reset form after successful conversation
+    setFormData({
+      name: '',
+      description: '',
+      test_id: '',
+      url: '',
+      environment: {},
+      tags: [],
+      test_goal: ''
+    });
 
-      setShowPlanReview(false);
-      setGeneratedPlan(null);
-      setModifications([]);
-
-      // Trigger execution
-      alert('Plan approved! Test will be executed with AI-powered adaptive execution.');
-      onTestCreated();
-    } catch (error) {
-      alert(`Failed to approve plan: ${error.message}`);
-    }
+    onTestCreated();
   };
 
-  const handlePlanModify = (modifications) => {
-    // Update the generated plan with user modifications
-    if (modifications.length > 0) {
-      const updatedSteps = generatedPlan.steps.map(step => {
-        const mod = modifications.find(m => m.step_number === step.step_number);
-        if (mod) {
-          return { ...step, ...mod };
-        }
-        return step;
-      });
-
-      setGeneratedPlan({
-        ...generatedPlan,
-        steps: updatedSteps
-      });
-    }
-  };
-
-  const handlePlanRegenerate = async () => {
-    try {
-      // Regenerate the plan with the same goal
-      const planResponse = await fetch(`${TEST_API}/autonomous-planning/generate-plan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authService.getAccessToken()}`
-        },
-        body: JSON.stringify({
-          goal: formData.test_goal,
-          url: formData.url,
-          context: formData.environment
-        }),
-        mode: 'cors'
-      });
-
-      if (planResponse.ok) {
-        const newPlan = await planResponse.json();
-        setGeneratedPlan(newPlan);
-      } else {
-        throw new Error('Failed to regenerate plan');
-      }
-    } catch (error) {
-      alert(`Failed to regenerate plan: ${error.message}`);
-    }
+  const handleConversationClose = () => {
+    setShowConversation(false);
+    setCreatedTestId(null);
+    onTestCreated();
   };
 
 
@@ -702,19 +617,15 @@ Example: I want to test the user login flow. Verify that users can successfully 
         </div>
       </form>
 
-      {/* AI Plan Review Modal */}
-      {showPlanReview && generatedPlan && (
-        <PlanReviewModal
+      {/* AI Conversation Panel for multi-turn test planning */}
+      {showConversation && createdTestId && (
+        <ConversationPanel
+          isOpen={showConversation}
+          onClose={handleConversationClose}
+          testDefinitionId={createdTestId}
           testGoal={formData.test_goal}
-          generatedPlan={generatedPlan}
-          onApprove={handlePlanApprove}
-          onModify={handlePlanModify}
-          onRegenerate={handlePlanRegenerate}
-          onClose={() => {
-            setShowPlanReview(false);
-            setGeneratedPlan(null);
-            setModifications([]);
-          }}
+          url={formData.url}
+          onApproved={handleConversationApproved}
         />
       )}
     </div>

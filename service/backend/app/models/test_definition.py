@@ -70,6 +70,10 @@ class TestDefinition(Base):
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Regression test fields
+    is_regression: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    regression_source_run_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
     # Relationships
     test_steps: Mapped[List["TestStep"]] = relationship(
         "TestStep",

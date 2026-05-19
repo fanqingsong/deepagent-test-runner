@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTestRunDetails } from '../api';
+import { getTestRunDetails, saveAsRegression } from '../api';
 import './TestRunDetailModal.css';
 import './Modal.css';
 
@@ -8,6 +8,7 @@ function TestRunDetailModal({ run, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [screenshotUrl, setScreenshotUrl] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadTestCases();
@@ -54,6 +55,20 @@ function TestRunDetailModal({ run, onClose }) {
     const date = new Date(parseInt(timestamp));
     if (isNaN(date.getTime())) return '-';
     return date.toLocaleTimeString('zh-CN');
+  };
+
+  const handleSaveRegression = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await saveAsRegression(run.test_definition_id, run.run_id);
+      alert('已成功保存为回归测试');
+      onClose();
+    } catch (err) {
+      alert('保存回归测试失败: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -192,6 +207,20 @@ function TestRunDetailModal({ run, onClose }) {
         </div>
 
         <div className="modal-footer">
+          {(run.status === 'passed' || run.status === 'completed') && (
+            <button
+              className="btn-primary"
+              onClick={handleSaveRegression}
+              disabled={saving}
+              style={{
+                background: 'var(--cds-button-primary)',
+                color: 'var(--cds-text-on-color)',
+                opacity: saving ? 0.7 : 1
+              }}
+            >
+              {saving ? '保存中...' : '保存为回归测试'}
+            </button>
+          )}
           <button className="btn-secondary" onClick={onClose}>
             关闭
           </button>

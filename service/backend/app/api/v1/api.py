@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     test_generation,
     sso_config,
     autonomous_planning,
+    conversations,
 )
 
 api_router = APIRouter()
@@ -100,4 +101,11 @@ api_router.include_router(
     analytics.router,
     prefix="/analytics",
     tags=["analytics"]
+)
+
+# Human-in-the-loop conversation endpoints
+api_router.include_router(
+    conversations.router,
+    prefix="/conversations",
+    tags=["conversations"]
 )

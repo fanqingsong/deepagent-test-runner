@@ -4,15 +4,20 @@ import authService from '../services/authService';
 import TestExecutionProgress from './TestExecutionProgress';
 import TestDetailModal from './TestDetailModal';
 import RunHistoryModal from './RunHistoryModal';
+import FailureRecoveryPanel from './FailureRecoveryPanel';
 import './TestList.css';
 
 function TestList({ tests, onRunTest, onEditTest }) {
   const { isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState(null);
+  const [showRegression, setShowRegression] = useState(false);
   const [runningJob, setRunningJob] = useState(null);
   const [detailTest, setDetailTest] = useState(null);
   const [historyTest, setHistoryTest] = useState(null);
+  const [showFailurePanel, setShowFailurePanel] = useState(false);
+  const [failedRunId, setFailedRunId] = useState(null);
+  const [failedTestDefId, setFailedTestDefId] = useState(null);
 
   const getAuthHeadersSafe = () => {
     const token = typeof authService?.getAccessToken === 'function' ? authService.getAccessToken() : null;
@@ -23,7 +28,8 @@ function TestList({ tests, onRunTest, onEditTest }) {
     const matchesSearch = test.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (test.description && test.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesTag = !selectedTag || (test.tags && test.tags.includes(selectedTag));
-    return matchesSearch && matchesTag;
+    const matchesRegression = !showRegression || test.is_regression === true || (test.tags && test.tags.includes('regression'));
+    return matchesSearch && matchesTag && matchesRegression;
   });
 
   const allTags = [...new Set(tests.flatMap(t => t.tags || []))];
@@ -82,6 +88,36 @@ function TestList({ tests, onRunTest, onEditTest }) {
     setRunningJob(null);
   };
 
+  // Called by TestExecutionProgress when the job reaches a terminal state
+  const handleJobComplete = (jobStatus) => {
+    if (jobStatus.status === 'failed') {
+      const runId = jobStatus.results?.test_runs?.[0]?.id
+        || jobStatus.results?.run_id
+        || jobStatus.run_id
+        || null;
+      const testDefId = runningJob?.testInfo?.id || null;
+
+      setFailedRunId(runId);
+      setFailedTestDefId(testDefId);
+      setShowFailurePanel(true);
+    }
+  };
+
+  // Called after the user clicks Retry inside FailureRecoveryPanel
+  const handleRetryFromFailure = () => {
+    setShowFailurePanel(false);
+    setFailedRunId(null);
+    setFailedTestDefId(null);
+    // Close the execution progress modal since we are re-running
+    setRunningJob(null);
+  };
+
+  const handleCloseFailurePanel = () => {
+    setShowFailurePanel(false);
+    setFailedRunId(null);
+    setFailedTestDefId(null);
+  };
+
   const handleViewDetails = (test) => {
     setDetailTest(test);
   };
@@ -117,6 +153,15 @@ function TestList({ tests, onRunTest, onEditTest }) {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+
+        <div className="list-controls-actions">
+          <button
+            className={`regression-toggle-btn ${showRegression ? 'active' : ''}`}
+            onClick={() => setShowRegression(!showRegression)}
+          >
+            {showRegression ? '显示全部测试' : '仅显示回归测试'}
+          </button>
+        </div>
 
         {allTags.length > 0 && (
           <div className="tag-filters">
@@ -240,6 +285,7 @@ function TestList({ tests, onRunTest, onEditTest }) {
           jobId={runningJob.jobId}
           testInfo={runningJob.testInfo}
           onClose={handleCloseModal}
+          onJobComplete={handleJobComplete}
         />
       )}
 
@@ -259,6 +305,15 @@ function TestList({ tests, onRunTest, onEditTest }) {
           onClose={() => setHistoryTest(null)}
         />
       )}
+
+      {/* Failure Recovery Panel */}
+      <FailureRecoveryPanel
+        isOpen={showFailurePanel}
+        onClose={handleCloseFailurePanel}
+        runId={failedRunId}
+        testDefinitionId={failedTestDefId}
+        onRetry={handleRetryFromFailure}
+      />
     </div>
   );
 }

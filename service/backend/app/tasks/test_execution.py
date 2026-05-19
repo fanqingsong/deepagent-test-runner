@@ -20,6 +20,7 @@ from app.models.test_definition import TestDefinition
 from app.models.test_step import TestStep
 from app.agents.supervisor_graph import build_pipeline_graph
 from app.services.execution_service import ExecutionService
+from app.models.conversation import ConversationThread, ConversationMessage
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +249,7 @@ async def _finalize_run_status(run_id: str, result: Dict[str, Any]) -> None:
 async def _mark_run_failed(run_id: str, error_message: Optional[str] = None) -> None:
     async def _op(db: AsyncSession) -> None:
         await ExecutionService(db).mark_run_failed(run_id, error_message=error_message)
+        await _create_failure_conversation(db, run_id, error_message)
 
     await run_with_session(_op)
 
@@ -474,6 +476,134 @@ async def _execute_test_async(
         logger.warning("Failed to save test results for run %s: %s", run_id, e, exc_info=True)
 
     return result
+
+
+async def _create_failure_conversation(db: AsyncSession, run_id: str, error_message: Optional[str]) -> None:
+    """Create a failure recovery conversation thread when a test run fails."""
+    from app.models.test_run import TestRun
+    from app.models.test_case import TestCase
+
+    # Check if already notified
+    result = await db.execute(
+        select(TestRun).where(TestRun.run_id == run_id)
+    )
+    test_run = result.scalar_one_or_none()
+    if not test_run or test_run.failure_notified:
+        return
+
+    # Load failed test cases
+    tc_result = await db.execute(
+        select(TestCase).where(
+            TestCase.run_id == test_run.id,
+            TestCase.status.in_(["failed", "error"])
+        )
+    )
+    failed_cases = tc_result.scalars().all()
+
+    failed_steps = [
+        {
+            "description": tc.description,
+            "status": tc.status,
+            "error": tc.error_message,
+            "screenshot": tc.screenshot_path,
+        }
+        for tc in failed_cases
+    ]
+
+    # Create conversation thread
+    thread = ConversationThread(
+        test_definition_id=test_run.test_definition_id,
+        thread_type="failure_recovery",
+        status="active",
+        metadata_={"run_id": run_id},
+    )
+    db.add(thread)
+    await db.flush()
+
+    # System message with failure details
+    system_msg = ConversationMessage(
+        thread_id=thread.id,
+        role="system",
+        content=f"Test run {run_id} failed.",
+        metadata_={
+            "error": error_message,
+            "failed_steps": failed_steps,
+            "run_id": run_id,
+        },
+    )
+    db.add(system_msg)
+
+    # Assistant message with recovery suggestions
+    failed_desc = ", ".join(
+        f"Step: {s['description']} (Error: {s['error']})" for s in failed_steps
+    ) if failed_steps else error_message or "Unknown error"
+
+    assistant_msg = ConversationMessage(
+        thread_id=thread.id,
+        role="assistant",
+        content=(
+            f"Test execution failed. Here's what went wrong:\n\n{failed_desc}\n\n"
+            "You can:\n"
+            "1. Ask me to regenerate the failed step(s)\n"
+            "2. Edit the test case parameters\n"
+            "3. Retry with modified parameters"
+        ),
+        metadata_={"failed_steps": failed_steps},
+    )
+    db.add(assistant_msg)
+
+    test_run.failure_notified = True
+    await db.commit()
+    logger.info("Created failure recovery conversation thread %d for run %s", thread.id, run_id)
+
+
+@celery_app.task(bind=True, name="app.tasks.test_execution.retry_test_with_modifications",
+                 autoretry_for=(Exception,), retry_backoff=True, max_retries=2)
+def retry_test_with_modifications(
+    self,
+    test_definition_id: int,
+    original_run_id: str,
+    modified_plan: Dict[str, Any],
+    environment: Dict[str, Any] = None,
+):
+    """Retry test execution with a modified plan after failure recovery."""
+    environment = environment or {}
+    return run_async(
+        lambda: _run_retry_task(test_definition_id, original_run_id, modified_plan, environment)
+    )
+
+
+async def _run_retry_task(
+    test_definition_id: int,
+    original_run_id: str,
+    modified_plan: Dict[str, Any],
+    environment: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Execute a retry with modified plan."""
+    import uuid
+    new_run_id = f"retry-{uuid.uuid4().hex[:12]}"
+
+    # Update the test definition with modified plan
+    async def _update_plan(db: AsyncSession) -> None:
+        result = await db.execute(
+            select(TestDefinition).where(TestDefinition.id == test_definition_id)
+        )
+        test_def = result.scalar_one_or_none()
+        if test_def and modified_plan:
+            test_def.ai_generated_plan = modified_plan
+            await db.commit()
+
+    await run_with_session(_update_plan)
+
+    # Execute with the new run ID
+    await _ensure_run_running(new_run_id)
+    try:
+        result = await _execute_test_async(test_definition_id, new_run_id, environment)
+        await _finalize_run_status(new_run_id, result)
+        return result
+    except Exception as exc:
+        await _mark_run_failed(new_run_id, str(exc))
+        raise
 
 
 def _build_result_from_state(

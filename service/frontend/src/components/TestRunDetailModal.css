@@ -240,6 +240,34 @@
   color: var(--cds-interactive-01);
 }
 
+.btn-primary {
+  padding: var(--cds-spacing-sm) var(--cds-spacing-lg);
+  border: none;
+  border-radius: var(--cds-border-radius);
+  cursor: pointer;
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  font-weight: var(--cds-font-weight-regular);
+  transition: all var(--cds-transition-normal);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:active {
+  opacity: 0.8;
+}
+
+.btn-primary:disabled {
+  cursor: not-allowed;
+}
+
+.btn-primary:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
 /* Responsive Design */
 
 @media (max-width: 768px) {

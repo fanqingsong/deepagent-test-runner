@@ -17,13 +17,33 @@ Frontend (React/Vite :5173) → Nginx (:8080) → Unified Backend (FastAPI :8001
                               PostgreSQL (:5432) ← Celery Worker + Beat ← Redis
 ```
 
-**Test Execution Pipeline:**
-```
-Celery Task → LangGraph Supervisor Graph → Executor Agent (create_react_agent)
-                         ↓                           ↓
-                    Planner Node              Playwright Tools → Browser
-                         ↓
-                    Reviewer Node → Result Builder
+**Test Execution Pipeline (LangGraph Supervisor Graph):**
+
+```mermaid
+flowchart TD
+    START((START)) --> route_from_start{{route_from_start}}
+
+    route_from_start -->|"mode=full_pipeline & goal"| planner_node
+    route_from_start -->|"mode=execute_only"| executor_node
+
+    planner_node[Planner Node<br/>generate_test_plan] --> route_after_planner{{route_after_planner}}
+    route_after_planner -->|"plan_error"| error_handler_node
+    route_after_planner -->|"success"| executor_node
+
+    executor_node[Executor Node<br/>interpret_and_execute_batch] --> route_after_executor{{route_after_executor}}
+    route_after_executor -->|"execution_error"| error_handler_node
+    route_after_executor -->|"mode=plan_and_execute"| result_builder_node
+    route_after_executor -->|"success"| reviewer_node
+
+    reviewer_node[Reviewer Node<br/>review_test_results] --> result_builder_node
+
+    error_handler_node[Error Handler Node<br/>retry or finalize] --> route_after_error{{route_after_error}}
+    route_after_error -->|"retry_count ≤ max<br/>& failed_phase set"| executor_node
+    route_after_error -->|"retry exhausted"| result_builder_node
+
+    result_builder_node[Result Builder Node<br/>build final_result] --> END((END))
+
+    executor_node -.->|"create_react_agent<br/>+ Playwright Tools"| Browser[Browser]
 ```
 
 **LLM Integration:**

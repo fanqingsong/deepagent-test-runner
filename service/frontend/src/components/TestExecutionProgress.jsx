@@ -2,10 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useTestJobStatus } from '../hooks/useTestJobStatus';
 import './TestExecutionProgress.css';
 
-function TestExecutionProgress({ jobId, testInfo, onClose }) {
+function TestExecutionProgress({ jobId, testInfo, onClose, onJobComplete }) {
   const { status, loading, error, isRunning, isCompleted } = useTestJobStatus(jobId);
   const [showDetails, setShowDetails] = useState(true);
   const [selectedStep, setSelectedStep] = useState(null);
+  const [notifiedComplete, setNotifiedComplete] = useState(false);
+
+  // Notify parent when job reaches a terminal state
+  useEffect(() => {
+    if (isCompleted && !notifiedComplete && status) {
+      setNotifiedComplete(true);
+      if (onJobComplete) {
+        onJobComplete(status);
+      }
+    }
+  }, [isCompleted, notifiedComplete, status, onJobComplete]);
 
   // 获取测试步骤数据
   const getTestSteps = () => {

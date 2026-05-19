@@ -39,6 +39,42 @@
   color: var(--cds-text-placeholder);
 }
 
+.list-controls-actions {
+  display: flex;
+  gap: var(--cds-spacing-md);
+  margin-bottom: var(--cds-spacing-lg);
+}
+
+.regression-toggle-btn {
+  padding: var(--cds-spacing-sm) var(--cds-spacing-lg);
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-border-radius);
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  font-weight: var(--cds-font-weight-regular);
+  cursor: pointer;
+  transition: all var(--cds-transition-normal);
+}
+
+.regression-toggle-btn:hover {
+  background: var(--cds-background-layer-01);
+  border-color: var(--cds-interactive-01);
+  color: var(--cds-interactive-01);
+}
+
+.regression-toggle-btn.active {
+  background: var(--cds-interactive-01);
+  color: var(--cds-text-on-color);
+  border-color: var(--cds-interactive-01);
+}
+
+.regression-toggle-btn:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
 .tag-filters {
   display: flex;
   gap: var(--cds-spacing-md);
