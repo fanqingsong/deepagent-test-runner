@@ -223,18 +223,27 @@ class SessionService:
         logger.info(f"Terminated {len(sessions)} sessions for user {user_id}")
 
     @staticmethod
-    def generate_tokens(user_id: int, email: str) -> Tuple[str, str]:
+    def generate_tokens(user_id: int, email: str, remember_me: bool = False) -> Tuple[str, str]:
         """
         Generate JWT access and refresh tokens.
 
         Args:
             user_id: User ID
             email: User email
+            remember_me: If True, access token lasts 7 days; otherwise 15 minutes
 
         Returns:
             Tuple of (access_token, refresh_token)
         """
-        access_token = create_access_token({"sub": str(user_id), "email": email})
+        if remember_me:
+            from datetime import timedelta
+            access_token = create_access_token(
+                {"sub": str(user_id), "email": email},
+                expires_delta=timedelta(days=7)
+            )
+        else:
+            access_token = create_access_token({"sub": str(user_id), "email": email})
+
         refresh_token = create_refresh_token({"sub": str(user_id), "email": email})
 
         return access_token, refresh_token

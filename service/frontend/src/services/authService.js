@@ -23,7 +23,7 @@ class AuthService {
    * Check if user is authenticated
    */
   isAuthenticated() {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
     return !!token;
   }
 
@@ -31,7 +31,7 @@ class AuthService {
    * Get access token
    */
   getAccessToken() {
-    return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
   }
 
   /**
@@ -51,7 +51,7 @@ class AuthService {
    * Get refresh token
    */
   getRefreshToken() {
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
+    return localStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_TOKEN_KEY);
   }
 
   /**
@@ -65,7 +65,7 @@ class AuthService {
    * Get user info
    */
   getUser() {
-    const userStr = localStorage.getItem(USER_KEY);
+    const userStr = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
     return userStr ? JSON.parse(userStr) : null;
   }
 
@@ -73,12 +73,14 @@ class AuthService {
    * Set tokens and user info
    */
   setAuthData(token, refreshToken, provider, user) {
-    localStorage.setItem(TOKEN_KEY, token);
+    const rememberMe = localStorage.getItem('remember_me') === '1' || sessionStorage.getItem('remember_me') === '1';
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem(TOKEN_KEY, token);
     if (refreshToken) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
     }
-    localStorage.setItem(PROVIDER_KEY, provider);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    storage.setItem(PROVIDER_KEY, provider);
+    storage.setItem(USER_KEY, JSON.stringify(user));
     this.notifyAuthChange();
   }
 
@@ -86,10 +88,14 @@ class AuthService {
    * Clear auth data
    */
   clearAuthData() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(PROVIDER_KEY);
-    localStorage.removeItem(USER_KEY);
+    [localStorage, sessionStorage].forEach(storage => {
+      storage.removeItem(TOKEN_KEY);
+      storage.removeItem(REFRESH_TOKEN_KEY);
+      storage.removeItem(PROVIDER_KEY);
+      storage.removeItem(USER_KEY);
+      storage.removeItem('remember_me');
+      storage.removeItem('session_token');
+    });
     this.notifyAuthChange();
   }
 
@@ -274,19 +280,30 @@ class AuthService {
    * Refresh access token
    */
   async refreshToken() {
-    const refreshToken = this.getRefreshToken();
+    const refreshTokenValue = this.getRefreshToken();
     const provider = this.getProvider();
 
-    if (!refreshToken || provider !== 'casdoor') {
-      throw new Error('Token refresh not supported');
+    if (!refreshTokenValue) {
+      throw new Error('No refresh token');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh?provider=casdoor`, {
+    let url = `${API_BASE_URL}/auth/refresh`;
+    if (provider === 'casdoor') {
+      url += '?provider=casdoor';
+    }
+
+    const headers = { 'Content-Type': 'application/json' };
+
+    // Include session token if available
+    const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+    if (sessionToken) {
+      headers['X-Session-Token'] = sessionToken;
+    }
+
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      headers,
+      body: JSON.stringify({ refresh_token: refreshTokenValue }),
     });
 
     if (!response.ok) {
@@ -296,7 +313,7 @@ class AuthService {
 
     const data = await response.json();
     const user = this.getUser();
-    this.setAuthData(data.access_token, data.refresh_token, 'casdoor', user);
+    this.setAuthData(data.access_token, data.refresh_token, provider, user);
 
     return data;
   }
@@ -323,25 +340,18 @@ class AuthService {
   async ensureValidToken() {
     const provider = this.getProvider();
 
-    // For local auth, just check if token exists and is not expired
-    if (provider === 'local') {
-      if (this.isTokenExpired()) {
-        this.clearAuthData();
-        throw new Error('Token expired');
-      }
+    if (!this.isTokenExpired()) {
       return this.getAccessToken();
     }
 
-    // For Casdoor, try to refresh
-    if (this.isTokenExpired()) {
-      try {
-        await this.refreshToken();
-      } catch (error) {
-        this.clearAuthData();
-        throw error;
-      }
+    // Token expired - try to refresh for both local and casdoor
+    try {
+      await this.refreshToken();
+      return this.getAccessToken();
+    } catch (error) {
+      this.clearAuthData();
+      throw error;
     }
-    return this.getAccessToken();
   }
 }
 

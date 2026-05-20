@@ -146,7 +146,7 @@ async def login(
         pass  # If users table doesn't exist or query fails, default to non-admin
 
     # Generate JWT tokens with the correct user ID (prefer users table ID)
-    access_token, refresh_token = SessionService.generate_tokens(token_user_id, user.email)
+    access_token, refresh_token = SessionService.generate_tokens(token_user_id, user.email, remember_me=data.remember_me)
 
     return LoginResponse(
         access_token=access_token,
@@ -203,3 +203,89 @@ async def logout(
         )
 
     return {"message": "Logged out successfully"}
+
+
+@router.post("/refresh")
+async def refresh_token(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Refresh access token using refresh token"""
+    body = await request.json()
+    refresh_token_value = body.get("refresh_token")
+
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token required"
+        )
+
+    from app.core.auth_security import verify_token
+    payload = verify_token(refresh_token_value, token_type="refresh")
+
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token"
+        )
+
+    user_id = payload.get("sub")
+    email = payload.get("email")
+
+    if not user_id or not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token payload"
+        )
+
+    # Verify user still exists and is active
+    result = await db.execute(
+        select(UserAccount).where(UserAccount.email == email)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or not verified"
+        )
+
+    # Check if session has remember_me
+    is_suspended, _ = await AdminService.check_suspension_during_login(db, user)
+    if is_suspended:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account suspended"
+        )
+
+    # Look up session to check remember_me flag
+    session_token_header = request.headers.get("X-Session-Token")
+    remember_me = False
+    if session_token_header:
+        session = await SessionService.validate_session_token(db, session_token_header)
+        if session:
+            remember_me = session.is_remember_me
+
+    # Check admin status
+    is_admin = False
+    token_user_id = user.id
+    try:
+        from app.models.user import User as UserModel
+        legacy_result = await db.execute(
+            select(UserModel).where(UserModel.email == user.email)
+        )
+        legacy_user = legacy_result.scalar_one_or_none()
+        if legacy_user:
+            is_admin = legacy_user.is_admin
+            token_user_id = legacy_user.id
+    except Exception:
+        pass
+
+    access_token, new_refresh_token = SessionService.generate_tokens(
+        token_user_id, user.email, remember_me=remember_me
+    )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": new_refresh_token,
+    }

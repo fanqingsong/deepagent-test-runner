@@ -19,8 +19,8 @@ class AuthClient {
     // Add request interceptor to include auth tokens
     this.client.interceptors.request.use(
       (config) => {
-        const accessToken = localStorage.getItem('access_token');
-        const sessionToken = localStorage.getItem('session_token');
+        const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
 
         if (accessToken) {
           config.headers.Authorization = `Bearer ${accessToken}`;
@@ -47,12 +47,17 @@ class AuthClient {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = localStorage.getItem('refresh_token');
+            const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
             if (refreshToken) {
               const response = await this.refreshAccessToken(refreshToken);
 
-              // Store new tokens
-              localStorage.setItem('access_token', response.access_token);
+              // Store new tokens in the appropriate storage
+              const rememberMe = localStorage.getItem('remember_me') === '1';
+              const storage = rememberMe ? localStorage : sessionStorage;
+              storage.setItem('access_token', response.access_token);
+              if (response.refresh_token) {
+                storage.setItem('refresh_token', response.refresh_token);
+              }
 
               // Retry original request with new token
               originalRequest.headers.Authorization = `Bearer ${response.access_token}`;
@@ -106,22 +111,26 @@ class AuthClient {
       // Don't store tokens yet - MFA verification required first
       // Store temporary email for MFA flow
       sessionStorage.setItem('pending_login_email', email);
+      sessionStorage.setItem('pending_remember_me', rememberMe ? '1' : '');
       return { require_mfa: true, email };
     }
 
     // Store tokens and session for successful login (200 OK)
     const { access_token, refresh_token, session_token, user } = response.data;
 
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
-    localStorage.setItem('session_token', session_token);
-    localStorage.setItem('user_info', JSON.stringify(user));
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem('access_token', access_token);
+    storage.setItem('refresh_token', refresh_token);
+    storage.setItem('session_token', session_token);
+    storage.setItem('user_info', JSON.stringify(user));
+    storage.setItem('remember_me', rememberMe ? '1' : '0');
 
     // Notify authService about authentication state change
     authService.notifyAuthChange();
 
     // Clear pending login data
     sessionStorage.removeItem('pending_login_email');
+    sessionStorage.removeItem('pending_remember_me');
 
     return response.data;
   }
@@ -176,24 +185,29 @@ class AuthClient {
    * Clear all auth tokens from storage
    */
   clearTokens() {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('session_token');
-    localStorage.removeItem('user');
+    // Clear from both storages to handle all cases
+    [localStorage, sessionStorage].forEach(storage => {
+      storage.removeItem('access_token');
+      storage.removeItem('refresh_token');
+      storage.removeItem('session_token');
+      storage.removeItem('user');
+      storage.removeItem('user_info');
+      storage.removeItem('remember_me');
+    });
   }
 
   /**
    * Check if user is authenticated
    */
   isAuthenticated() {
-    return !!localStorage.getItem('access_token');
+    return !!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
   }
 
   /**
    * Get current user from storage
    */
   getCurrentUser() {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('user_info') || sessionStorage.getItem('user_info');
     return userStr ? JSON.parse(userStr) : null;
   }
 
@@ -253,16 +267,20 @@ class AuthClient {
     // Store tokens and session after successful MFA verification
     const { access_token, refresh_token, session_token, user } = response.data;
 
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
-    localStorage.setItem('session_token', session_token);
-    localStorage.setItem('user_info', JSON.stringify(user));
+    const rememberMe = sessionStorage.getItem('pending_remember_me') === '1';
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem('access_token', access_token);
+    storage.setItem('refresh_token', refresh_token);
+    storage.setItem('session_token', session_token);
+    storage.setItem('user_info', JSON.stringify(user));
+    storage.setItem('remember_me', rememberMe ? '1' : '0');
 
     // Notify authService about authentication state change
     authService.notifyAuthChange();
 
     // Clear pending login data
     sessionStorage.removeItem('pending_login_email');
+    sessionStorage.removeItem('pending_remember_me');
 
     return response.data;
   }
