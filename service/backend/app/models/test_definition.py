@@ -74,6 +74,12 @@ class TestDefinition(Base):
     is_regression: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     regression_source_run_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
+    # App workspace fields
+    is_draft: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    source_app_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("apps.id"), nullable=True,
+    )
+
     # Relationships
     test_steps: Mapped[List["TestStep"]] = relationship(
         "TestStep",

@@ -98,20 +98,20 @@ function ConversationPanel({
         const msgData = await msgRes.json();
         if (cancelled) return;
 
-        // Add the assistant response
+        // Backend returns SendMessageResponse: { assistant_message, updated_plan }
         const assistantContent =
-          msgData.content || msgData.message || msgData.response || '';
+          msgData.assistant_message?.content || '';
 
         setMessages([
           {
             role: 'assistant',
             content: assistantContent,
-            metadata: msgData.metadata || msgData.plan || null,
+            metadata: msgData.assistant_message?.metadata || null,
           },
         ]);
 
-        if (msgData.plan || msgData.metadata?.plan) {
-          setCurrentPlan(msgData.plan || msgData.metadata.plan);
+        if (msgData.updated_plan) {
+          setCurrentPlan(msgData.updated_plan);
         }
       } catch (err) {
         if (!cancelled) {
@@ -163,19 +163,19 @@ function ConversationPanel({
         const data = await res.json();
 
         const assistantContent =
-          data.content || data.message || data.response || '';
+          data.assistant_message?.content || '';
 
         setMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
             content: assistantContent,
-            metadata: data.metadata || data.plan || null,
+            metadata: data.assistant_message?.metadata || null,
           },
         ]);
 
-        if (data.plan || data.metadata?.plan) {
-          setCurrentPlan(data.plan || data.metadata.plan);
+        if (data.updated_plan) {
+          setCurrentPlan(data.updated_plan);
         }
       } catch (err) {
         console.error('Send message error:', err);
@@ -257,19 +257,19 @@ function ConversationPanel({
       const data = await res.json();
 
       const assistantContent =
-        data.content || data.message || data.response || '';
+        data.assistant_message?.content || '';
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content: assistantContent,
-          metadata: data.metadata || data.plan || null,
+          metadata: data.assistant_message?.metadata || null,
         },
       ]);
 
-      if (data.plan || data.metadata?.plan) {
-        setCurrentPlan(data.plan || data.metadata.plan);
+      if (data.updated_plan) {
+        setCurrentPlan(data.updated_plan);
       }
 
       setInputText('');

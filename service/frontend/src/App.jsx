@@ -15,6 +15,8 @@ import UserList from './components/UserList';
 import UserForm from './components/UserForm';
 import SSOManagement from './components/SSOManagement';
 import Modal from './components/Modal';
+import AppGallery from './components/AppGallery';
+import AppWorkspace from './components/AppWorkspace';
 import authService from './services/authService';
 
 function AppContent() {
@@ -44,7 +46,9 @@ function AppContent() {
   // 从hash初始化视图
   useEffect(() => {
     const hash = window.location.hash.slice(1); // 去掉#号
-    if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'sso') {
+    if (hash.startsWith('app/')) {
+      setCurrentView(hash);
+    } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'sso' || hash === 'apps') {
       setCurrentView(hash);
     }
   }, []);
@@ -53,7 +57,9 @@ function AppContent() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'sso') {
+      if (hash.startsWith('app/')) {
+        setCurrentView(hash);
+      } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'sso' || hash === 'apps') {
         setCurrentView(hash);
       }
     };
@@ -210,6 +216,12 @@ function AppContent() {
             仪表板
           </button>
           <button
+            onClick={() => window.location.hash = 'apps'}
+            style={navButtonStyle(currentView === 'apps')}
+          >
+            APP
+          </button>
+          <button
             onClick={() => window.location.hash = 'tests'}
             style={navButtonStyle(currentView === 'tests')}
           >
@@ -261,7 +273,11 @@ function AppContent() {
 
       {/* 内容区域 */}
       <div>
-        {currentView === 'dashboard' ? (
+        {currentView.startsWith('app/') ? (
+          <AppWorkspace appId={parseInt(currentView.split('/')[1])} />
+        ) : currentView === 'apps' ? (
+          <AppGallery />
+        ) : currentView === 'dashboard' ? (
           <DashboardView />
         ) : currentView === 'sso' ? (
           <SSOManagement />

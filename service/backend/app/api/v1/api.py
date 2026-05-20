@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     sso_config,
     autonomous_planning,
     conversations,
+    apps,
 )
 
 api_router = APIRouter()
@@ -108,4 +109,11 @@ api_router.include_router(
     conversations.router,
     prefix="/conversations",
     tags=["conversations"]
+)
+
+# APP workspace endpoints
+api_router.include_router(
+    apps.router,
+    prefix="/apps",
+    tags=["apps"]
 )

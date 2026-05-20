@@ -132,21 +132,30 @@ async def send_message(
 
     updated_plan = None
     try:
-        from app.agents.planner_agent import refine_test_plan
+        from app.agents.planner_agent import generate_test_plan, refine_test_plan
 
         goal = test_def.test_goal if test_def else ""
         url = test_def.url if test_def else ""
         current_plan = test_def.ai_generated_plan if test_def and test_def.ai_generated_plan else {}
         context = test_def.environment if test_def else {}
 
-        updated_plan = await refine_test_plan(
-            goal=goal,
-            url=url,
-            current_plan=current_plan,
-            conversation_history=history,
-            user_feedback=request.content,
-            context=context,
-        )
+        # First message (no existing plan): generate from scratch.
+        # Subsequent messages: refine the existing plan.
+        if not current_plan or not current_plan.get("steps"):
+            updated_plan = await generate_test_plan(
+                goal=goal,
+                url=url,
+                context=context,
+            )
+        else:
+            updated_plan = await refine_test_plan(
+                goal=goal,
+                url=url,
+                current_plan=current_plan,
+                conversation_history=history,
+                user_feedback=request.content,
+                context=context,
+            )
     except Exception as e:
         logger.warning("Plan refinement failed for thread %d: %s", thread_id, e)
         updated_plan = test_def.ai_generated_plan if test_def else {}

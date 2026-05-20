@@ -15,6 +15,7 @@ from app.models.test_case import TestCase
 from app.models.test_suite import TestSuite
 from app.models.sso_config import SSOConfig
 from app.models.conversation import ConversationThread, ConversationMessage
+from app.models.app import App
 
 __all__ = [
     "Role",
@@ -31,4 +32,5 @@ __all__ = [
     "SSOConfig",
     "ConversationThread",
     "ConversationMessage",
+    "App",
 ]

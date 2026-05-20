@@ -506,3 +506,78 @@ export const getRegressionTests = async () => {
   }
   return response.json();
 };
+
+// APP Workspace
+export const createApp = async (data) => {
+  const response = await apiFetch(`${TEST_API}/apps/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '创建 APP 失败'));
+  return response.json();
+};
+
+export const listApps = async (params = {}) => {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.search) qs.set('search', params.search);
+  const response = await apiFetch(`${TEST_API}/apps/?${qs.toString()}`);
+  if (!response.ok) throw new Error(await parseApiError(response, '加载 APP 列表失败'));
+  return response.json();
+};
+
+export const getApp = async (appId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}`);
+  if (!response.ok) throw new Error(await parseApiError(response, '加载 APP 失败'));
+  return response.json();
+};
+
+export const updateApp = async (appId, data) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '更新 APP 失败'));
+  return response.json();
+};
+
+export const archiveApp = async (appId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}`, { method: 'DELETE' });
+  if (!response.ok && response.status !== 204) {
+    throw new Error(await parseApiError(response, '删除 APP 失败'));
+  }
+};
+
+export const runApp = async (appId, { forceRegenerate, useExistingPlan } = {}) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      force_regenerate: !!forceRegenerate,
+      use_existing_plan: !!useExistingPlan,
+    }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '运行 APP 失败'));
+  return response.json();
+};
+
+export const refineApp = async (appId, feedback) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}/refine`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedback }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '优化计划失败'));
+  return response.json();
+};
+
+export const publishApp = async (appId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '发布 APP 失败'));
+  return response.json();
+};

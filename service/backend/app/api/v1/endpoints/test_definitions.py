@@ -50,6 +50,9 @@ async def list_test_definitions(
     """
     filters = []
 
+    # Exclude draft definitions created by APP workspace
+    filters.append(TestDefinition.is_draft == False)
+
     is_admin = current_user.get("is_admin", False)
     if not is_admin and current_user.get("provider") == "local":
         filters.append(TestDefinition.created_by == int(current_user["sub"]))
