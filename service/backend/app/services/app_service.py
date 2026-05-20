@@ -226,6 +226,9 @@ class AppService:
             "results": None,
             "environment": app.test_context.get("environment", {}),
             "task_ids": [task.id],
+            "total_steps": len(plan.get("steps", [])),
+            "completed_steps": [],
+            "current_step": 0,
         })
 
         app.status = "testing"

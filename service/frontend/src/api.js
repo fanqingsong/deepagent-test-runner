@@ -563,6 +563,12 @@ export const runApp = async (appId, { forceRegenerate, useExistingPlan } = {}) =
   return response.json();
 };
 
+export const getAppRunProgress = async (appId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}/run-progress`);
+  if (!response.ok) throw new Error(await parseApiError(response, '获取进度失败'));
+  return response.json();
+};
+
 export const refineApp = async (appId, feedback) => {
   const response = await apiFetch(`${TEST_API}/apps/${appId}/refine`, {
     method: 'POST',

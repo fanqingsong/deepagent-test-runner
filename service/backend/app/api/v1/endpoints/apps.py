@@ -165,6 +165,34 @@ async def publish_app(
     return AppPublishResponse(**result)
 
 
+@router.get("/{app_id}/run-progress")
+async def get_run_progress(
+    app_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(verify_token),
+):
+    svc = AppService(db)
+    app = await svc.get_app(app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail=f"App {app_id} not found")
+
+    if not app.latest_run_id:
+        return {"status": "idle", "completed_steps": [], "current_step": 0, "total_steps": 0}
+
+    from app.core.job_store import get_job
+    job = get_job(app.latest_run_id)
+    if not job:
+        return {"status": "unknown", "completed_steps": [], "current_step": 0, "total_steps": 0}
+
+    return {
+        "status": job.get("status", "unknown"),
+        "run_id": app.latest_run_id,
+        "completed_steps": job.get("completed_steps", []),
+        "current_step": job.get("current_step", 0),
+        "total_steps": job.get("total_steps", 0),
+    }
+
+
 def _build_response(app) -> dict:
     messages = []
     if app.conversation_thread:

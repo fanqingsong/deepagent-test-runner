@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getApp, updateApp, runApp, publishApp, getJobStatus } from '../api';
+import { getApp, updateApp, runApp, publishApp, getJobStatus, getAppRunProgress } from '../api';
 import './AppWorkspace.css';
 
 const STATUS_LABELS = {
@@ -32,6 +32,11 @@ export default function AppWorkspace({ appId }) {
   const [editDraft, setEditDraft] = useState('');
   const [planEdited, setPlanEdited] = useState(false);
 
+  // Streaming progress state
+  const [progressSteps, setProgressSteps] = useState([]);
+  const [progressCurrent, setProgressCurrent] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
+
   const loadApp = useCallback(async () => {
     try {
       const data = await getApp(appId);
@@ -62,8 +67,21 @@ export default function AppWorkspace({ appId }) {
     const poll = async () => {
       try {
         const job = await getJobStatus(jobId);
+        // Fetch streaming progress
+        try {
+          const progress = await getAppRunProgress(appId);
+          if (progress.completed_steps?.length > 0) {
+            setProgressSteps(progress.completed_steps);
+            setProgressCurrent(progress.current_step || 0);
+            setProgressTotal(progress.total_steps || 0);
+          }
+        } catch { /* best-effort */ }
+
         if (job.status === 'completed' || attempts >= maxAttempts) {
           setIsRunning(false);
+          setProgressSteps([]);
+          setProgressCurrent(0);
+          setProgressTotal(0);
           if (pollingRef.current) clearInterval(pollingRef.current);
           pollingRef.current = null;
           await loadApp();
@@ -398,11 +416,60 @@ export default function AppWorkspace({ appId }) {
           )}
 
           {isRunning && (
-            <div className="app-workspace-running">
-              <div className="app-workspace-typing">
-                <span></span><span></span><span></span>
-              </div>
-              <span className="app-workspace-running-text">Running test...</span>
+            <div className="app-workspace-section">
+              <h3 className="app-workspace-section-title">
+                Running
+                <span className="app-workspace-progress-counts">
+                  {' '}{progressCurrent}/{progressTotal || '?'} steps completed
+                </span>
+              </h3>
+              {progressSteps.length > 0 ? (
+                <table className="app-workspace-steps-table">
+                  <thead>
+                    <tr>
+                      <th className="th-step">#</th>
+                      <th className="th-desc">Step</th>
+                      <th className="th-status">Status</th>
+                      <th className="th-duration">Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {progressSteps.map((step, i) => (
+                      <tr key={i} className={`row-${step.status}`}>
+                        <td className="td-step">{step.step_number || i + 1}</td>
+                        <td className="td-desc">
+                          {step.description || `Step ${i + 1}`}
+                          {step.error && <span className="step-error">{step.error}</span>}
+                        </td>
+                        <td className="td-status">
+                          <span className={`step-badge step-${step.status}`}>
+                            {step.status === 'passed' ? '✓' : step.status === 'failed' ? '✗' : '...'}
+                          </span>
+                        </td>
+                        <td className="td-duration">{step.duration ? `${step.duration}ms` : '-'}</td>
+                      </tr>
+                    ))}
+                    {progressTotal > progressSteps.length && (
+                      <tr className="row-pending">
+                        <td className="td-step">{progressSteps.length + 1}</td>
+                        <td className="td-desc" colSpan={3}>
+                          <span className="app-workspace-typing">
+                            <span></span><span></span><span></span>
+                          </span>
+                          <span className="app-workspace-running-text">executing...</span>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="app-workspace-running">
+                  <div className="app-workspace-typing">
+                    <span></span><span></span><span></span>
+                  </div>
+                  <span className="app-workspace-running-text">Generating test plan...</span>
+                </div>
+              )}
             </div>
           )}
         </div>

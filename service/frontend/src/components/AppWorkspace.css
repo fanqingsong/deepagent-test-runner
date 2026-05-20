@@ -416,3 +416,22 @@
   color: #525252;
   font-size: 13px;
 }
+
+/* Progress */
+.app-workspace-progress-counts {
+  font-weight: 400;
+  color: #525252;
+  font-size: 13px;
+}
+
+.row-pending td {
+  background: transparent;
+}
+
+.row-pending .td-desc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #525252;
+  font-style: italic;
+}
