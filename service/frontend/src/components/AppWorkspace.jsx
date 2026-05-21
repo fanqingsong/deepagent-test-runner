@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getApp, updateApp, runApp, publishApp, getJobStatus, getAppRunProgress } from '../api';
+import { getApp, updateApp, runApp, publishApp, getJobStatus, getAppRunProgress, generateAppPlan, saveAppSteps } from '../api';
 import './AppWorkspace.css';
 
 const STATUS_LABELS = {
@@ -15,8 +15,11 @@ export default function AppWorkspace({ appId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSavingSteps, setIsSavingSteps] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [stepsSaved, setStepsSaved] = useState(false);
   const pollingRef = useRef(null);
 
   // Left panel form state
@@ -50,12 +53,15 @@ export default function AppWorkspace({ appId }) {
       const steps = data.current_plan?.steps || [];
       setEditedSteps(steps.map(s => ({ ...s })));
       setPlanEdited(false);
+      setStepsSaved(false);
     } catch (e) {
-      setError(e.message);
+      if (!app) {
+        setError(e.message);
+      }
     } finally {
       setLoading(false);
     }
-  }, [appId]);
+  }, [appId, app]);
 
   useEffect(() => {
     loadApp();
@@ -67,7 +73,6 @@ export default function AppWorkspace({ appId }) {
     const poll = async () => {
       try {
         const job = await getJobStatus(jobId);
-        // Fetch streaming progress
         try {
           const progress = await getAppRunProgress(appId);
           if (progress.completed_steps?.length > 0) {
@@ -114,29 +119,64 @@ export default function AppWorkspace({ appId }) {
     }
   };
 
+  const handleGeneratePlan = async () => {
+    try {
+      setIsGenerating(true);
+      setError(null);
+      // Save config first if dirty
+      if (configDirty) {
+        await updateApp(appId, {
+          name: formName,
+          url: formUrl,
+          test_goal: formGoal,
+          description: formDesc || null,
+        });
+        setConfigDirty(false);
+      }
+      await generateAppPlan(appId);
+      await loadApp();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSaveSteps = async () => {
+    try {
+      setIsSavingSteps(true);
+      setError(null);
+      // Push edited steps to current_plan first
+      if (planEdited) {
+        await updateApp(appId, {
+          current_plan: { ...app.current_plan, steps: editedSteps },
+        });
+        setPlanEdited(false);
+      }
+      await saveAppSteps(appId);
+      setStepsSaved(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setIsSavingSteps(false);
+    }
+  };
+
   const handleRun = async (opts = {}) => {
     try {
       setIsRunning(true);
       setError(null);
+      // Sync edits before running
+      if (planEdited) {
+        await updateApp(appId, {
+          current_plan: { ...app.current_plan, steps: editedSteps },
+        });
+        setPlanEdited(false);
+      }
       const result = await runApp(appId, {
         forceRegenerate: !!opts.forceRegenerate,
         useExistingPlan: !!opts.useExistingPlan,
       });
-      pollJobStatus(result.job_id);
-    } catch (e) {
-      setError(e.message);
-      setIsRunning(false);
-    }
-  };
-
-  const handleRunWithEdits = async () => {
-    try {
-      setIsRunning(true);
-      setError(null);
-      await updateApp(appId, {
-        current_plan: { ...app.current_plan, steps: editedSteps },
-      });
-      const result = await runApp(appId, { useExistingPlan: true });
       pollJobStatus(result.job_id);
     } catch (e) {
       setError(e.message);
@@ -172,6 +212,7 @@ export default function AppWorkspace({ appId }) {
       return next;
     });
     setPlanEdited(true);
+    setStepsSaved(false);
     setEditingCell(null);
     setEditDraft('');
   };
@@ -194,6 +235,8 @@ export default function AppWorkspace({ appId }) {
     setter(e.target.value);
     setConfigDirty(true);
   };
+
+  const isBusy = isRunning || isGenerating || isSavingSteps;
 
   if (loading) return <div className="app-workspace-loading">Loading...</div>;
   if (!app) return <div className="app-workspace-error">App not found</div>;
@@ -238,7 +281,7 @@ export default function AppWorkspace({ appId }) {
                 className="app-workspace-field-input"
                 value={formName}
                 onChange={onFormChange(setFormName)}
-                disabled={isRunning}
+                disabled={isBusy}
               />
             </div>
             <div className="app-workspace-field-group">
@@ -248,7 +291,7 @@ export default function AppWorkspace({ appId }) {
                 value={formUrl}
                 onChange={onFormChange(setFormUrl)}
                 placeholder="https://example.com"
-                disabled={isRunning}
+                disabled={isBusy}
               />
             </div>
             <div className="app-workspace-field-group">
@@ -259,7 +302,7 @@ export default function AppWorkspace({ appId }) {
                 onChange={onFormChange(setFormGoal)}
                 placeholder="Describe what to test..."
                 rows={4}
-                disabled={isRunning}
+                disabled={isBusy}
               />
             </div>
             <div className="app-workspace-field-group">
@@ -270,7 +313,7 @@ export default function AppWorkspace({ appId }) {
                 onChange={onFormChange(setFormDesc)}
                 placeholder="Optional description..."
                 rows={2}
-                disabled={isRunning}
+                disabled={isBusy}
               />
             </div>
           </div>
@@ -278,16 +321,16 @@ export default function AppWorkspace({ appId }) {
             <button
               className="app-workspace-save-config-btn"
               onClick={handleSaveConfig}
-              disabled={!configDirty || savingConfig || isRunning}
+              disabled={!configDirty || savingConfig || isBusy}
             >
               {savingConfig ? 'Saving...' : 'Save Config'}
             </button>
             <button
-              className="app-workspace-run-btn"
-              onClick={() => handleRun({ forceRegenerate: true })}
-              disabled={isRunning || !formGoal.trim()}
+              className="app-workspace-generate-btn"
+              onClick={handleGeneratePlan}
+              disabled={isBusy || !formGoal.trim()}
             >
-              {isRunning ? 'Running...' : '▶ Run Test'}
+              {isGenerating ? 'Generating...' : 'Generate Plan'}
             </button>
           </div>
         </div>
@@ -298,15 +341,27 @@ export default function AppWorkspace({ appId }) {
             <div className="app-workspace-msg-error">{error}</div>
           )}
 
-          {!hasPlan && !hasResult && (
+          {!hasPlan && !hasResult && !isRunning && !isGenerating && (
             <div className="app-workspace-empty">
-              <p>Configure your APP on the left, then click <strong>Run Test</strong> to generate a test plan and execute it.</p>
+              <p>Configure your APP on the left, then click <strong>Generate Plan</strong> to create a test plan from your goal.</p>
+            </div>
+          )}
+
+          {isGenerating && !hasPlan && (
+            <div className="app-workspace-running">
+              <div className="app-workspace-typing">
+                <span></span><span></span><span></span>
+              </div>
+              <span className="app-workspace-running-text">Generating test plan...</span>
             </div>
           )}
 
           {hasPlan && (
             <div className="app-workspace-section">
-              <h3 className="app-workspace-section-title">Test Plan</h3>
+              <h3 className="app-workspace-section-title">
+                Test Plan
+                {stepsSaved && <span className="app-workspace-saved-tag">Saved</span>}
+              </h3>
               <table className="app-workspace-steps-table">
                 <thead>
                   <tr>
@@ -350,21 +405,32 @@ export default function AppWorkspace({ appId }) {
               <div className="app-workspace-plan-actions">
                 <button
                   className="app-workspace-secondary-btn"
-                  onClick={() => handleRun({ forceRegenerate: true })}
-                  disabled={isRunning}
+                  onClick={handleGeneratePlan}
+                  disabled={isBusy}
                 >
-                  Regenerate Plan
+                  Regenerate
                 </button>
-                {planEdited && (
-                  <button
-                    className="app-workspace-run-btn"
-                    onClick={handleRunWithEdits}
-                    disabled={isRunning}
-                  >
-                    {isRunning ? 'Running...' : 'Run with Edits'}
-                  </button>
-                )}
+                <button
+                  className="app-workspace-secondary-btn"
+                  onClick={handleSaveSteps}
+                  disabled={!hasPlan || isBusy}
+                >
+                  {isSavingSteps ? 'Saving...' : stepsSaved ? 'Saved' : 'Save Steps'}
+                </button>
+                <button
+                  className="app-workspace-run-btn"
+                  onClick={() => handleRun({ useExistingPlan: true })}
+                  disabled={!hasPlan || isBusy}
+                >
+                  {isRunning ? 'Running...' : 'Run Test'}
+                </button>
               </div>
+            </div>
+          )}
+
+          {app.status === 'passed' && (
+            <div className="app-workspace-section app-workspace-autosave-info">
+              Steps saved automatically after test passed.
             </div>
           )}
 
@@ -409,7 +475,7 @@ export default function AppWorkspace({ appId }) {
                 <p className="app-workspace-result-text">
                   {app.latest_result.status === 'passed'
                     ? 'All steps passed!'
-                    : 'Test failed. You can edit the plan steps and click "Run with Edits" to retry.'}
+                    : 'Test failed. Edit the plan steps and click "Run Test" to retry.'}
                 </p>
               )}
             </div>

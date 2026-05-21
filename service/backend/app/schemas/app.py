@@ -106,3 +106,16 @@ class AppPublishResponse(BaseModel):
     test_id: str
     name: str
     status: str
+
+
+class AppPlanResponse(BaseModel):
+    app_id: int
+    plan: Dict[str, Any]
+    status: str
+
+
+class AppSaveStepsResponse(BaseModel):
+    app_id: int
+    test_definition_id: int
+    steps_count: int
+    status: str

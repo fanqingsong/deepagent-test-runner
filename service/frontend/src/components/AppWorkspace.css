@@ -169,6 +169,27 @@
   gap: 8px;
 }
 
+.app-workspace-generate-btn {
+  background: #0f62fe;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  padding: 0 16px;
+  height: 36px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.app-workspace-generate-btn:hover:not(:disabled) {
+  background: #0043ce;
+}
+
+.app-workspace-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .app-workspace-run-btn {
   background: #0f62fe;
   color: #fff;
@@ -434,4 +455,26 @@
   gap: 8px;
   color: #525252;
   font-style: italic;
+}
+
+/* Saved tag */
+.app-workspace-saved-tag {
+  display: inline-block;
+  background: #198038;
+  color: #fff;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* Auto-save info */
+.app-workspace-autosave-info {
+  background: #defbe6;
+  border-color: #198038;
+  color: #198038;
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 16px;
 }

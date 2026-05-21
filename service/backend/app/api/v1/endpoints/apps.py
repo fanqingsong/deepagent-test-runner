@@ -13,16 +13,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.app import (
     AppCreate,
+    AppPlanResponse,
     AppPublishResponse,
     AppRefineRequest,
     AppResponse,
     AppRunRequest,
     AppRunResponse,
+    AppSaveStepsResponse,
     AppSummaryResponse,
     AppUpdate,
 )
 from app.services.app_service import AppService
-from app.services.unified_auth import verify_token
+from app.core.security import verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +36,6 @@ def _get_user_id(current_user: dict) -> Optional[int]:
     if sub:
         try:
             return int(sub)
-        except (ValueError, TypeError):
-            pass
-    # Casdoor may use different sub format
-    user_id = current_user.get("user_id") or current_user.get("id")
-    if user_id:
-        try:
-            return int(user_id)
         except (ValueError, TypeError):
             pass
     return None
@@ -87,8 +82,12 @@ async def get_app(
 ):
     svc = AppService(db)
 
-    # Sync run results if app is in testing state
-    app = await svc.sync_run_result(app_id)
+    # Sync run results if app is in testing state, with fallback
+    try:
+        app = await svc.sync_run_result(app_id)
+    except Exception:
+        logger.warning("sync_run_result failed for app %s, falling back to direct load", app_id, exc_info=True)
+        app = await svc.get_app(app_id)
     if not app:
         raise HTTPException(status_code=404, detail=f"App {app_id} not found")
 
@@ -119,6 +118,34 @@ async def archive_app(
     app = await svc.archive_app(app_id)
     if not app:
         raise HTTPException(status_code=404, detail=f"App {app_id} not found")
+
+
+@router.post("/{app_id}/generate-plan", response_model=AppPlanResponse)
+async def generate_plan(
+    app_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(verify_token),
+):
+    svc = AppService(db)
+    try:
+        result = await svc.generate_plan_only(app_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return AppPlanResponse(**result)
+
+
+@router.post("/{app_id}/save-steps", response_model=AppSaveStepsResponse)
+async def save_steps(
+    app_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(verify_token),
+):
+    svc = AppService(db)
+    try:
+        result = await svc.save_steps_to_db(app_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return AppSaveStepsResponse(**result)
 
 
 @router.post("/{app_id}/run", response_model=AppRunResponse)

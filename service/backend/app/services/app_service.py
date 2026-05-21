@@ -27,6 +27,49 @@ class AppService:
         self.db = db
 
     # ------------------------------------------------------------------
+    # Shared helpers
+    # ------------------------------------------------------------------
+
+    async def _ensure_draft_test_definition(self, app: App, plan: dict) -> "TestDefinition":
+        """Return the linked draft TestDefinition, creating one if needed."""
+        test_def = None
+        if app.test_definition_id:
+            stmt = select(TestDefinition).where(
+                TestDefinition.id == app.test_definition_id
+            )
+            result = await self.db.execute(stmt)
+            test_def = result.scalar_one_or_none()
+
+        if not test_def:
+            test_def = TestDefinition(
+                name=f"[APP] {app.name}",
+                description=app.description or app.test_goal,
+                test_id=f"app-{app.id}-{uuid.uuid4().hex[:8]}",
+                url=app.url,
+                test_goal=app.test_goal,
+                test_context=app.test_context,
+                ai_generated_plan=plan,
+                plan_generation_status="generated",
+                environment={},
+                tags=["app-generated"],
+                is_active=True,
+                is_draft=True,
+                source_app_id=app.id,
+                created_by=app.created_by,
+            )
+            self.db.add(test_def)
+            await self.db.flush()
+            app.test_definition_id = test_def.id
+        else:
+            test_def.ai_generated_plan = plan
+            test_def.plan_generation_status = "generated"
+            test_def.test_goal = app.test_goal
+            test_def.url = app.url
+
+        await self.db.flush()
+        return test_def
+
+    # ------------------------------------------------------------------
     # CRUD
     # ------------------------------------------------------------------
 
@@ -123,6 +166,104 @@ class AppService:
         return app
 
     # ------------------------------------------------------------------
+    # Generate plan only (no execution)
+    # ------------------------------------------------------------------
+
+    async def generate_plan_only(self, app_id: int) -> dict:
+        app = await self.get_app(app_id)
+        if not app:
+            raise ValueError(f"App {app_id} not found")
+
+        thread = app.conversation_thread
+        if not thread:
+            raise ValueError("App has no conversation thread")
+
+        app.status = "generating"
+        await self.db.flush()
+
+        from app.agents.planner_agent import generate_test_plan
+
+        plan = await generate_test_plan(
+            goal=app.test_goal,
+            url=app.url,
+            context=app.test_context,
+        )
+        app.current_plan = plan
+
+        await self._ensure_draft_test_definition(app, plan)
+
+        plan_text = self._format_plan_text(plan)
+        ai_msg = ConversationMessage(
+            thread_id=thread.id,
+            role="assistant",
+            content=plan_text,
+            metadata={"type": "plan_generated", "plan": plan},
+        )
+        self.db.add(ai_msg)
+
+        app.status = "draft"
+        await self.db.commit()
+
+        return {"app_id": app.id, "plan": plan, "status": "draft"}
+
+    # ------------------------------------------------------------------
+    # Save steps to test_steps table
+    # ------------------------------------------------------------------
+
+    async def _persist_steps(self, app: App, test_def: "TestDefinition") -> int:
+        """Write current_plan steps into test_steps rows. Returns count saved."""
+        from app.models.test_step import TestStep
+        from sqlalchemy import delete as sa_delete
+
+        plan = app.current_plan or {}
+        steps = plan.get("steps", [])
+        if not steps:
+            return 0
+
+        await self.db.execute(
+            sa_delete(TestStep).where(
+                TestStep.test_definition_id == test_def.id
+            )
+        )
+        new_steps = [
+            TestStep(
+                test_definition_id=test_def.id,
+                step_number=s.get("step_number", idx + 1),
+                description=s.get("description", ""),
+                type=s.get("type", "action"),
+                params=s.get("params", {}),
+                expected_result=s.get("verification") or s.get("expected_result"),
+                is_ai_generated=True,
+                confidence_score=s.get("confidence"),
+            )
+            for idx, s in enumerate(steps)
+        ]
+        self.db.add_all(new_steps)
+        await self.db.flush()
+        return len(new_steps)
+
+    async def save_steps_to_db(self, app_id: int) -> dict:
+        app = await self.get_app(app_id)
+        if not app:
+            raise ValueError(f"App {app_id} not found")
+
+        plan = app.current_plan or {}
+        steps = plan.get("steps", [])
+        if not steps:
+            raise ValueError("No steps to save — generate a plan first")
+
+        test_def = await self._ensure_draft_test_definition(app, plan)
+        count = await self._persist_steps(app, test_def)
+        await self.db.commit()
+
+        return {
+            "app_id": app.id,
+            "test_definition_id": test_def.id,
+            "steps_count": count,
+            "status": "saved",
+        }
+
+    # ------------------------------------------------------------------
     # Run — generate plan + execute
     # ------------------------------------------------------------------
 
@@ -159,42 +300,11 @@ class AppService:
             )
             self.db.add(ai_msg)
 
-        # Ensure a draft test_definition exists
-        test_def = None
-        if app.test_definition_id:
-            stmt = select(TestDefinition).where(
-                TestDefinition.id == app.test_definition_id
-            )
-            result = await self.db.execute(stmt)
-            test_def = result.scalar_one_or_none()
+        # Ensure a draft test_definition exists and plan is synced
+        test_def = await self._ensure_draft_test_definition(app, plan)
 
-        if not test_def:
-            test_def = TestDefinition(
-                name=f"[APP] {app.name}",
-                description=app.description or app.test_goal,
-                test_id=f"app-{app.id}-{uuid.uuid4().hex[:8]}",
-                url=app.url,
-                test_goal=app.test_goal,
-                test_context=app.test_context,
-                ai_generated_plan=plan,
-                plan_generation_status="generated",
-                environment={},
-                tags=["app-generated"],
-                is_active=True,
-                is_draft=True,
-                source_app_id=app.id,
-                created_by=app.created_by,
-            )
-            self.db.add(test_def)
-            await self.db.flush()
-            app.test_definition_id = test_def.id
-        else:
-            test_def.ai_generated_plan = plan
-            test_def.plan_generation_status = "generated"
-            test_def.test_goal = app.test_goal
-            test_def.url = app.url
-
-        await self.db.flush()
+        # Persist steps to test_steps table so executor can access them
+        await self._persist_steps(app, test_def)
 
         # Create test run via ExecutionService
         run_id = str(uuid.uuid4())
@@ -318,25 +428,11 @@ class AppService:
             test_def.description = app.description or app.test_goal
             test_def.plan_generation_status = "approved"
         else:
-            test_def = TestDefinition(
-                name=app.name,
-                description=app.description or app.test_goal,
-                test_id=f"app-{app.id}-published",
-                url=app.url,
-                test_goal=app.test_goal,
-                test_context=app.test_context,
-                ai_generated_plan=app.current_plan,
-                plan_generation_status="approved",
-                environment={},
-                tags=["app-published"],
-                is_active=True,
-                is_draft=False,
-                source_app_id=app.id,
-                created_by=app.created_by,
-            )
-            self.db.add(test_def)
-            await self.db.flush()
-            app.test_definition_id = test_def.id
+            # Ensure draft exists first, then convert to published
+            test_def = await self._ensure_draft_test_definition(app, app.current_plan or {})
+
+        # Persist steps before publishing
+        await self._persist_steps(app, test_def)
 
         app.status = "published"
         await self.db.commit()
@@ -359,16 +455,18 @@ class AppService:
         if not app or not app.latest_run_id or app.status != "testing":
             return app
 
+        # Eagerly capture all attributes before any async gap
+        latest_run_id = app.latest_run_id
+        thread_id = app.conversation_thread.id if app.conversation_thread else None
+
         from app.core.job_store import get_job
 
-        job = get_job(app.latest_run_id)
+        job = get_job(latest_run_id)
         if not job or job.get("status") != "completed":
             return app
 
         results = job.get("results", {})
         test_runs = results.get("test_runs", [])
-
-        thread = app.conversation_thread
 
         if test_runs:
             run_data = test_runs[0] if isinstance(test_runs, list) else test_runs
@@ -384,7 +482,7 @@ class AppService:
                 from app.models.test_run import TestRun
                 from app.models.test_case import TestCase
 
-                stmt = select(TestRun).where(TestRun.run_id == app.latest_run_id)
+                stmt = select(TestRun).where(TestRun.run_id == latest_run_id)
                 run_row = (await self.db.execute(stmt)).scalar_one_or_none()
                 if run_row:
                     tc_stmt = (
@@ -402,6 +500,7 @@ class AppService:
                         })
             except Exception as e:
                 logger.warning("Failed to fetch step results for app %s: %s", app_id, e)
+                await self.db.rollback()
 
             app.latest_result = {
                 "status": run_status,
@@ -409,15 +508,23 @@ class AppService:
                 "failed": failed,
                 "total": total,
                 "duration": duration,
-                "run_id": app.latest_run_id,
+                "run_id": latest_run_id,
                 "steps": step_results,
             }
 
             if run_status == "passed" or (failed == 0 and passed > 0):
                 app.status = "passed"
-                if thread:
+                # Auto-save steps after pass
+                if app.test_definition_id:
+                    td_stmt = select(TestDefinition).where(
+                        TestDefinition.id == app.test_definition_id
+                    )
+                    td_row = (await self.db.execute(td_stmt)).scalar_one_or_none()
+                    if td_row:
+                        await self._persist_steps(app, td_row)
+                if thread_id is not None:
                     result_msg = ConversationMessage(
-                        thread_id=thread.id,
+                        thread_id=thread_id,
                         role="assistant",
                         content=f"Test PASSED - {passed}/{total} steps passed ({duration}s)",
                         metadata={
@@ -434,9 +541,9 @@ class AppService:
             else:
                 app.status = "draft"
                 errors = run_data.get("error", "")
-                if thread:
+                if thread_id is not None:
                     result_msg = ConversationMessage(
-                        thread_id=thread.id,
+                        thread_id=thread_id,
                         role="assistant",
                         content=f"Test FAILED - {passed}/{total} passed, {failed} failed\n{errors}",
                         metadata={
@@ -452,7 +559,12 @@ class AppService:
                     )
                     self.db.add(result_msg)
 
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            logger.exception("sync_run_result commit failed for app %s", app_id)
+
         return await self.get_app(app_id)
 
     # ------------------------------------------------------------------

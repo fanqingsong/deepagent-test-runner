@@ -343,79 +343,6 @@ export const deleteUser = async (userId) => {
   }
 };
 
-export const listSSOConfigs = async () => {
-  try {
-    const response = await fetch(`${BASE_URL}/api/v1/sso/config`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch SSO configs: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching SSO configs:", error);
-    throw error;
-  }
-};
-
-export const createSSOConfig = async (configData) => {
-  try {
-    const response = await fetch(`${BASE_URL}/api/v1/sso/config`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify(configData),
-      mode: "cors"
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to create SSO config: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error creating SSO config:", error);
-    throw error;
-  }
-};
-
-export const updateSSOConfig = async (configId, configData) => {
-  try {
-    const response = await fetch(`${BASE_URL}/api/v1/sso/config/${configId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify(configData),
-      mode: "cors"
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to update SSO config: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error updating SSO config:", error);
-    throw error;
-  }
-};
-
-export const deleteSSOConfig = async (configId) => {
-  try {
-    const response = await fetch(`${BASE_URL}/api/v1/sso/config/${configId}`, {
-      method: "DELETE",
-      headers: getAuthHeaders()
-    });
-    if (!response.ok && response.status !== 204) {
-      throw new Error(`Failed to delete SSO config: ${response.statusText}`);
-    }
-    return response.status === 204;
-  } catch (error) {
-    console.error("Error deleting SSO config:", error);
-    throw error;
-  }
-};
-
 // Conversations
 export const createConversation = async (testDefinitionId, type = 'planning', metadata = {}) => {
   const response = await fetch(`${TEST_API}/conversations/`, {
@@ -560,6 +487,24 @@ export const runApp = async (appId, { forceRegenerate, useExistingPlan } = {}) =
     }),
   });
   if (!response.ok) throw new Error(await parseApiError(response, '运行 APP 失败'));
+  return response.json();
+};
+
+export const generateAppPlan = async (appId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}/generate-plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '生成测试计划失败'));
+  return response.json();
+};
+
+export const saveAppSteps = async (appId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${appId}/save-steps`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '保存测试步骤失败'));
   return response.json();
 };
 
