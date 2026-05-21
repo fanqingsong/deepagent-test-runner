@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import authService from '../services/authService';
 import ConversationPanel from './ConversationPanel';
-// TEMPORARY: Directly define API functions here to bypass module caching
 
-const BASE_URL = 'http://localhost:8080';
+// Use environment variable or current origin (works in local, Docker, production)
+const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || window.location.origin;
 const TEST_API = `${BASE_URL}/api/v1`;
 
 const createTest = async (testData) => {
@@ -182,27 +182,16 @@ function TestForm(props) {
         // For editing, just update the test goal directly
         await updateTest(editingTest.id, formData);
         alert('Test updated successfully!');
+        onTestCreated();
       } else {
-        // For new tests, create test definition then open conversation panel
+        // For new tests, create test definition then show AI conversation button
         const test = await createTest(formData);
 
-        // Open the conversation panel for multi-turn AI planning
+        // Store created test ID and show conversation button (not auto-open)
         setCreatedTestId(test.id);
-        setShowConversation(true);
-      }
+        setShowConversation(false);
 
-      // Reset form if creating new test and not showing conversation
-      if (!editingTest && !showConversation) {
-        setFormData({
-          name: '',
-          description: '',
-          test_id: '',
-          url: '',
-          environment: {},
-          tags: [],
-          test_goal: ''
-        });
-        onTestCreated();
+        alert('Test created successfully! Click "Start AI Conversation" to begin AI-powered test planning.');
       }
     } catch (error) {
       alert(`Failed to ${editingTest ? 'update' : 'create'} test: ` + error.message);
@@ -615,6 +604,38 @@ Example: I want to test the user login flow. Verify that users can successfully 
             {editingTest ? 'Cancel' : 'Clear'}
           </button>
         </div>
+
+        {/* Show AI Conversation button for newly created tests */}
+        {createdTestId && !showConversation && (
+          <div style={{marginTop: 'var(--cds-spacing-md)', textAlign: 'center'}}>
+            <button
+              type="button"
+              onClick={() => setShowConversation(true)}
+              style={{
+                width: '100%',
+                padding: 'var(--cds-button-padding-sm)',
+                background: '#0f62fe',
+                color: '#ffffff',
+                border: '2px solid #0f62fe',
+                borderRadius: 'var(--cds-border-radius)',
+                cursor: 'pointer',
+                fontWeight: 'var(--cds-font-weight-regular)',
+                height: 'var(--cds-button-height)',
+                fontSize: 'var(--cds-body-short-01)',
+                fontFamily: 'var(--cds-font-family)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 'var(--cds-spacing-sm)'
+              }}
+            >
+              🤖 Start AI Conversation
+            </button>
+            <p style={{fontSize: 'var(--cds-caption-01)', color: 'var(--cds-text-secondary)', marginTop: 'var(--cds-spacing-xs)'}}>
+              Test created successfully! Click to start AI-powered test planning conversation.
+            </p>
+          </div>
+        )}
       </form>
 
       {/* AI Conversation Panel for multi-turn test planning */}
