@@ -27,10 +27,9 @@ function AppContent() {
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
-
   // 从hash初始化视图
   useEffect(() => {
-    const hash = window.location.hash.slice(1); // 去掉#号
+    const hash = window.location.hash.slice(1);
     if (hash.startsWith('studio/')) {
       setCurrentView(hash);
     } else if (hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'studios') {
@@ -53,14 +52,10 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-
   const getAuthHeadersSafe = () => {
     const token = typeof authService?.getAccessToken === 'function' ? authService.getAccessToken() : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
-
-
-
 
   // Schedule handlers
   const handleScheduleCreated = () => {
@@ -174,3 +169,187 @@ function AppContent() {
             Studio
           </button>
           <button
+            onClick={() => window.location.hash = 'schedules'}
+            style={navButtonStyle(currentView === 'schedules')}
+          >
+            调度配置
+          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => window.location.hash = 'users'}
+                style={navButtonStyle(currentView === 'users')}
+              >
+                用户配置
+              </button>
+            </>
+          )}
+        </div>
+        <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+          <span style={{color: 'var(--cds-text-on-color)', fontSize: '14px'}}>
+            {user?.username || user?.email}
+          </span>
+          <button
+            onClick={logout}
+            style={{
+              padding: '8px 16px',
+              background: 'rgba(255,255,255,0.1)',
+              color: 'var(--cds-text-on-color)',
+              border: '1px solid var(--cds-border-subtle)',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            退出登录
+          </button>
+        </div>
+      </nav>
+
+      {/* 内容区域 */}
+      <div>
+        {currentView.startsWith('studio/') ? (
+          <StudioWorkspace studioId={parseInt(currentView.split('/')[1])} />
+        ) : currentView === 'studios' ? (
+          <StudioGallery />
+        ) : currentView === 'dashboard' ? (
+          <DashboardView />
+        ) : currentView === 'users' ? (
+          <div style={{padding: 'var(--cds-layout-sm)', background: 'var(--cds-background)'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--cds-layout-md)'}}>
+              <h2 style={{
+                margin: 0,
+                fontSize: 'var(--cds-heading-01)',
+                fontWeight: 'var(--cds-font-weight-light)',
+                lineHeight: 'var(--cds-display-line-height)'
+              }}>用户配置</h2>
+              <button
+                onClick={() => {
+                  setEditingUser(null);
+                  setShowUserForm(true);
+                }}
+                style={{
+                  padding: 'var(--cds-button-padding-sm)',
+                  background: 'var(--cds-button-primary)',
+                  color: 'var(--cds-text-on-color)',
+                  border: 'none',
+                  borderRadius: 'var(--cds-border-radius)',
+                  cursor: 'pointer',
+                  fontWeight: 'var(--cds-font-weight-regular)',
+                  fontSize: 'var(--cds-body-short-01)',
+                  height: 'var(--cds-button-height-compact)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--cds-spacing-sm)'
+                }}
+              >
+                <span>+</span>
+                <span>创建用户</span>
+              </button>
+            </div>
+
+            <UserList onEditUser={handleEditUser} />
+
+            {/* 创建/编辑用户 Modal */}
+            <Modal
+              isOpen={showUserForm}
+              onClose={() => {
+                setEditingUser(null);
+                setShowUserForm(false);
+              }}
+              title={editingUser ? `编辑用户: ${editingUser.username}` : '创建新用户'}
+            >
+              <UserForm
+                user={editingUser}
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['users'] });
+                  setShowUserForm(false);
+                  setEditingUser(null);
+                }}
+                onCancel={() => {
+                  setShowUserForm(false);
+                  setEditingUser(null);
+                }}
+              />
+            </Modal>
+          </div>
+        ) : currentView === 'schedules' ? (
+          <div style={{padding: 'var(--cds-layout-sm)', background: 'var(--cds-background)'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--cds-layout-md)'}}>
+              <h2 style={{
+                margin: 0,
+                fontSize: 'var(--cds-heading-01)',
+                fontWeight: 'var(--cds-font-weight-light)',
+                lineHeight: 'var(--cds-display-line-height)'
+              }}>调度配置</h2>
+              <button
+                onClick={() => {
+                  setEditingSchedule(null);
+                  setShowScheduleForm(true);
+                }}
+                style={{
+                  padding: 'var(--cds-button-padding-sm)',
+                  background: 'var(--cds-button-primary)',
+                  color: 'var(--cds-text-on-color)',
+                  border: 'none',
+                  borderRadius: 'var(--cds-border-radius)',
+                  cursor: 'pointer',
+                  fontWeight: 'var(--cds-font-weight-regular)',
+                  fontSize: 'var(--cds-body-short-01)',
+                  height: 'var(--cds-button-height-compact)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--cds-spacing-sm)'
+                }}
+              >
+                <span>+</span>
+                <span>创建调度</span>
+              </button>
+            </div>
+
+            <ScheduleList
+              onEditSchedule={handleEditSchedule}
+              onTriggerSchedule={handleTriggerSchedule}
+              onToggleSchedule={handleToggleSchedule}
+            />
+
+            {/* 创建/编辑调度 Modal */}
+            <Modal
+              isOpen={showScheduleForm}
+              onClose={() => {
+                setEditingSchedule(null);
+                setShowScheduleForm(false);
+              }}
+              title={editingSchedule ? `编辑调度: ${editingSchedule.name}` : '创建新调度'}
+            >
+              <ScheduleForm
+                onScheduleCreated={() => {
+                  handleScheduleCreated();
+                  setShowScheduleForm(false);
+                }}
+                editingSchedule={editingSchedule}
+                onCancel={() => {
+                  setEditingSchedule(null);
+                  setShowScheduleForm(false);
+                }}
+              />
+            </Modal>
+          </div>
+        ) : (
+          <DashboardView />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Wrap app with AuthProvider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+export default App;
