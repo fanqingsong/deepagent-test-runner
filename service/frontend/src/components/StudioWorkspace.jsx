@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getApp, updateApp, runApp, publishApp, getJobStatus, getAppRunProgress, generateAppPlan, saveAppSteps } from '../api';
-import './AppWorkspace.css';
+import { getStudio, updateStudio, runStudio, publishStudio, getJobStatus, getStudioRunProgress, generateStudioPlan, saveStudioSteps } from '../api';
+import './StudioWorkspace.css';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -10,8 +10,8 @@ const STATUS_LABELS = {
   published: 'Published',
 };
 
-export default function AppWorkspace({ appId }) {
-  const [app, setApp] = useState(null);
+export default function StudioWorkspace({ studioId }) {
+  const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -43,10 +43,10 @@ export default function AppWorkspace({ appId }) {
   const [browserTitle, setBrowserTitle] = useState('');
   const [selectedScreenshot, setSelectedScreenshot] = useState(null);
 
-  const loadApp = useCallback(async () => {
+  const loadStudio = useCallback(async () => {
     try {
-      const data = await getApp(appId);
-      setApp(data);
+      const data = await getStudio(studioId);
+      setStudio(data);
       setError(null);
       setFormName(data.name || '');
       setFormUrl(data.url || '');
@@ -62,11 +62,11 @@ export default function AppWorkspace({ appId }) {
     } finally {
       setLoading(false);
     }
-  }, [appId]);
+  }, [studioId]);
 
   useEffect(() => {
-    loadApp();
-  }, [loadApp]);
+    loadStudio();
+  }, [loadStudio]);
 
   const pollJobStatus = async (jobId) => {
     let attempts = 0;
@@ -75,7 +75,7 @@ export default function AppWorkspace({ appId }) {
       try {
         const job = await getJobStatus(jobId);
         try {
-          const progress = await getAppRunProgress(appId);
+          const progress = await getStudioRunProgress(studioId);
           if (progress.completed_steps?.length > 0) {
             setProgressSteps(progress.completed_steps);
             setProgressCurrent(progress.current_step || 0);
@@ -95,7 +95,7 @@ export default function AppWorkspace({ appId }) {
           setSelectedScreenshot(null);
           if (pollingRef.current) clearInterval(pollingRef.current);
           pollingRef.current = null;
-          await loadApp();
+          await loadStudio();
           return;
         }
         attempts++;
@@ -110,14 +110,14 @@ export default function AppWorkspace({ appId }) {
     try {
       setSavingConfig(true);
       setError(null);
-      await updateApp(appId, {
+      await updateStudio(studioId, {
         name: formName,
         url: formUrl,
         test_goal: formGoal,
         description: formDesc || null,
       });
       setConfigDirty(false);
-      await loadApp();
+      await loadStudio();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -131,7 +131,7 @@ export default function AppWorkspace({ appId }) {
       setError(null);
       // Save config first if dirty
       if (configDirty) {
-        await updateApp(appId, {
+        await updateStudio(studioId, {
           name: formName,
           url: formUrl,
           test_goal: formGoal,
@@ -139,8 +139,8 @@ export default function AppWorkspace({ appId }) {
         });
         setConfigDirty(false);
       }
-      await generateAppPlan(appId);
-      await loadApp();
+      await generateStudioPlan(studioId);
+      await loadStudio();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -154,12 +154,12 @@ export default function AppWorkspace({ appId }) {
       setError(null);
       // Push edited steps to current_plan first
       if (planEdited) {
-        await updateApp(appId, {
-          current_plan: { ...app.current_plan, steps: editedSteps },
+        await updateStudio(studioId, {
+          current_plan: { ...studio.current_plan, steps: editedSteps },
         });
         setPlanEdited(false);
       }
-      await saveAppSteps(appId);
+      await saveStudioSteps(studioId);
       setStepsSaved(true);
     } catch (e) {
       setError(e.message);
@@ -174,12 +174,12 @@ export default function AppWorkspace({ appId }) {
       setError(null);
       // Sync edits before running
       if (planEdited) {
-        await updateApp(appId, {
-          current_plan: { ...app.current_plan, steps: editedSteps },
+        await updateStudio(studioId, {
+          current_plan: { ...studio.current_plan, steps: editedSteps },
         });
         setPlanEdited(false);
       }
-      const result = await runApp(appId, {
+      const result = await runStudio(studioId, {
         forceRegenerate: !!opts.forceRegenerate,
         useExistingPlan: !!opts.useExistingPlan,
       });
@@ -194,8 +194,8 @@ export default function AppWorkspace({ appId }) {
     try {
       setPublishing(true);
       setError(null);
-      await publishApp(appId);
-      await loadApp();
+      await publishStudio(studioId);
+      await loadStudio();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -244,66 +244,66 @@ export default function AppWorkspace({ appId }) {
 
   const isBusy = isRunning || isGenerating || isSavingSteps;
 
-  if (loading) return <div className="app-workspace-loading">Loading...</div>;
-  if (!app) return <div className="app-workspace-error">App not found</div>;
+  if (loading) return <div className="studio-workspace-loading">Loading...</div>;
+  if (!studio) return <div className="studio-workspace-error">Studio not found</div>;
 
   const hasPlan = editedSteps.length > 0;
-  const hasResult = app.latest_result && app.latest_result.status;
-  const canPublish = app.status === 'passed' && !publishing;
-  const resultSteps = app.latest_result?.steps || [];
+  const hasResult = studio.latest_result && studio.latest_result.status;
+  const canPublish = studio.status === 'passed' && !publishing;
+  const resultSteps = studio.latest_result?.steps || [];
 
   return (
-    <div className="app-workspace">
+    <div className="studio-workspace">
       {/* Header */}
-      <div className="app-workspace-header">
-        <button className="app-workspace-back" onClick={() => { window.location.hash = 'apps'; }}>
+      <div className="studio-workspace-header">
+        <button className="studio-workspace-back" onClick={() => { window.location.hash = "studios"; }}>
           &larr; Back
         </button>
-        <div className="app-workspace-header-info">
-          <h1 className="app-workspace-name">{app.name}</h1>
+        <div className="studio-workspace-header-info">
+          <h1 className="studio-workspace-name">{studio.name}</h1>
         </div>
-        <div className="app-workspace-header-actions">
-          <span className={`app-workspace-status-badge status-${app.status}`}>
-            {STATUS_LABELS[app.status] || app.status}
+        <div className="studio-workspace-header-actions">
+          <span className={`studio-workspace-status-badge status-${studio.status}`}>
+            {STATUS_LABELS[studio.status] || studio.status}
           </span>
           {canPublish && (
-            <button className="app-workspace-publish-btn" onClick={handlePublish} disabled={publishing}>
+            <button className="studio-workspace-publish-btn" onClick={handlePublish} disabled={publishing}>
               {publishing ? 'Saving...' : 'Save to Tests'}
             </button>
           )}
-          {app.status === 'published' && (
-            <span className="app-workspace-published-tag">Saved to Tests</span>
+          {studio.status === 'published' && (
+            <span className="studio-workspace-published-tag">Saved to Tests</span>
           )}
         </div>
       </div>
 
-      <div className="app-workspace-body">
+      <div className="studio-workspace-body">
         {/* Left panel: config */}
-        <div className="app-workspace-left">
-          <div className="app-workspace-left-form">
-            <div className="app-workspace-field-group">
-              <label className="app-workspace-field-label">Name</label>
+        <div className="studio-workspace-left">
+          <div className="studio-workspace-left-form">
+            <div className="studio-workspace-field-group">
+              <label className="studio-workspace-field-label">Name</label>
               <input
-                className="app-workspace-field-input"
+                className="studio-workspace-field-input"
                 value={formName}
                 onChange={onFormChange(setFormName)}
                 disabled={isBusy}
               />
             </div>
-            <div className="app-workspace-field-group">
-              <label className="app-workspace-field-label">Target URL</label>
+            <div className="studio-workspace-field-group">
+              <label className="studio-workspace-field-label">Target URL</label>
               <input
-                className="app-workspace-field-input"
+                className="studio-workspace-field-input"
                 value={formUrl}
                 onChange={onFormChange(setFormUrl)}
                 placeholder="https://example.com"
                 disabled={isBusy}
               />
             </div>
-            <div className="app-workspace-field-group">
-              <label className="app-workspace-field-label">Test Goal</label>
+            <div className="studio-workspace-field-group">
+              <label className="studio-workspace-field-label">Test Goal</label>
               <textarea
-                className="app-workspace-field-textarea"
+                className="studio-workspace-field-textarea"
                 value={formGoal}
                 onChange={onFormChange(setFormGoal)}
                 placeholder="Describe what to test..."
@@ -311,10 +311,10 @@ export default function AppWorkspace({ appId }) {
                 disabled={isBusy}
               />
             </div>
-            <div className="app-workspace-field-group">
-              <label className="app-workspace-field-label">Description</label>
+            <div className="studio-workspace-field-group">
+              <label className="studio-workspace-field-label">Description</label>
               <textarea
-                className="app-workspace-field-textarea"
+                className="studio-workspace-field-textarea"
                 value={formDesc}
                 onChange={onFormChange(setFormDesc)}
                 placeholder="Optional description..."
@@ -323,16 +323,16 @@ export default function AppWorkspace({ appId }) {
               />
             </div>
           </div>
-          <div className="app-workspace-left-actions">
+          <div className="studio-workspace-left-actions">
             <button
-              className="app-workspace-save-config-btn"
+              className="studio-workspace-save-config-btn"
               onClick={handleSaveConfig}
               disabled={!configDirty || savingConfig || isBusy}
             >
               {savingConfig ? 'Saving...' : 'Save Config'}
             </button>
             <button
-              className="app-workspace-generate-btn"
+              className="studio-workspace-generate-btn"
               onClick={handleGeneratePlan}
               disabled={isBusy || !formGoal.trim()}
             >
@@ -342,33 +342,33 @@ export default function AppWorkspace({ appId }) {
         </div>
 
         {/* Right panel: plan + results */}
-        <div className="app-workspace-right">
+        <div className="studio-workspace-right">
           {error && (
-            <div className="app-workspace-msg-error">{error}</div>
+            <div className="studio-workspace-msg-error">{error}</div>
           )}
 
           {!hasPlan && !hasResult && !isRunning && !isGenerating && (
-            <div className="app-workspace-empty">
-              <p>Configure your APP on the left, then click <strong>Generate Plan</strong> to create a test plan from your goal.</p>
+            <div className="studio-workspace-empty">
+              <p>Configure your Studio on the left, then click <strong>Generate Plan</strong> to create a test plan from your goal.</p>
             </div>
           )}
 
           {isGenerating && !hasPlan && (
-            <div className="app-workspace-running">
-              <div className="app-workspace-typing">
+            <div className="studio-workspace-running">
+              <div className="studio-workspace-typing">
                 <span></span><span></span><span></span>
               </div>
-              <span className="app-workspace-running-text">Generating test plan...</span>
+              <span className="studio-workspace-running-text">Generating test plan...</span>
             </div>
           )}
 
           {hasPlan && (
-            <div className="app-workspace-section">
-              <h3 className="app-workspace-section-title">
+            <div className="studio-workspace-section">
+              <h3 className="studio-workspace-section-title">
                 Test Plan
-                {stepsSaved && <span className="app-workspace-saved-tag">Saved</span>}
+                {stepsSaved && <span className="studio-workspace-saved-tag">Saved</span>}
               </h3>
-              <table className="app-workspace-steps-table">
+              <table className="studio-workspace-steps-table">
                 <thead>
                   <tr>
                     <th className="th-step">#</th>
@@ -408,23 +408,23 @@ export default function AppWorkspace({ appId }) {
                   ))}
                 </tbody>
               </table>
-              <div className="app-workspace-plan-actions">
+              <div className="studio-workspace-plan-actions">
                 <button
-                  className="app-workspace-secondary-btn"
+                  className="studio-workspace-secondary-btn"
                   onClick={handleGeneratePlan}
                   disabled={isBusy}
                 >
                   Regenerate
                 </button>
                 <button
-                  className="app-workspace-secondary-btn"
+                  className="studio-workspace-secondary-btn"
                   onClick={handleSaveSteps}
                   disabled={!hasPlan || isBusy}
                 >
                   {isSavingSteps ? 'Saving...' : stepsSaved ? 'Saved' : 'Save Steps'}
                 </button>
                 <button
-                  className="app-workspace-run-btn"
+                  className="studio-workspace-run-btn"
                   onClick={() => handleRun({ useExistingPlan: true })}
                   disabled={!hasPlan || isBusy}
                 >
@@ -434,23 +434,23 @@ export default function AppWorkspace({ appId }) {
             </div>
           )}
 
-          {app.status === 'passed' && (
-            <div className="app-workspace-section app-workspace-autosave-info">
+          {studio.status === 'passed' && (
+            <div className="studio-workspace-section studio-workspace-autosave-info">
               Steps saved automatically after test passed.
             </div>
           )}
 
           {hasResult && (
-            <div className="app-workspace-section">
-              <h3 className="app-workspace-section-title">
-                Result: {app.latest_result.status === 'passed' ? 'PASSED' : 'FAILED'}
-                <span className="app-workspace-result-counts">
-                  {' '}{app.latest_result.passed}/{app.latest_result.total} steps
-                  {app.latest_result.duration ? ` (${app.latest_result.duration}s)` : ''}
+            <div className="studio-workspace-section">
+              <h3 className="studio-workspace-section-title">
+                Result: {studio.latest_result.status === 'passed' ? 'PASSED' : 'FAILED'}
+                <span className="studio-workspace-result-counts">
+                  {' '}{studio.latest_result.passed}/{studio.latest_result.total} steps
+                  {studio.latest_result.duration ? ` (${studio.latest_result.duration}s)` : ''}
                 </span>
               </h3>
               {resultSteps.length > 0 ? (
-                <table className="app-workspace-steps-table">
+                <table className="studio-workspace-steps-table">
                   <thead>
                     <tr>
                       <th className="th-step">#</th>
@@ -478,8 +478,8 @@ export default function AppWorkspace({ appId }) {
                   </tbody>
                 </table>
               ) : (
-                <p className="app-workspace-result-text">
-                  {app.latest_result.status === 'passed'
+                <p className="studio-workspace-result-text">
+                  {studio.latest_result.status === 'passed'
                     ? 'All steps passed!'
                     : 'Test failed. Edit the plan steps and click "Run Test" to retry.'}
                 </p>
@@ -490,7 +490,7 @@ export default function AppWorkspace({ appId }) {
           {isRunning && (
             <>
               {progressSteps.filter(s => s.screenshot_path).length > 0 && (
-                <div className="app-workspace-section">
+                <div className="studio-workspace-section">
                   <BrowserPreview
                     latestScreenshot={
                       progressSteps.filter(s => s.screenshot_path).slice(-1)[0]?.screenshot_path || null
@@ -503,15 +503,15 @@ export default function AppWorkspace({ appId }) {
                 </div>
               )}
 
-              <div className="app-workspace-section">
-                <h3 className="app-workspace-section-title">
+              <div className="studio-workspace-section">
+                <h3 className="studio-workspace-section-title">
                   Running
-                  <span className="app-workspace-progress-counts">
+                  <span className="studio-workspace-progress-counts">
                     {' '}{progressCurrent}/{progressTotal || '?'} steps completed
                   </span>
                 </h3>
                 {progressSteps.length > 0 ? (
-                  <table className="app-workspace-steps-table">
+                  <table className="studio-workspace-steps-table">
                     <thead>
                       <tr>
                         <th className="th-step">#</th>
@@ -554,21 +554,21 @@ export default function AppWorkspace({ appId }) {
                         <tr className="row-pending">
                           <td className="td-step">{progressSteps.length + 1}</td>
                           <td className="td-desc" colSpan={4}>
-                            <span className="app-workspace-typing">
+                            <span className="studio-workspace-typing">
                               <span></span><span></span><span></span>
                             </span>
-                            <span className="app-workspace-running-text">executing...</span>
+                            <span className="studio-workspace-running-text">executing...</span>
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 ) : (
-                  <div className="app-workspace-running">
-                    <div className="app-workspace-typing">
+                  <div className="studio-workspace-running">
+                    <div className="studio-workspace-typing">
                       <span></span><span></span><span></span>
                     </div>
-                    <span className="app-workspace-running-text">Generating test plan...</span>
+                    <span className="studio-workspace-running-text">Generating test plan...</span>
                   </div>
                 )}
               </div>
@@ -591,7 +591,7 @@ function EditableCell({ value, editing, draft, onStartEdit, onDraftChange, onKey
   if (editing) {
     return (
       <input
-        className="app-workspace-edit-input"
+        className="studio-workspace-edit-input"
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
         onKeyDown={onKeyDown}
@@ -601,7 +601,7 @@ function EditableCell({ value, editing, draft, onStartEdit, onDraftChange, onKey
     );
   }
   return (
-    <span className="app-workspace-editable-cell" onClick={onStartEdit}>
+    <span className="studio-workspace-editable-cell" onClick={onStartEdit}>
       {value || '-'}
     </span>
   );

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { listApps, createApp, archiveApp } from '../api';
-import AppCard from './AppCard';
+import { listStudios, createStudio, archiveStudio } from '../api';
+import StudioCard from './StudioCard';
 import Modal from './Modal';
-import './AppGallery.css';
+import './StudioGallery.css';
 
 const STATUS_OPTIONS = [
   { value: '', label: '全部' },
@@ -12,8 +12,8 @@ const STATUS_OPTIONS = [
   { value: 'published', label: '已发布' },
 ];
 
-export default function AppGallery() {
-  const [apps, setApps] = useState([]);
+export default function StudioGallery() {
+  const [studios, setStudios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -25,12 +25,12 @@ export default function AppGallery() {
   const [formUrl, setFormUrl] = useState('');
   const [formGoal, setFormGoal] = useState('');
 
-  const loadApps = async () => {
+  const loadStudios = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await listApps({ status: statusFilter || undefined, search: search || undefined });
-      setApps(data);
+      const data = await listStudios({ status: statusFilter || undefined, search: search || undefined });
+      setStudios(data);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -38,13 +38,13 @@ export default function AppGallery() {
     }
   };
 
-  useEffect(() => { loadApps(); }, [statusFilter]);
+  useEffect(() => { loadStudios(); }, [statusFilter]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!formName.trim() || !formUrl.trim() || !formGoal.trim()) return;
     try {
-      const app = await createApp({
+      const studio = await createStudio({
         name: formName.trim(),
         url: formUrl.trim(),
         test_goal: formGoal.trim(),
@@ -53,44 +53,44 @@ export default function AppGallery() {
       setFormName('');
       setFormUrl('');
       setFormGoal('');
-      window.location.hash = `app/${app.id}`;
+      window.location.hash = `studio/${studio.id}`;
     } catch (e) {
       setError(e.message);
     }
   };
 
-  const handleArchive = async (appId) => {
+  const handleArchive = async (studioId) => {
     try {
-      await archiveApp(appId);
-      loadApps();
+      await archiveStudio(studioId);
+      loadStudios();
     } catch (e) {
       setError(e.message);
     }
   };
 
   return (
-    <div className="app-gallery">
-      <div className="app-gallery-header">
-        <div className="app-gallery-title-row">
-          <h1 className="app-gallery-title">APP Workspace</h1>
-          <button className="app-gallery-create-btn" onClick={() => setShowCreate(true)}>
-            + Create APP
+    <div className="studio-gallery">
+      <div className="studio-gallery-header">
+        <div className="studio-gallery-title-row">
+          <h1 className="studio-gallery-title">Studio Workspace</h1>
+          <button className="studio-gallery-create-btn" onClick={() => setShowCreate(true)}>
+            + Create Studio
           </button>
         </div>
-        <div className="app-gallery-filters">
+        <div className="studio-gallery-filters">
           <input
-            className="app-gallery-search"
+            className="studio-gallery-search"
             type="text"
-            placeholder="Search apps..."
+            placeholder="Search studios..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && loadApps()}
+            onKeyDown={(e) => e.key === 'Enter' && loadStudios()}
           />
-          <div className="app-gallery-status-tabs">
+          <div className="studio-gallery-status-tabs">
             {STATUS_OPTIONS.map(opt => (
               <button
                 key={opt.value}
-                className={`app-gallery-tab ${statusFilter === opt.value ? 'active' : ''}`}
+                className={`studio-gallery-tab ${statusFilter === opt.value ? 'active' : ''}`}
                 onClick={() => setStatusFilter(opt.value)}
               >
                 {opt.label}
@@ -100,31 +100,31 @@ export default function AppGallery() {
         </div>
       </div>
 
-      {error && <div className="app-gallery-error">{error}</div>}
+      {error && <div className="studio-gallery-error">{error}</div>}
 
       {loading ? (
-        <div className="app-gallery-loading">Loading...</div>
-      ) : apps.length === 0 ? (
-        <div className="app-gallery-empty">
-          <div className="app-gallery-empty-icon">+</div>
-          <h3>No apps yet</h3>
-          <p>Create your first APP to start testing</p>
-          <button className="app-gallery-create-btn" onClick={() => setShowCreate(true)}>
-            + Create APP
+        <div className="studio-gallery-loading">Loading...</div>
+      ) : studios.length === 0 ? (
+        <div className="studio-gallery-empty">
+          <div className="studio-gallery-empty-icon">+</div>
+          <h3>No studios yet</h3>
+          <p>Create your first Studio to start testing</p>
+          <button className="studio-gallery-create-btn" onClick={() => setShowCreate(true)}>
+            + Create Studio
           </button>
         </div>
       ) : (
-        <div className="app-gallery-grid">
-          {apps.map(app => (
-            <AppCard key={app.id} app={app} onArchive={handleArchive} />
+        <div className="studio-gallery-grid">
+          {studios.map(studio => (
+            <StudioCard key={studio.id} studio={studio} onArchive={handleArchive} />
           ))}
         </div>
       )}
 
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create APP">
-        <form className="app-create-form" onSubmit={handleCreate}>
-          <div className="app-create-field">
-            <label>APP Name *</label>
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create Studio">
+        <form className="studio-create-form" onSubmit={handleCreate}>
+          <div className="studio-create-field">
+            <label>Studio Name *</label>
             <input
               type="text"
               value={formName}
@@ -133,7 +133,7 @@ export default function AppGallery() {
               required
             />
           </div>
-          <div className="app-create-field">
+          <div className="studio-create-field">
             <label>Target URL *</label>
             <input
               type="url"
@@ -143,7 +143,7 @@ export default function AppGallery() {
               required
             />
           </div>
-          <div className="app-create-field">
+          <div className="studio-create-field">
             <label>Test Goal *</label>
             <textarea
               value={formGoal}
@@ -153,11 +153,11 @@ export default function AppGallery() {
               required
             />
           </div>
-          <div className="app-create-actions">
-            <button type="button" className="app-btn-secondary" onClick={() => setShowCreate(false)}>
+          <div className="studio-create-actions">
+            <button type="button" className="studio-btn-secondary" onClick={() => setShowCreate(false)}>
               Cancel
             </button>
-            <button type="submit" className="app-btn-primary">
+            <button type="submit" className="studio-btn-primary">
               Create & Start
             </button>
           </div>

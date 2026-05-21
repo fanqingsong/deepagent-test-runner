@@ -1,29 +1,24 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getTests } from './api';
+import { useQueryClient } from '@tanstack/react-query';
 import { parseApiError } from './api';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import OidcCallback from './components/OidcCallback';
-import TestList from './components/TestList';
-import TestForm from './components/TestForm';
 import DashboardView from './components/DashboardView';
 import ScheduleList from './components/ScheduleList';
 import ScheduleForm from './components/ScheduleForm';
 import UserList from './components/UserList';
 import UserForm from './components/UserForm';
 import Modal from './components/Modal';
-import AppGallery from './components/AppGallery';
-import AppWorkspace from './components/AppWorkspace';
+import StudioGallery from './components/StudioGallery';
+import StudioWorkspace from './components/StudioWorkspace';
 import authService from './services/authService';
 
 function AppContent() {
   const { user, logout, isAuthenticated, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState('dashboard');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingTest, setEditingTest] = useState(null);
 
   // Schedule states
   const [showScheduleForm, setShowScheduleForm] = useState(false);
@@ -32,22 +27,13 @@ function AppContent() {
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
-  const testsQuery = useQuery({
-    queryKey: ['tests'],
-    queryFn: getTests,
-    enabled: isAuthenticated,
-  });
-
-  const tests = testsQuery.data?.items || testsQuery.data || [];
-  const loading = testsQuery.isLoading;
-  const error = testsQuery.error ? `Failed to load tests: ${testsQuery.error.message || testsQuery.error}` : null;
 
   // 从hash初始化视图
   useEffect(() => {
     const hash = window.location.hash.slice(1); // 去掉#号
-    if (hash.startsWith('app/')) {
+    if (hash.startsWith('studio/')) {
       setCurrentView(hash);
-    } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'apps') {
+    } else if (hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'studios') {
       setCurrentView(hash);
     }
   }, []);
@@ -56,9 +42,9 @@ function AppContent() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      if (hash.startsWith('app/')) {
+      if (hash.startsWith('studio/')) {
         setCurrentView(hash);
-      } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'apps') {
+      } else if (hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'studios') {
         setCurrentView(hash);
       }
     };
@@ -67,47 +53,14 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const handleTestCreated = () => {
-    queryClient.invalidateQueries({ queryKey: ['tests'] });
-    setShowCreateForm(false);
-    setEditingTest(null);
-  };
 
   const getAuthHeadersSafe = () => {
     const token = typeof authService?.getAccessToken === 'function' ? authService.getAccessToken() : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  const handleTestRun = async (testId) => {
-    try {
-      const response = await fetch('/api/v1/jobs/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeadersSafe()
-        },
-        body: JSON.stringify({ test_definition_ids: [testId] })
-      });
-      if (response.ok) {
-        const job = await response.json();
-        alert(`Test started! Job ID: ${job.job_id}`);
-      } else {
-        alert('Failed to start test');
-      }
-    } catch (err) {
-      alert('Error starting test: ' + err.message);
-    }
-  };
 
-  const handleEditTest = (test) => {
-    setEditingTest(test);
-    setShowCreateForm(true);
-  };
 
-  const handleCancelEdit = () => {
-    setEditingTest(null);
-    setShowCreateForm(false);
-  };
 
   // Schedule handlers
   const handleScheduleCreated = () => {
@@ -215,265 +168,9 @@ function AppContent() {
             仪表板
           </button>
           <button
-            onClick={() => window.location.hash = 'apps'}
-            style={navButtonStyle(currentView === 'apps')}
+            onClick={() => window.location.hash = 'studios'}
+            style={navButtonStyle(currentView === 'studios')}
           >
-            APP
+            Studio
           </button>
           <button
-            onClick={() => window.location.hash = 'tests'}
-            style={navButtonStyle(currentView === 'tests')}
-          >
-            测试管理
-          </button>
-          <button
-            onClick={() => window.location.hash = 'schedules'}
-            style={navButtonStyle(currentView === 'schedules')}
-          >
-            调度配置
-          </button>
-          {isAdmin && (
-            <>
-              <button
-                onClick={() => window.location.hash = 'users'}
-                style={navButtonStyle(currentView === 'users')}
-              >
-                用户配置
-              </button>
-            </>
-          )}
-        </div>
-        <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <span style={{color: 'var(--cds-text-on-color)', fontSize: '14px'}}>
-            {user?.username || user?.email}
-          </span>
-          <button
-            onClick={logout}
-            style={{
-              padding: '8px 16px',
-              background: 'rgba(255,255,255,0.1)',
-              color: 'var(--cds-text-on-color)',
-              border: '1px solid var(--cds-border-subtle)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            退出登录
-          </button>
-        </div>
-      </nav>
-
-      {/* 内容区域 */}
-      <div>
-        {currentView.startsWith('app/') ? (
-          <AppWorkspace appId={parseInt(currentView.split('/')[1])} />
-        ) : currentView === 'apps' ? (
-          <AppGallery />
-        ) : currentView === 'dashboard' ? (
-          <DashboardView />
-        ) : currentView === 'users' ? (
-          <div style={{padding: 'var(--cds-layout-sm)', background: 'var(--cds-background)'}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--cds-layout-md)'}}>
-              <h2 style={{
-                margin: 0,
-                fontSize: 'var(--cds-heading-01)',
-                fontWeight: 'var(--cds-font-weight-light)',
-                lineHeight: 'var(--cds-display-line-height)'
-              }}>用户配置</h2>
-              <button
-                onClick={() => {
-                  setEditingUser(null);
-                  setShowUserForm(true);
-                }}
-                style={{
-                  padding: 'var(--cds-button-padding-sm)',
-                  background: 'var(--cds-button-primary)',
-                  color: 'var(--cds-text-on-color)',
-                  border: 'none',
-                  borderRadius: 'var(--cds-border-radius)',
-                  cursor: 'pointer',
-                  fontWeight: 'var(--cds-font-weight-regular)',
-                  fontSize: 'var(--cds-body-short-01)',
-                  height: 'var(--cds-button-height-compact)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--cds-spacing-sm)'
-                }}
-              >
-                <span>+</span>
-                <span>创建用户</span>
-              </button>
-            </div>
-
-            <UserList onEditUser={handleEditUser} />
-
-            {/* 创建/编辑用户 Modal */}
-            <Modal
-              isOpen={showUserForm}
-              onClose={() => {
-                setEditingUser(null);
-                setShowUserForm(false);
-              }}
-              title={editingUser ? `编辑用户: ${editingUser.username}` : '创建新用户'}
-            >
-              <UserForm
-                user={editingUser}
-                onSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ['users'] });
-                  setShowUserForm(false);
-                  setEditingUser(null);
-                }}
-                onCancel={() => {
-                  setShowUserForm(false);
-                  setEditingUser(null);
-                }}
-              />
-            </Modal>
-          </div>
-        ) : currentView === 'schedules' ? (
-          <div style={{padding: 'var(--cds-layout-sm)', background: 'var(--cds-background)'}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--cds-layout-md)'}}>
-              <h2 style={{
-                margin: 0,
-                fontSize: 'var(--cds-heading-01)',
-                fontWeight: 'var(--cds-font-weight-light)',
-                lineHeight: 'var(--cds-display-line-height)'
-              }}>调度配置</h2>
-              <button
-                onClick={() => {
-                  setEditingSchedule(null);
-                  setShowScheduleForm(true);
-                }}
-                style={{
-                  padding: 'var(--cds-button-padding-sm)',
-                  background: 'var(--cds-button-primary)',
-                  color: 'var(--cds-text-on-color)',
-                  border: 'none',
-                  borderRadius: 'var(--cds-border-radius)',
-                  cursor: 'pointer',
-                  fontWeight: 'var(--cds-font-weight-regular)',
-                  fontSize: 'var(--cds-body-short-01)',
-                  height: 'var(--cds-button-height-compact)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--cds-spacing-sm)'
-                }}
-              >
-                <span>+</span>
-                <span>创建调度</span>
-              </button>
-            </div>
-
-            <ScheduleList
-              onEditSchedule={handleEditSchedule}
-              onTriggerSchedule={handleTriggerSchedule}
-              onToggleSchedule={handleToggleSchedule}
-            />
-
-            {/* 创建/编辑调度 Modal */}
-            <Modal
-              isOpen={showScheduleForm}
-              onClose={() => {
-                setEditingSchedule(null);
-                setShowScheduleForm(false);
-              }}
-              title={editingSchedule ? `✏️ 编辑调度: ${editingSchedule.name}` : '✨ 创建新调度'}
-            >
-              <ScheduleForm
-                onScheduleCreated={() => {
-                  handleScheduleCreated();
-                  setShowScheduleForm(false);
-                }}
-                editingSchedule={editingSchedule}
-                onCancel={() => {
-                  setEditingSchedule(null);
-                  setShowScheduleForm(false);
-                }}
-              />
-            </Modal>
-          </div>
-        ) : (
-          <div style={{padding: 'var(--cds-layout-sm)', background: 'var(--cds-background)'}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--cds-layout-md)'}}>
-              <h2 style={{
-                margin: 0,
-                fontSize: 'var(--cds-heading-01)',
-                fontWeight: 'var(--cds-font-weight-light)',
-                lineHeight: 'var(--cds-display-line-height)'
-              }}>测试管理</h2>
-              <button
-                onClick={() => {
-                  setEditingTest(null);
-                  setShowCreateForm(true);
-                }}
-                style={{
-                  padding: 'var(--cds-button-padding-sm)',
-                  background: 'var(--cds-button-primary)',
-                  color: 'var(--cds-text-on-color)',
-                  border: 'none',
-                  borderRadius: 'var(--cds-border-radius)',
-                  cursor: 'pointer',
-                  fontWeight: 'var(--cds-font-weight-regular)',
-                  fontSize: 'var(--cds-body-short-01)',
-                  height: 'var(--cds-button-height-compact)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--cds-spacing-sm)'
-                }}
-              >
-                <span>+</span>
-                <span>创建测试</span>
-              </button>
-            </div>
-
-            {loading ? (
-              <div>加载中...</div>
-            ) : error ? (
-              <div style={{color: 'red'}}>{error}</div>
-            ) : (
-              <TestList
-                tests={tests}
-                onRunTest={handleTestRun}
-                onEditTest={handleEditTest}
-              />
-            )}
-
-            {/* 创建/编辑测试 Modal */}
-            <Modal
-              isOpen={showCreateForm}
-              onClose={() => {
-                setEditingTest(null);
-                setShowCreateForm(false);
-              }}
-              title={editingTest ? `✏️ 编辑测试: ${editingTest.name}` : '✨ 创建新测试'}
-            >
-              <TestForm
-                onTestCreated={() => {
-                  handleTestCreated();
-                  setShowCreateForm(false);
-                }}
-                editingTest={editingTest}
-                onCancel={() => {
-                  setEditingTest(null);
-                  setShowCreateForm(false);
-                }}
-              />
-            </Modal>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Wrap app with AuthProvider
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-}
-
-export default App;

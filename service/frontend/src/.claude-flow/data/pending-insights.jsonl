@@ -1,0 +1,7 @@
+{"type":"edit","file":"/home/fqs/workspace/self/deepagent-test-runner/playwright.config.ts","timestamp":1779191224298,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/deepagent-test-runner/tests/fixtures/test-helpers.ts","timestamp":1779191225254,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/deepagent-test-runner/tests/e2e/auth/login.spec.ts","timestamp":1779191325905,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/deepagent-test-runner/tests/e2e/auth/register.spec.ts","timestamp":1779191326745,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/deepagent-test-runner/tests/e2e/dashboard.spec.ts","timestamp":1779191327817,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/deepagent-test-runner/tests/e2e/tests-management.spec.ts","timestamp":1779191329212,"sessionId":null}
+{"type":"edit","file":"/home/fqs/workspace/self/deepagent-test-runner/tests/e2e/schedules.spec.ts","timestamp":1779191331715,"sessionId":null}

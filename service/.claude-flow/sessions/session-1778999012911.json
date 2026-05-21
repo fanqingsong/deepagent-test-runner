@@ -1,0 +1,14 @@
+{
+  "id": "session-1778999012911",
+  "startedAt": "2026-05-17T06:23:32.911Z",
+  "cwd": "/home/fqs/workspace/self/deepagent-test-runner/service",
+  "context": {},
+  "metrics": {
+    "edits": 5,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-05-17T10:19:22.516Z",
+  "duration": 14149605
+}

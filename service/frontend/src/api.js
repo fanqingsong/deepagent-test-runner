@@ -69,132 +69,8 @@ async function apiFetch(url, options = {}) {
   return response;
 }
 
-export const getTests = async () => {
-  const response = await apiFetch(`${TEST_API}/test-definitions/`);
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, '加载测试列表失败'));
-  }
-  return response.json();
-};
 
-export const createTest = async (testData) => {
-  try {
-    const { test_steps, ...testInfo } = testData;
 
-    // Create test
-    // ROOT CAUSE: Missing trailing slash caused ERR_CONNECTION_REFUSED
-    // Nginx routes /api/v1/ with trailing slash, so POST endpoint must match
-    const createUrl = `${TEST_API}/test-definitions/`;
-    console.log('=== Creating Test ===');
-    console.log('Full URL:', createUrl);
-    console.log('Request body:', JSON.stringify(testInfo, null, 2));
-    console.log('====================');
-
-    const testResponse = await fetch(createUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify(testInfo),
-      mode: 'cors'
-    });
-
-    if (!testResponse.ok) {
-      throw new Error(`Failed to create test: ${testResponse.statusText}`);
-    }
-
-    const test = await testResponse.json();
-
-    // Replace steps in one request (avoid N+1 calls)
-    const replaceStepsResponse = await fetch(`${TEST_API}/test-steps/test-definition/${test.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify({
-        test_steps: (test_steps || []).map((step, index) => ({
-          step_number: index + 1,
-          description: step.description,
-          type: 'action',
-          params: {},
-          expected_result: null
-        }))
-      }),
-      mode: 'cors'
-    });
-
-    if (!replaceStepsResponse.ok) {
-      const errorText = await replaceStepsResponse.text();
-      throw new Error(`Failed to replace steps: ${replaceStepsResponse.statusText} - ${errorText}`);
-    }
-
-    return test;
-  } catch (error) {
-    console.error('Error creating test:', error);
-    throw new Error('Failed to create test. Please try again.');
-  }
-};
-
-export const updateTest = async (testId, testData) => {
-  try {
-    const { test_steps, ...testInfo } = testData;
-
-    // Use test_id instead of numeric ID for PUT request
-    const testIdString = testInfo.test_id || testId.toString();
-
-    // Update test basic info
-    const testResponse = await fetch(`${TEST_API}/test-definitions/${testIdString}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify(testInfo),
-      mode: 'cors'
-    });
-
-    if (!testResponse.ok) {
-      const errorText = await testResponse.text();
-      throw new Error(`Failed to update test: ${testResponse.statusText} - ${errorText}`);
-    }
-
-    const test = await testResponse.json();
-
-    // Get the internal ID from the response
-    const internalId = test.id;
-
-    // Replace steps in one request (avoid N+1 calls)
-    const replaceStepsResponse = await fetch(`${TEST_API}/test-steps/test-definition/${internalId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify({
-        test_steps: (test_steps || []).map((step, index) => ({
-          step_number: index + 1,
-          description: step.description,
-          type: 'action',
-          params: {},
-          expected_result: null
-        }))
-      }),
-      mode: 'cors'
-    });
-
-    if (!replaceStepsResponse.ok) {
-      const errorText = await replaceStepsResponse.text();
-      throw new Error(`Failed to replace steps: ${replaceStepsResponse.statusText} - ${errorText}`);
-    }
-
-    return test;
-  } catch (error) {
-    console.error('Error updating test:', error);
-    throw error;
-  }
-};
 
 // Dashboard API
 export const getDashboardData = async (days = 30) => {
@@ -434,51 +310,51 @@ export const getRegressionTests = async () => {
   return response.json();
 };
 
-// APP Workspace
-export const createApp = async (data) => {
+// Studio Workspace
+export const createStudio = async (data) => {
   const response = await apiFetch(`${TEST_API}/apps/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error(await parseApiError(response, '创建 APP 失败'));
+  if (!response.ok) throw new Error(await parseApiError(response, '创建 Studio 失败'));
   return response.json();
 };
 
-export const listApps = async (params = {}) => {
+export const listStudios = async (params = {}) => {
   const qs = new URLSearchParams();
   if (params.status) qs.set('status', params.status);
   if (params.search) qs.set('search', params.search);
   const response = await apiFetch(`${TEST_API}/apps/?${qs.toString()}`);
-  if (!response.ok) throw new Error(await parseApiError(response, '加载 APP 列表失败'));
+  if (!response.ok) throw new Error(await parseApiError(response, '加载 Studio 列表失败'));
   return response.json();
 };
 
-export const getApp = async (appId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}`);
-  if (!response.ok) throw new Error(await parseApiError(response, '加载 APP 失败'));
+export const getStudio = async (studioId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}`);
+  if (!response.ok) throw new Error(await parseApiError(response, '加载 Studio 失败'));
   return response.json();
 };
 
-export const updateApp = async (appId, data) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}`, {
+export const updateStudio = async (studioId, data) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error(await parseApiError(response, '更新 APP 失败'));
+  if (!response.ok) throw new Error(await parseApiError(response, '更新 Studio 失败'));
   return response.json();
 };
 
-export const archiveApp = async (appId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}`, { method: 'DELETE' });
+export const archiveStudio = async (studioId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}`, { method: 'DELETE' });
   if (!response.ok && response.status !== 204) {
-    throw new Error(await parseApiError(response, '删除 APP 失败'));
+    throw new Error(await parseApiError(response, '删除 Studio 失败'));
   }
 };
 
-export const runApp = async (appId, { forceRegenerate, useExistingPlan } = {}) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}/run`, {
+export const runStudio = async (studioId, { forceRegenerate, useExistingPlan } = {}) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -486,12 +362,12 @@ export const runApp = async (appId, { forceRegenerate, useExistingPlan } = {}) =
       use_existing_plan: !!useExistingPlan,
     }),
   });
-  if (!response.ok) throw new Error(await parseApiError(response, '运行 APP 失败'));
+  if (!response.ok) throw new Error(await parseApiError(response, '运行 Studio 失败'));
   return response.json();
 };
 
-export const generateAppPlan = async (appId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}/generate-plan`, {
+export const generateStudioPlan = async (studioId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}/generate-plan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -499,8 +375,8 @@ export const generateAppPlan = async (appId) => {
   return response.json();
 };
 
-export const saveAppSteps = async (appId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}/save-steps`, {
+export const saveStudioSteps = async (studioId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}/save-steps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -508,14 +384,14 @@ export const saveAppSteps = async (appId) => {
   return response.json();
 };
 
-export const getAppRunProgress = async (appId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}/run-progress`);
+export const getStudioRunProgress = async (studioId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}/run-progress`);
   if (!response.ok) throw new Error(await parseApiError(response, '获取进度失败'));
   return response.json();
 };
 
-export const refineApp = async (appId, feedback) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}/refine`, {
+export const refineStudio = async (studioId, feedback) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}/refine`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ feedback }),
@@ -524,11 +400,11 @@ export const refineApp = async (appId, feedback) => {
   return response.json();
 };
 
-export const publishApp = async (appId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${appId}/publish`, {
+export const publishStudio = async (studioId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${studioId}/publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
-  if (!response.ok) throw new Error(await parseApiError(response, '发布 APP 失败'));
+  if (!response.ok) throw new Error(await parseApiError(response, '发布 Studio 失败'));
   return response.json();
 };
