@@ -39,6 +39,9 @@ export default function AppWorkspace({ appId }) {
   const [progressSteps, setProgressSteps] = useState([]);
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
+  const [browserUrl, setBrowserUrl] = useState('');
+  const [browserTitle, setBrowserTitle] = useState('');
+  const [selectedScreenshot, setSelectedScreenshot] = useState(null);
 
   const loadApp = useCallback(async () => {
     try {
@@ -55,13 +58,11 @@ export default function AppWorkspace({ appId }) {
       setPlanEdited(false);
       setStepsSaved(false);
     } catch (e) {
-      if (!app) {
-        setError(e.message);
-      }
+      setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [appId, app]);
+  }, [appId]);
 
   useEffect(() => {
     loadApp();
@@ -79,6 +80,8 @@ export default function AppWorkspace({ appId }) {
             setProgressSteps(progress.completed_steps);
             setProgressCurrent(progress.current_step || 0);
             setProgressTotal(progress.total_steps || 0);
+            setBrowserUrl(progress.browser_url || '');
+            setBrowserTitle(progress.browser_title || '');
           }
         } catch { /* best-effort */ }
 
@@ -87,6 +90,9 @@ export default function AppWorkspace({ appId }) {
           setProgressSteps([]);
           setProgressCurrent(0);
           setProgressTotal(0);
+          setBrowserUrl('');
+          setBrowserTitle('');
+          setSelectedScreenshot(null);
           if (pollingRef.current) clearInterval(pollingRef.current);
           pollingRef.current = null;
           await loadApp();
@@ -482,64 +488,101 @@ export default function AppWorkspace({ appId }) {
           )}
 
           {isRunning && (
-            <div className="app-workspace-section">
-              <h3 className="app-workspace-section-title">
-                Running
-                <span className="app-workspace-progress-counts">
-                  {' '}{progressCurrent}/{progressTotal || '?'} steps completed
-                </span>
-              </h3>
-              {progressSteps.length > 0 ? (
-                <table className="app-workspace-steps-table">
-                  <thead>
-                    <tr>
-                      <th className="th-step">#</th>
-                      <th className="th-desc">Step</th>
-                      <th className="th-status">Status</th>
-                      <th className="th-duration">Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {progressSteps.map((step, i) => (
-                      <tr key={i} className={`row-${step.status}`}>
-                        <td className="td-step">{step.step_number || i + 1}</td>
-                        <td className="td-desc">
-                          {step.description || `Step ${i + 1}`}
-                          {step.error && <span className="step-error">{step.error}</span>}
-                        </td>
-                        <td className="td-status">
-                          <span className={`step-badge step-${step.status}`}>
-                            {step.status === 'passed' ? '✓' : step.status === 'failed' ? '✗' : '...'}
-                          </span>
-                        </td>
-                        <td className="td-duration">{step.duration ? `${step.duration}ms` : '-'}</td>
-                      </tr>
-                    ))}
-                    {progressTotal > progressSteps.length && (
-                      <tr className="row-pending">
-                        <td className="td-step">{progressSteps.length + 1}</td>
-                        <td className="td-desc" colSpan={3}>
-                          <span className="app-workspace-typing">
-                            <span></span><span></span><span></span>
-                          </span>
-                          <span className="app-workspace-running-text">executing...</span>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="app-workspace-running">
-                  <div className="app-workspace-typing">
-                    <span></span><span></span><span></span>
-                  </div>
-                  <span className="app-workspace-running-text">Generating test plan...</span>
+            <>
+              {progressSteps.filter(s => s.screenshot_path).length > 0 && (
+                <div className="app-workspace-section">
+                  <BrowserPreview
+                    latestScreenshot={
+                      progressSteps.filter(s => s.screenshot_path).slice(-1)[0]?.screenshot_path || null
+                    }
+                    browserUrl={browserUrl}
+                    browserTitle={browserTitle}
+                    progressSteps={progressSteps}
+                    onSelectScreenshot={setSelectedScreenshot}
+                  />
                 </div>
               )}
-            </div>
+
+              <div className="app-workspace-section">
+                <h3 className="app-workspace-section-title">
+                  Running
+                  <span className="app-workspace-progress-counts">
+                    {' '}{progressCurrent}/{progressTotal || '?'} steps completed
+                  </span>
+                </h3>
+                {progressSteps.length > 0 ? (
+                  <table className="app-workspace-steps-table">
+                    <thead>
+                      <tr>
+                        <th className="th-step">#</th>
+                        <th className="th-screenshot">Preview</th>
+                        <th className="th-desc">Step</th>
+                        <th className="th-status">Status</th>
+                        <th className="th-duration">Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {progressSteps.map((step, i) => (
+                        <tr key={i} className={`row-${step.status}`}>
+                          <td className="td-step">{step.step_number || i + 1}</td>
+                          <td className="td-screenshot">
+                            {step.screenshot_path ? (
+                              <button
+                                className="step-screenshot-thumb"
+                                onClick={() => setSelectedScreenshot(step.screenshot_path)}
+                                title="Click to enlarge"
+                              >
+                                <img src={step.screenshot_path} alt={`Step ${step.step_number}`} />
+                              </button>
+                            ) : (
+                              <span className="step-screenshot-placeholder">-</span>
+                            )}
+                          </td>
+                          <td className="td-desc">
+                            {step.description || `Step ${i + 1}`}
+                            {step.error && <span className="step-error">{step.error}</span>}
+                          </td>
+                          <td className="td-status">
+                            <span className={`step-badge step-${step.status}`}>
+                              {step.status === 'passed' ? '✓' : step.status === 'failed' ? '✗' : '...'}
+                            </span>
+                          </td>
+                          <td className="td-duration">{step.duration ? `${step.duration}ms` : '-'}</td>
+                        </tr>
+                      ))}
+                      {progressTotal > progressSteps.length && (
+                        <tr className="row-pending">
+                          <td className="td-step">{progressSteps.length + 1}</td>
+                          <td className="td-desc" colSpan={4}>
+                            <span className="app-workspace-typing">
+                              <span></span><span></span><span></span>
+                            </span>
+                            <span className="app-workspace-running-text">executing...</span>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="app-workspace-running">
+                    <div className="app-workspace-typing">
+                      <span></span><span></span><span></span>
+                    </div>
+                    <span className="app-workspace-running-text">Generating test plan...</span>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
+
+      {selectedScreenshot && (
+        <ScreenshotLightbox
+          src={selectedScreenshot}
+          onClose={() => setSelectedScreenshot(null)}
+        />
+      )}
     </div>
   );
 }
@@ -561,5 +604,76 @@ function EditableCell({ value, editing, draft, onStartEdit, onDraftChange, onKey
     <span className="app-workspace-editable-cell" onClick={onStartEdit}>
       {value || '-'}
     </span>
+  );
+}
+
+function BrowserPreview({ latestScreenshot, browserUrl, browserTitle, progressSteps, onSelectScreenshot }) {
+  const stepsWithScreenshots = progressSteps.filter(s => s.screenshot_path);
+
+  return (
+    <div className="browser-preview">
+      <div className="browser-preview-chrome">
+        <div className="browser-preview-dots">
+          <span className="browser-preview-dot"></span>
+          <span className="browser-preview-dot"></span>
+          <span className="browser-preview-dot"></span>
+        </div>
+        <div className="browser-preview-url-bar">
+          {browserUrl || 'about:blank'}
+        </div>
+      </div>
+
+      <div className="browser-preview-viewport">
+        {latestScreenshot ? (
+          <img
+            src={latestScreenshot}
+            alt="Latest browser state"
+            className="browser-preview-screenshot"
+          />
+        ) : (
+          <div className="browser-preview-placeholder">
+            Waiting for first screenshot...
+          </div>
+        )}
+      </div>
+
+      <div className="browser-preview-status">
+        {browserTitle && (
+          <span className="browser-preview-title">{browserTitle}</span>
+        )}
+      </div>
+
+      {stepsWithScreenshots.length > 0 && (
+        <div className="browser-preview-thumbnails">
+          {stepsWithScreenshots.map((step, i) => (
+            <button
+              key={i}
+              className={`browser-preview-thumb ${
+                step.screenshot_path === latestScreenshot ? 'browser-preview-thumb--active' : ''
+              }`}
+              onClick={() => onSelectScreenshot(step.screenshot_path)}
+              title={`Step ${step.step_number}: ${step.description}`}
+            >
+              <img src={step.screenshot_path} alt={`Step ${step.step_number}`} />
+              <span className={`browser-preview-thumb-badge step-${step.status}`}>
+                {step.step_number}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScreenshotLightbox({ src, onClose }) {
+  if (!src) return null;
+  return (
+    <div className="screenshot-lightbox-overlay" onClick={onClose}>
+      <div className="screenshot-lightbox-content" onClick={(e) => e.stopPropagation()}>
+        <button className="screenshot-lightbox-close" onClick={onClose}>x</button>
+        <img src={src} alt="Screenshot detail" className="screenshot-lightbox-image" />
+      </div>
+    </div>
   );
 }

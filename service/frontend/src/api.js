@@ -524,6 +524,40 @@ export const refineApp = async (appId, feedback) => {
   return response.json();
 };
 
+// SSO Config
+export const listSSOConfigs = async () => {
+  const response = await apiFetch(`${TEST_API}/sso/`);
+  if (!response.ok) throw new Error(await parseApiError(response, '加载 SSO 配置失败'));
+  return response.json();
+};
+
+export const createSSOConfig = async (data) => {
+  const response = await apiFetch(`${TEST_API}/sso/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '创建 SSO 配置失败'));
+  return response.json();
+};
+
+export const updateSSOConfig = async (configId, data) => {
+  const response = await apiFetch(`${TEST_API}/sso/${configId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, '更新 SSO 配置失败'));
+  return response.json();
+};
+
+export const deleteSSOConfig = async (configId) => {
+  const response = await apiFetch(`${TEST_API}/sso/${configId}`, { method: 'DELETE' });
+  if (!response.ok && response.status !== 204) {
+    throw new Error(await parseApiError(response, '删除 SSO 配置失败'));
+  }
+};
+
 export const publishApp = async (appId) => {
   const response = await apiFetch(`${TEST_API}/apps/${appId}/publish`, {
     method: 'POST',

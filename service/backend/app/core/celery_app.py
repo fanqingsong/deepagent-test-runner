@@ -48,9 +48,9 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_concurrency=2,
 
-    # Task timeout — kill tasks that run too long (5 min hard, 4 min soft)
-    task_time_limit=300,
-    task_soft_time_limit=240,
+    # Task timeout — kill tasks that run too long (10 min hard, 9 min soft)
+    task_time_limit=600,
+    task_soft_time_limit=540,
 
     # Task result settings
     result_expires=3600,  # 1 hour

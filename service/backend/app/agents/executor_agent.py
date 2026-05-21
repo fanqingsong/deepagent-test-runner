@@ -219,13 +219,18 @@ async def interpret_and_execute_batch(
         try:
             from app.core.job_store import update_job
             progress_steps = [
-                {k: r[k] for k in ("step_number", "description", "status", "error", "duration") if k in r}
+                {k: r[k] for k in (
+                    "step_number", "description", "status", "error", "duration",
+                    "screenshot_path",
+                ) if k in r}
                 for r in results
             ]
             update_job(run_id, {
                 "completed_steps": progress_steps,
                 "current_step": idx + 1,
                 "total_steps": len(test_steps),
+                "browser_url": context.get("url", ""),
+                "browser_title": context.get("title", ""),
             })
         except Exception:
             pass

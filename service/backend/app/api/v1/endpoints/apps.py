@@ -24,7 +24,7 @@ from app.schemas.app import (
     AppUpdate,
 )
 from app.services.app_service import AppService
-from app.core.security import verify_token
+from app.services.unified_auth import verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +217,8 @@ async def get_run_progress(
         "completed_steps": job.get("completed_steps", []),
         "current_step": job.get("current_step", 0),
         "total_steps": job.get("total_steps", 0),
+        "browser_url": job.get("browser_url", ""),
+        "browser_title": job.get("browser_title", ""),
     }
 
 
