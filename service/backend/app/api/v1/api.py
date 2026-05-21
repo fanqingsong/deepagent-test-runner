@@ -18,7 +18,6 @@ from app.api.v1.endpoints import (
     jobs,
     test_suites,
     test_generation,
-    sso_config,
     autonomous_planning,
     conversations,
     apps,
