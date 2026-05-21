@@ -13,7 +13,6 @@ import ScheduleList from './components/ScheduleList';
 import ScheduleForm from './components/ScheduleForm';
 import UserList from './components/UserList';
 import UserForm from './components/UserForm';
-import SSOManagement from './components/SSOManagement';
 import Modal from './components/Modal';
 import AppGallery from './components/AppGallery';
 import AppWorkspace from './components/AppWorkspace';
@@ -48,7 +47,7 @@ function AppContent() {
     const hash = window.location.hash.slice(1); // 去掉#号
     if (hash.startsWith('app/')) {
       setCurrentView(hash);
-    } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'sso' || hash === 'apps') {
+    } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'apps') {
       setCurrentView(hash);
     }
   }, []);
@@ -59,7 +58,7 @@ function AppContent() {
       const hash = window.location.hash.slice(1);
       if (hash.startsWith('app/')) {
         setCurrentView(hash);
-      } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'sso' || hash === 'apps') {
+      } else if (hash === 'tests' || hash === 'dashboard' || hash === 'schedules' || hash === 'users' || hash === 'apps') {
         setCurrentView(hash);
       }
     };
@@ -241,12 +240,6 @@ function AppContent() {
               >
                 用户配置
               </button>
-              <button
-                onClick={() => window.location.hash = 'sso'}
-                style={navButtonStyle(currentView === 'sso')}
-              >
-                SSO 配置
-              </button>
             </>
           )}
         </div>
@@ -279,8 +272,6 @@ function AppContent() {
           <AppGallery />
         ) : currentView === 'dashboard' ? (
           <DashboardView />
-        ) : currentView === 'sso' ? (
-          <SSOManagement />
         ) : currentView === 'users' ? (
           <div style={{padding: 'var(--cds-layout-sm)', background: 'var(--cds-background)'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--cds-layout-md)'}}>

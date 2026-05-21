@@ -14,8 +14,6 @@ from app.api.v1.endpoints import schedules
 from app.api.v1.endpoints import jobs
 from app.api.v1.endpoints import test_suites
 from app.api.v1.endpoints import test_generation
-from app.api.v1.endpoints import sso_config
-
 __all__ = [
     "analytics",
     "auth",
@@ -27,5 +25,4 @@ __all__ = [
     "jobs",
     "test_suites",
     "test_generation",
-    "sso_config",
 ]

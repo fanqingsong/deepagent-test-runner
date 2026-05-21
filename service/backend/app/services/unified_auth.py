@@ -1,7 +1,7 @@
 """
 Unified Authentication Service
 
-Supports both local JWT authentication and Casdoor SSO authentication.
+Supports local JWT authentication.
 """
 
 import os

@@ -1,7 +1,7 @@
 /**
  * Authentication Service
  *
- * Handles authentication with both local JWT and Casdoor SSO.
+ * Handles authentication with local JWT.
  */
 
 // Use the current origin (protocol + hostname + port) to work in all environments

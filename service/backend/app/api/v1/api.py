@@ -39,13 +39,6 @@ api_router.include_router(
     tags=["users"]
 )
 
-# SSO configuration endpoints
-api_router.include_router(
-    sso_config.router,
-    prefix="/sso",
-    tags=["sso-config"]
-)
-
 # Test case management endpoints
 api_router.include_router(
     test_definitions.router,

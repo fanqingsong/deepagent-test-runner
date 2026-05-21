@@ -56,12 +56,6 @@ from app.schemas.jobs import (
     JobResponse,
     JobStatusResponse,
 )
-from app.schemas.sso_config import (
-    SSOConfigCreate,
-    SSOConfigResponse,
-    SSOConfigUpdate,
-    SSOConfigListResponse,
-)
 from app.schemas.common import Error, MessageResponse
 
 __all__ = [
@@ -115,11 +109,6 @@ __all__ = [
     "JobCreate",
     "JobResponse",
     "JobStatusResponse",
-    # SSO Config
-    "SSOConfigCreate",
-    "SSOConfigResponse",
-    "SSOConfigUpdate",
-    "SSOConfigListResponse",
     # Common
     "Error",
     "MessageResponse",

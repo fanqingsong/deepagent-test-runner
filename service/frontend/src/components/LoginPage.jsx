@@ -5,8 +5,6 @@
  * 1. Local username/password
  * 2. User registration
  * 3. Password reset
- *
- * Note: Casdoor and SSO options have been hidden
  */
 
 import { useState } from 'react';
