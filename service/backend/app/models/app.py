@@ -31,7 +31,7 @@ class App(Base):
 
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="draft",
-        comment="draft|generating|testing|passed|published|archived",
+        comment="draft|generating|testing|passed|pending_review|published|archived",
     )
 
     test_goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

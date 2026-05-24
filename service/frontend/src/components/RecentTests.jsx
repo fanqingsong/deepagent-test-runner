@@ -3,7 +3,7 @@ import TestRunDetailModal from './TestRunDetailModal';
 import './RecentTests.css';
 
 function RecentTests({ testRuns = [], onRefresh }) {
-  // 分页状态
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [selectedRun, setSelectedRun] = useState(null);
@@ -11,7 +11,7 @@ function RecentTests({ testRuns = [], onRefresh }) {
   // Use real data only - no mock data
   const displayData = testRuns;
 
-  // 计算分页数据
+  // Calculate pagination data
   const totalPages = Math.ceil(displayData.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -20,9 +20,9 @@ function RecentTests({ testRuns = [], onRefresh }) {
   const getStatusBadge = (status) => {
     const className = `status-badge ${status || 'running'}`;
     const label = {
-      passed: '通过',
-      failed: '失败',
-      running: '运行中'
+      passed: 'Passed',
+      failed: 'Failed',
+      running: 'Running'
     };
     return (
       <span className={className}>
@@ -44,9 +44,9 @@ function RecentTests({ testRuns = [], onRefresh }) {
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 60) return `${diffMins}分钟前`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}小时前`;
-    return date.toLocaleDateString('zh-CN', {
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -74,16 +74,16 @@ function RecentTests({ testRuns = [], onRefresh }) {
   return (
     <div className="recent-tests">
       <div className="recent-tests-header">
-        <h3>最近测试运行</h3>
+        <h3>Recent Test Runs</h3>
         <div className="pagination-info">
-          显示 {currentPageData.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, displayData.length)} / ${displayData.length} 条记录` : '0 条记录'}
+          Showing {currentPageData.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, displayData.length)} / ${displayData.length} records` : '0 records'}
         </div>
       </div>
 
       {displayData.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📊</div>
-          <p className="empty-title">暂无测试运行记录</p>
+          <p className="empty-title">No test run records</p>
         </div>
       ) : (
         <>
@@ -91,10 +91,10 @@ function RecentTests({ testRuns = [], onRefresh }) {
             <table className="tests-table">
               <thead>
                 <tr>
-                  <th>测试名称</th>
-                  <th>状态</th>
-                  <th>执行时长</th>
-                  <th>执行时间</th>
+                  <th>Test Name</th>
+                  <th>Status</th>
+                  <th>Duration</th>
+                  <th>Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,11 +129,11 @@ function RecentTests({ testRuns = [], onRefresh }) {
             </table>
           </div>
 
-          {/* 分页控件 */}
+          {/* Pagination controls */}
           {totalPages > 1 && (
             <div className="pagination-controls">
               <div className="pagination-info">
-                第 {currentPage} / {totalPages} 页
+                Page {currentPage} / {totalPages}
               </div>
 
               <div className="pagination-buttons">
@@ -141,21 +141,21 @@ function RecentTests({ testRuns = [], onRefresh }) {
                   onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}
                   className="pagination-btn"
-                  aria-label="第一页"
+                  aria-label="First page"
                 >
-                  首页
+                  First
                 </button>
 
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                   className="pagination-btn"
-                  aria-label="上一页"
+                  aria-label="Previous page"
                 >
-                  上一页
+                  Previous
                 </button>
 
-                {/* 页码按钮 */}
+                {/* Page number buttons */}
                 {Array.from({length: Math.min(5, totalPages)}, (_, i) => {
                   let pageNum;
                   if (totalPages <= 5) {
@@ -174,7 +174,7 @@ function RecentTests({ testRuns = [], onRefresh }) {
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
                       className={`pagination-btn page-number ${isActive ? 'active' : ''}`}
-                      aria-label={`第 ${pageNum} 页`}
+                      aria-label={`Page ${pageNum}`}
                       aria-current={isActive ? 'page' : undefined}
                     >
                       {pageNum}
@@ -186,32 +186,32 @@ function RecentTests({ testRuns = [], onRefresh }) {
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                   className="pagination-btn"
-                  aria-label="下一页"
+                  aria-label="Next page"
                 >
-                  下一页
+                  Next
                 </button>
 
                 <button
                   onClick={() => handlePageChange(totalPages)}
                   disabled={currentPage === totalPages}
                   className="pagination-btn"
-                  aria-label="末页"
+                  aria-label="Last page"
                 >
-                  末页
+                  Last
                 </button>
               </div>
 
               <div className="page-size-selector">
-                <label>每页显示：</label>
+                <label>Items per page:</label>
                 <select
                   value={pageSize}
                   onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
                   className="page-size-select"
                 >
-                  <option value={10}>10条</option>
-                  <option value={20}>20条</option>
-                  <option value={50}>50条</option>
-                  <option value={100}>100条</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
                 </select>
               </div>
             </div>

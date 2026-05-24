@@ -16,6 +16,7 @@ from app.models.schedule import Schedule
 from app.models.test_run import TestRun
 from app.models.test_suite import TestSuite
 from app.models.test_case import TestCase
+from app.models.test_definition import TestDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +69,21 @@ class ExecutionService:
             return suite.test_definition_ids
 
         elif schedule.schedule_type == 'tag_filter':
-            # Dynamic tag filtering - query test-case-service
-            # For now, return empty as this requires external API call
-            logger.warning(f"Tag filter not yet implemented for schedule {schedule.id}")
-            return []
+            # Query test definitions matching the tag filter
+            if not schedule.tag_filter:
+                logger.warning(f"Schedule {schedule.id} has no tag_filter set")
+                return []
+
+            stmt = select(TestDefinition.id).where(
+                TestDefinition.tags.any(schedule.tag_filter)
+            ).where(TestDefinition.is_draft == False)
+            result = await db.execute(stmt)
+            ids = [row[0] for row in result.fetchall()]
+            logger.info(
+                "Tag filter '%s' resolved to %d test definitions for schedule %d",
+                schedule.tag_filter, len(ids), schedule.id
+            )
+            return ids
 
         else:
             raise ValueError(f"Unknown schedule_type: {schedule.schedule_type}")
@@ -97,23 +109,27 @@ class ExecutionService:
     def build_environment(
         self,
         schedule: Schedule,
-        test_definition_environment: Optional[Dict[str, Any]] = None
+        test_definition_environment: Optional[Dict[str, Any]] = None,
+        config_env: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Build final execution environment by merging configurations.
 
+        Merge order (later wins): test_definition < run_config < schedule overrides
+
         Args:
             schedule: Schedule object with environment_overrides
             test_definition_environment: Base environment from test definition (optional)
+            config_env: Environment from RunConfig template (optional)
 
         Returns:
             Merged environment dictionary
         """
         base_env = test_definition_environment or {}
+        config = config_env or {}
         overrides = schedule.environment_overrides or {}
 
-        # Overrides take precedence
-        return {**base_env, **overrides}
+        return {**base_env, **config, **overrides}
 
     async def create_test_run(
         self,

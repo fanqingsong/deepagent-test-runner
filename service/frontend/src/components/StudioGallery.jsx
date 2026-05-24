@@ -5,11 +5,11 @@ import Modal from './Modal';
 import './StudioGallery.css';
 
 const STATUS_OPTIONS = [
-  { value: '', label: '全部' },
-  { value: 'draft', label: '草稿' },
-  { value: 'testing', label: '测试中' },
-  { value: 'passed', label: '已通过' },
-  { value: 'published', label: '已发布' },
+  { value: '', label: 'All' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'testing', label: 'Testing' },
+  { value: 'passed', label: 'Passed' },
+  { value: 'published', label: 'Published' },
 ];
 
 export default function StudioGallery() {

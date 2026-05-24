@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 
 
 class AppCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="APP name")
+    name: Optional[str] = Field("未命名测试", max_length=255, description="APP name")
     description: Optional[str] = Field(None, description="APP description")
-    url: str = Field(..., min_length=1, max_length=500, description="Target URL")
-    test_goal: str = Field(..., min_length=1, description="Natural language test goal")
+    url: Optional[str] = Field(None, max_length=500, description="Target URL")
+    test_goal: Optional[str] = Field(None, description="Natural language test goal")
     test_context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
     icon: str = Field(default="test-tube", max_length=50, description="APP icon identifier")
     color: str = Field(default="#0f62fe", max_length=20, description="APP accent color")
@@ -76,6 +76,7 @@ class AppResponse(BaseModel):
     created_by: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+    review_status: Optional[str] = None
     messages: List[MessageResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

@@ -20,16 +20,16 @@ ChartJS.register(
 );
 
 function DurationChart({ data = [], timeRange = '30d' }) {
-  // 如果没有真实数据，生成模拟数据用于展示
+  // Generate mock data for display if no real data
   const chartData = data.length > 0 ? data : generateMockData();
 
-  // 根据时间范围决定显示多少数据点
+  // Determine how many data points to show based on time range
   const daysToShow = timeRange === '7d' ? 7 : timeRange === '30d' ? 14 : 30;
   const displayData = chartData.slice(-daysToShow);
 
   const labels = displayData.map(item => {
     const date = new Date(item.date);
-    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   });
 
   const durations = displayData.map(item => Math.round(item.duration || 0));
@@ -37,7 +37,7 @@ function DurationChart({ data = [], timeRange = '30d' }) {
   const chartDataConfig = {
     labels,
     datasets: [{
-      label: '平均执行时长 (秒)',
+      label: 'Average Execution Duration (s)',
       data: durations,
       backgroundColor: 'rgba(33, 150, 243, 0.6)',
       borderColor: '#2196f3',
@@ -56,7 +56,7 @@ function DurationChart({ data = [], timeRange = '30d' }) {
       },
       title: {
         display: true,
-        text: '平均执行时长趋势',
+        text: 'Average Execution Duration Trend',
         font: {
           size: 16,
           weight: 'bold'
@@ -77,7 +77,7 @@ function DurationChart({ data = [], timeRange = '30d' }) {
         callbacks: {
           label: function(context) {
             const value = context.parsed.y;
-            return `平均时长: ${value}秒`;
+            return `Average: ${value}s`;
           }
         }
       }
@@ -116,7 +116,7 @@ function DurationChart({ data = [], timeRange = '30d' }) {
   );
 }
 
-// 生成模拟数据用于展示
+// Generate mock data for display
 function generateMockData() {
   const data = [];
   const today = new Date();
@@ -125,7 +125,7 @@ function generateMockData() {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
 
-    // 生成一些随机的时长数据（20-120秒之间）
+    // Generate random duration data (20-120 seconds)
     const duration = Math.floor(Math.random() * 100) + 20;
 
     data.push({

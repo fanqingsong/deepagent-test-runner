@@ -4,7 +4,11 @@ Test Execution Tasks
 Celery tasks for executing AI-powered tests using natural language.
 """
 
+import asyncio
+import json
 import logging
+import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -21,8 +25,50 @@ from app.models.test_step import TestStep
 from app.agents.supervisor_graph import build_pipeline_graph
 from app.services.execution_service import ExecutionService
 from app.models.conversation import ConversationThread, ConversationMessage
+from app.services.suite_service import SuiteService
 
 logger = logging.getLogger(__name__)
+
+
+async def _stream_browser_frames(
+    page: Page,
+    run_id: str,
+    stop_event: asyncio.Event,
+) -> None:
+    """Background task: capture and publish browser frames to Redis pub/sub."""
+    import redis as sync_redis
+
+    r = sync_redis.from_url(settings.REDIS_URL)
+    channel = f"browser_stream:{run_id}"
+    screenshots_dir = SCREENSHOT_BASE_DIR / run_id
+    screenshots_dir.mkdir(parents=True, exist_ok=True)
+
+    while not stop_event.is_set():
+        try:
+            path = screenshots_dir / "live.jpg"
+            await page.screenshot(path=str(path), type="jpeg", quality=60)
+            msg = json.dumps({
+                "type": "frame",
+                "path": f"/screenshots/{run_id}/live.jpg",
+                "url": page.url,
+                "title": await page.title(),
+                "timestamp": int(time.time()),
+            })
+            r.publish(channel, msg)
+        except Exception:
+            pass
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=1.0)
+        except asyncio.TimeoutError:
+            pass
+
+    # Signal stream end
+    try:
+        r.publish(channel, json.dumps({"type": "end", "run_id": run_id}))
+    except Exception:
+        pass
+    finally:
+        r.close()
 
 # Screenshot directory configuration
 SCREENSHOT_BASE_DIR = Path("/app/screenshots")
@@ -398,6 +444,12 @@ async def _execute_test_async(
             try:
                 page.set_default_timeout(settings.TEST_TIMEOUT)
 
+                # Start background browser frame streaming
+                stream_stop = asyncio.Event()
+                stream_task = asyncio.create_task(
+                    _stream_browser_frames(page, run_id, stream_stop)
+                )
+
                 # Navigate to initial URL if provided
                 navigated_url = None
                 if test_url:
@@ -455,6 +507,12 @@ async def _execute_test_async(
                 }
 
             finally:
+                # Stop browser frame streaming
+                stream_stop.set()
+                try:
+                    await asyncio.wait_for(stream_task, timeout=5.0)
+                except (asyncio.TimeoutError, Exception):
+                    stream_task.cancel()
                 await browser.close()
 
     except Exception as e:
@@ -604,6 +662,33 @@ async def _run_retry_task(
     except Exception as exc:
         await _mark_run_failed(new_run_id, str(exc))
         raise
+
+
+@celery_app.task(bind=True, name="app.tasks.test_execution.execute_suite",
+                 autoretry_for=(Exception,), retry_backoff=True, max_retries=2)
+def execute_suite(self, suite_run_id: int):
+    """
+    Execute a test suite run by orchestrating individual test executions.
+
+    Args:
+        suite_run_id: SuiteRun internal ID
+
+    Returns:
+        dict: Suite execution results
+    """
+    return run_async(
+        lambda: _run_execute_suite_task(suite_run_id)
+    )
+
+
+async def _run_execute_suite_task(suite_run_id: int) -> Dict[str, Any]:
+    """Async entrypoint for suite execution task."""
+
+    async def _op(db: AsyncSession) -> Dict[str, Any]:
+        svc = SuiteService(db)
+        return await svc.execute_suite(suite_run_id)
+
+    return await run_with_session(_op)
 
 
 def _build_result_from_state(

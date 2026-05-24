@@ -7,10 +7,12 @@ import secrets
 import logging
 
 from app.models.auth import UserAccount, EmailToken
+from app.models.user import User
+from app.models.role import Role, user_roles
 from app.core.auth_security import hash_password, hash_email_token, generate_secure_token, verify_password
 from app.utils.password import validate_password_strength
 from app.utils.email import is_valid_email_format, normalize_email
-from app.shared.email.client import email_client
+from app.tasks.email_tasks import send_email_async
 from app.core.auth_rate_limit import check_rate_limit
 from app.core.config import settings
 
@@ -81,6 +83,27 @@ class AuthService:
             db.add(user)
             await db.flush()
 
+            # Sync to legacy users table and assign default tester role
+            await db.execute(
+                User.__table__.insert().values(
+                    username=normalized_email.split('@')[0],
+                    email=normalized_email,
+                    hashed_password=user.password_hash,
+                    is_active=True,
+                    is_admin=False,
+                )
+            )
+            legacy_user = (await db.execute(
+                select(User).where(User.email == normalized_email)
+            )).scalar_one()
+            tester_role = (await db.execute(
+                select(Role).where(Role.name == "tester")
+            )).scalar_one_or_none()
+            if tester_role:
+                await db.execute(
+                    user_roles.insert().values(user_id=legacy_user.id, role_id=tester_role.id)
+                )
+
             # Generate email verification token
             verification_token = generate_secure_token()
             token_hash = hash_email_token(verification_token)
@@ -97,12 +120,17 @@ class AuthService:
             await db.commit()
             await db.refresh(user)
 
-            # Queue verification email
+            # Send verification email directly (non-blocking)
             verification_url = (
                 f"{settings.FRONTEND_BASE_URL.rstrip('/')}/auth/verify-email"
                 f"?token={verification_token}"
             )
-            email_client.send_verification_email(normalized_email, verification_url)
+            await send_email_async(
+                to_email=normalized_email,
+                subject="Verify Your Email Address",
+                template_name="verification",
+                context={"verification_url": verification_url},
+            )
 
             logger.info(f"User registered successfully: {user.id}")
             return True, None, user
@@ -141,7 +169,7 @@ class AuthService:
             EmailToken.used_at.is_(None)
         )
         result = await db.execute(query)
-        email_token = result.first()
+        email_token = result.scalar_one_or_none()
 
         if not email_token:
             return False, "Invalid or expired verification token", None
@@ -302,7 +330,7 @@ class AuthService:
         Returns:
             Tuple of (success, error_message, reset_token)
         """
-        from app.tasks.email_tasks import send_email_task
+        from app.tasks.email_tasks import send_email_async
 
         # Normalize email
         normalized_email = normalize_email(email)
@@ -340,15 +368,13 @@ class AuthService:
             db.add(email_token)
             await db.commit()
 
-            # Send reset email
-            await send_email_task.kick(
-                template_id="password-reset",
+            # Send reset email directly (non-blocking)
+            reset_url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/auth/reset-password?token={reset_token}"
+            await send_email_async(
                 to_email=user.email,
-                context={
-                    "reset_token": reset_token,
-                    "user_name": user.email.split('@')[0],
-                    "expiry_hours": 1
-                }
+                subject="Reset Your Password",
+                template_name="password_reset",
+                context={"reset_url": reset_url},
             )
 
             logger.info(f"Password reset token generated for user {user.id}")

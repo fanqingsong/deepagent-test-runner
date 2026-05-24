@@ -64,9 +64,15 @@ class User(Base):
         """Check if user has a specific role."""
         return any(r.name == role_name for r in self.roles)
 
+    @property
+    def permission_names(self) -> set[str]:
+        """Cached set of all permission names from all roles."""
+        if not hasattr(self, "_cached_permissions"):
+            self._cached_permissions = {
+                p.name for r in self.roles for p in r.permissions
+            }
+        return self._cached_permissions
+
     def has_permission(self, permission_name: str) -> bool:
         """Check if user has a specific permission through any of their roles."""
-        for role in self.roles:
-            if role.has_permission(permission_name):
-                return True
-        return False
+        return permission_name in self.permission_names

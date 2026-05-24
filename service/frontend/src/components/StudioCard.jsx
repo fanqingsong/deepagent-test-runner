@@ -1,10 +1,10 @@
 const STATUS_MAP = {
-  draft: { label: '草稿', color: '#a8a8a8' },
-  generating: { label: '生成中', color: '#0f62fe' },
-  testing: { label: '测试中', color: '#0f62fe' },
-  passed: { label: '已通过', color: '#198038' },
-  published: { label: '已发布', color: '#6929c4' },
-  archived: { label: '已归档', color: '#6f6f6f' },
+  draft: { label: 'Draft', color: '#a8a8a8' },
+  generating: { label: 'Generating', color: '#0f62fe' },
+  testing: { label: 'Testing', color: '#0f62fe' },
+  passed: { label: 'Passed', color: '#198038' },
+  published: { label: 'Published', color: '#6929c4' },
+  archived: { label: 'Archived', color: '#6f6f6f' },
 };
 
 export default function StudioCard({ studio, onArchive }) {

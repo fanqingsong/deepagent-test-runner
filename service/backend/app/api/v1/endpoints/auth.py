@@ -15,8 +15,10 @@ from app.services.auth.auth_service import AuthService
 from app.services.auth.session_service import SessionService
 from app.services.auth.admin_service import AdminService
 from app.schemas.auth_user import User as AuthUser
+from app.core.security import get_current_user
 from app.core.rate_limit_decorator import rate_limit
 from app.models.auth.user_account import UserAccount
+from app.schemas.user import UserProfileUpdate
 
 router = APIRouter()
 
@@ -133,15 +135,23 @@ async def login(
     # Check if user is admin by querying users table
     is_admin = False
     token_user_id = user.id  # Default to user_accounts ID
+    user_roles = []
+    user_permissions = []
     try:
         from app.models.user import User as UserModel
+        from app.models.role import Role
+        from sqlalchemy.orm import selectinload
         result = await db.execute(
-            select(UserModel).where(UserModel.email == user.email)
+            select(UserModel)
+            .options(selectinload(UserModel.roles).selectinload(Role.permissions))
+            .where(UserModel.email == user.email)
         )
         legacy_user = result.scalar_one_or_none()
         if legacy_user:
             is_admin = legacy_user.is_admin
             token_user_id = legacy_user.id  # Use users table ID for token
+            user_roles = [r.name for r in legacy_user.roles]
+            user_permissions = list({p.name for r in legacy_user.roles for p in r.permissions})
     except Exception:
         pass  # If users table doesn't exist or query fails, default to non-admin
 
@@ -159,7 +169,9 @@ async def login(
             is_verified=user.is_verified,
             mfa_enabled=user.mfa_enabled,
             status=user.status,
-            is_admin=is_admin
+            is_admin=is_admin,
+            roles=user_roles,
+            permissions=user_permissions,
         )
     )
 
@@ -288,4 +300,62 @@ async def refresh_token(
     return {
         "access_token": access_token,
         "refresh_token": new_refresh_token,
+    }
+
+
+@router.get("/me")
+async def get_me(current_user=Depends(get_current_user)):
+    """Get current user info with roles and permissions."""
+    roles = [r.name for r in current_user.roles]
+    permissions = list({p.name for r in current_user.roles for p in r.permissions})
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "is_admin": current_user.is_admin,
+        "is_active": current_user.is_active,
+        "roles": roles,
+        "permissions": permissions,
+    }
+
+
+@router.put("/me")
+async def update_me(
+    profile_data: UserProfileUpdate,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update current user's profile (username only)."""
+    from app.models.user import User as UserModel
+
+    # Check if username is being changed and if it's already taken
+    if profile_data.username and profile_data.username != current_user.username:
+        result = await db.execute(
+            select(UserModel).where(UserModel.username == profile_data.username)
+        )
+        existing_user = result.scalar_one_or_none()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already in use"
+            )
+
+    # Update username if provided
+    if profile_data.username is not None:
+        current_user.username = profile_data.username
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    # Return updated user info
+    roles = [r.name for r in current_user.roles]
+    permissions = list({p.name for r in current_user.roles for p in r.permissions})
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "is_admin": current_user.is_admin,
+        "is_active": current_user.is_active,
+        "roles": roles,
+        "permissions": permissions,
     }

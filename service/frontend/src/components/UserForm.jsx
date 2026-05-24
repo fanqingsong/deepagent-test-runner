@@ -1,11 +1,12 @@
 /**
  * UserForm Component
  *
- * Form for creating and editing users.
+ * Form for creating and editing users, including role assignment.
  * Follows IBM Carbon Design System principles.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getRoles } from '../api';
 import './UserForm.css';
 
 const UserForm = ({ user = null, onSuccess, onCancel }) => {
@@ -16,8 +17,33 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
     password: '',
     is_active: user?.is_active ?? true,
   });
+  const [selectedRoleIds, setSelectedRoleIds] = useState(() => {
+    if (user?.roles) {
+      return user.roles.map((r) => r.id);
+    }
+    return [];
+  });
+  const [availableRoles, setAvailableRoles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadRoles = async () => {
+      try {
+        const rolesData = await getRoles();
+        if (!cancelled) {
+          setAvailableRoles(Array.isArray(rolesData) ? rolesData : []);
+        }
+      } catch {
+        // Non-critical: roles will just be empty
+      }
+    };
+    loadRoles();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -25,6 +51,14 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+
+  const handleToggleRole = (roleId) => {
+    setSelectedRoleIds((prev) =>
+      prev.includes(roleId)
+        ? prev.filter((id) => id !== roleId)
+        : [...prev, roleId]
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -39,13 +73,18 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
         : '/api/v1/users';
       const method = user ? 'PUT' : 'POST';
 
+      const payload = {
+        ...formData,
+        role_ids: selectedRoleIds,
+      };
+
       const response = await fetch(url, {
         method,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -67,7 +106,7 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
     <div className="user-form">
       {error && (
         <div className="form-alert error">
-          <span className="form-alert-icon">⚠</span>
+          <span className="form-alert-icon">&#9888;</span>
           <span>{error}</span>
         </div>
       )}
@@ -75,7 +114,7 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="username" className="form-label required">
-            用户名
+            Username
           </label>
           <input
             type="text"
@@ -88,13 +127,13 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
             maxLength={100}
             className="form-input"
             disabled={isEdit}
-            placeholder="请输入用户名（至少3个字符）"
+            placeholder="Enter username (at least 3 characters)"
           />
         </div>
 
         <div className="form-group">
           <label htmlFor="email" className="form-label required">
-            邮箱
+            Email
           </label>
           <input
             type="email"
@@ -104,14 +143,14 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
             onChange={handleChange}
             required
             className="form-input"
-            placeholder="请输入邮箱地址"
+            placeholder="Enter email address"
           />
         </div>
 
         {!isEdit && (
           <div className="form-group">
             <label htmlFor="password" className="form-label required">
-              密码
+              Password
             </label>
             <input
               type="password"
@@ -123,7 +162,7 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
               minLength={8}
               maxLength={100}
               className="form-input"
-              placeholder="请输入密码（至少8个字符）"
+              placeholder="Enter password (at least 8 characters)"
             />
           </div>
         )}
@@ -137,17 +176,58 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
               onChange={handleChange}
               className="form-checkbox"
             />
-            <span>活跃状态</span>
+            <span>Active Status</span>
           </label>
         </div>
 
+        {/* Role assignment section */}
+        <div className="form-group">
+          <label className="form-label">Role Assignment</label>
+          {availableRoles.length === 0 ? (
+            <span style={{ color: 'var(--cds-text-placeholder)', fontSize: 'var(--cds-body-short-02)' }}>
+              No available roles
+            </span>
+          ) : (
+            <div className="user-form-roles">
+              {availableRoles.map((role) => (
+                <label key={role.id} className="user-form-role-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedRoleIds.includes(role.id)}
+                    onChange={() => handleToggleRole(role.id)}
+                    className="form-checkbox"
+                  />
+                  <span className="user-form-role-name">{role.name}</span>
+                  {role.is_system && (
+                    <span className="user-form-role-system">System</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Show existing role badges when editing */}
+        {isEdit && user?.roles && user.roles.length > 0 && (
+          <div className="form-group">
+            <label className="form-label">Current Roles</label>
+            <div className="user-form-current-roles">
+              {user.roles.map((role) => (
+                <span key={role.id} className="user-form-role-badge">
+                  {role.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="form-actions">
           <button type="submit" className="submit-button" disabled={loading}>
-            {loading ? '保存中...' : isEdit ? '更新' : '创建'}
+            {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
           </button>
           {onCancel && (
             <button type="button" onClick={onCancel} className="cancel-button">
-              取消
+              Cancel
             </button>
           )}
         </div>

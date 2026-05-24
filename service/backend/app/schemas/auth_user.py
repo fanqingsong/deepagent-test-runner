@@ -11,6 +11,8 @@ class User(BaseModel):
     mfa_enabled: bool
     status: str  # active, suspended, admin_suspended
     is_admin: bool = False
+    roles: list[str] = []
+    permissions: list[str] = []
 
     class Config:
         from_attributes = True

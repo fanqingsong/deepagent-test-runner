@@ -10,12 +10,15 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.observability import setup_observability
+from app.api.v1.endpoints.browser_stream import browser_stream_handler
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """
     # Startup
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+
+    from app.core.rbac_seed import ensure_rbac_seeded
+    await ensure_rbac_seeded()
+
     yield
     # Shutdown
     logger.info(f"Shutting down {settings.APP_NAME}")
@@ -66,6 +73,12 @@ def create_application() -> FastAPI:
     # Include API router
     app.include_router(api_router, prefix="/api/v1")
 
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        body = await request.body()
+        logger.error(f"Validation error on {request.method} {request.url}: {exc.errors()} | body={body.decode()[:500]}")
+        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
     # Include authentication routers
     from app.api.v1.endpoints import (
         auth,
@@ -83,12 +96,12 @@ def create_application() -> FastAPI:
 
     # Include feature routers
     from app.api.v1.endpoints import (
-        schedules,
         users,
+        roles,
     )
 
-    app.include_router(schedules.router, prefix="/api/v1/schedules")
     app.include_router(users.router, prefix="/api/v1/users")
+    app.include_router(roles.router, prefix="/api/v1/roles")
 
     @app.get("/")
     async def root():
@@ -103,6 +116,9 @@ def create_application() -> FastAPI:
     async def health():
         """Health check endpoint."""
         return {"status": "healthy"}
+
+    # WebSocket endpoint for live browser stream
+    app.websocket("/ws/browser-stream/{job_id}")(browser_stream_handler)
 
     return app
 

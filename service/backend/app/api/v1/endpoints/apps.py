@@ -24,35 +24,24 @@ from app.schemas.app import (
     AppUpdate,
 )
 from app.services.app_service import AppService
-from app.services.unified_auth import verify_token
+from app.services.analytics_service import AnalyticsService
+from app.core.security import get_current_user
+from app.core.permissions import RequirePermission
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def _get_user_id(current_user: dict) -> Optional[int]:
-    sub = current_user.get("sub")
-    if sub:
-        try:
-            return int(sub)
-        except (ValueError, TypeError):
-            pass
-    return None
-
-
 @router.post("/", response_model=AppResponse, status_code=status.HTTP_201_CREATED)
 async def create_app(
     data: AppCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("create:app")),
 ):
-    user_id = _get_user_id(current_user)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
     svc = AppService(db)
-    app = await svc.create_app(user_id, data.model_dump())
+    app = await svc.create_app(current_user.id, data.model_dump())
     return _build_response(app)
 
 
@@ -63,14 +52,10 @@ async def list_apps(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("read:app")),
 ):
-    user_id = _get_user_id(current_user)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
     svc = AppService(db)
-    apps = await svc.list_apps(user_id, status=status_filter, search=search, skip=skip, limit=limit)
+    apps = await svc.list_apps(current_user.id, status=status_filter, search=search, skip=skip, limit=limit)
     return apps
 
 
@@ -78,7 +63,7 @@ async def list_apps(
 async def get_app(
     app_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("read:app")),
 ):
     svc = AppService(db)
 
@@ -99,7 +84,7 @@ async def update_app(
     app_id: int,
     data: AppUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("update:app")),
 ):
     svc = AppService(db)
     app = await svc.update_app(app_id, data.model_dump(exclude_none=True))
@@ -112,7 +97,7 @@ async def update_app(
 async def archive_app(
     app_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("delete:app")),
 ):
     svc = AppService(db)
     app = await svc.archive_app(app_id)
@@ -124,7 +109,7 @@ async def archive_app(
 async def generate_plan(
     app_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("update:app")),
 ):
     svc = AppService(db)
     try:
@@ -138,7 +123,7 @@ async def generate_plan(
 async def save_steps(
     app_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("update:app")),
 ):
     svc = AppService(db)
     try:
@@ -153,7 +138,7 @@ async def run_app(
     app_id: int,
     data: AppRunRequest = AppRunRequest(),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("execute:test")),
 ):
     svc = AppService(db)
     try:
@@ -168,7 +153,7 @@ async def refine_app(
     app_id: int,
     data: AppRefineRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("update:app")),
 ):
     svc = AppService(db)
     try:
@@ -182,7 +167,7 @@ async def refine_app(
 async def publish_app(
     app_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("update:app")),
 ):
     svc = AppService(db)
     try:
@@ -192,11 +177,57 @@ async def publish_app(
     return AppPublishResponse(**result)
 
 
+@router.get("/{app_id}/runs")
+async def get_app_runs(
+    app_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RequirePermission("read:app")),
+):
+    svc = AppService(db)
+    app = await svc.get_app(app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail=f"App {app_id} not found")
+
+    analytics_svc = AnalyticsService()
+    runs = await analytics_svc.get_test_runs_for_app(
+        db=db, app_id=app_id, limit=limit, offset=offset,
+    )
+    return runs
+
+
+@router.get("/{app_id}/step-versions")
+async def get_step_versions(
+    app_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RequirePermission("read:app")),
+):
+    svc = AppService(db)
+    versions = await svc.get_step_versions(app_id)
+    return versions
+
+
+@router.post("/{app_id}/step-versions/{version_id}/restore")
+async def restore_step_version(
+    app_id: int,
+    version_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RequirePermission("update:app")),
+):
+    svc = AppService(db)
+    try:
+        result = await svc.restore_step_version(app_id, version_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return result
+
+
 @router.get("/{app_id}/run-progress")
 async def get_run_progress(
     app_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(verify_token),
+    current_user: User = Depends(RequirePermission("read:app")),
 ):
     svc = AppService(db)
     app = await svc.get_app(app_id)
@@ -236,6 +267,10 @@ def _build_response(app) -> dict:
             for m in app.conversation_thread.messages
         ]
 
+    review_status = None
+    if app.test_definition:
+        review_status = app.test_definition.review_status
+
     return {
         "id": app.id,
         "name": app.name,
@@ -254,5 +289,6 @@ def _build_response(app) -> dict:
         "created_by": app.created_by,
         "created_at": app.created_at,
         "updated_at": app.updated_at,
+        "review_status": review_status,
         "messages": messages,
     }

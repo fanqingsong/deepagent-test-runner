@@ -1,0 +1,14 @@
+{
+  "id": "session-1779496051205",
+  "startedAt": "2026-05-23T00:27:31.205Z",
+  "cwd": "/home/song/workspace/me/deepagent-test-runner/service",
+  "context": {},
+  "metrics": {
+    "edits": 19,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-05-23T05:27:37.145Z",
+  "duration": 18005940
+}

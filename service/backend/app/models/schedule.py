@@ -48,6 +48,7 @@ class Schedule(Base):
     allow_concurrent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     max_retries: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     retry_interval_seconds: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
+    run_config_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Timestamps
     next_run_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

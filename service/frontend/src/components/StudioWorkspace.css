@@ -706,3 +706,168 @@
   max-height: 85vh;
   object-fit: contain;
 }
+
+/* ================================================
+   Run History
+   ================================================ */
+
+.th-steps-count { width: 64px; text-align: center; }
+.th-time { width: 100px; text-align: right; }
+
+.td-steps-count {
+  text-align: center;
+  color: #525252;
+  font-size: 13px;
+}
+
+.td-time {
+  text-align: right;
+  color: #525252;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.run-history-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.run-history-row:hover td {
+  background: #edf5ff !important;
+}
+
+.run-history-row.row-failed:hover td {
+  background: #fff1f1 !important;
+}
+
+.run-history-expanded td {
+  padding: 0 !important;
+  border-bottom: 1px solid #c6c6c6;
+}
+
+.run-history-expanded-content {
+  background: #f4f4f4;
+  padding: 12px 16px;
+}
+
+.run-history-expanded-content .studio-workspace-steps-table {
+  margin: 0;
+}
+
+/* ================================================
+   Step Version Bar
+   ================================================ */
+
+.studio-workspace-version-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.studio-workspace-version-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.studio-workspace-version-tag {
+  background: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  border-radius: 0;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  color: #525252;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.studio-workspace-version-tag:hover {
+  background: #e0e0e0;
+}
+
+.studio-workspace-version-tag--active {
+  background: #0f62fe;
+  color: #fff;
+  border-color: #0f62fe;
+}
+
+.studio-workspace-version-tag--active:hover {
+  background: #0043ce;
+}
+
+.studio-workspace-version-tag--passed {
+  border-color: #198038;
+}
+
+.studio-workspace-version-tag--failed {
+  border-color: #da1e28;
+}
+
+.studio-workspace-version-tag--active.studio-workspace-version-tag--passed {
+  background: #198038;
+  border-color: #198038;
+}
+
+.studio-workspace-version-tag--active.studio-workspace-version-tag--failed {
+  background: #da1e28;
+  border-color: #da1e28;
+}
+
+.version-status-badge {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 50%;
+}
+
+.version-status-passed {
+  color: #198038;
+}
+
+.version-status-failed {
+  color: #da1e28;
+}
+
+.studio-workspace-version-tag--active .version-status-badge {
+  color: #fff;
+}
+
+.studio-workspace-restore-btn {
+  background: none;
+  color: #0f62fe;
+  border: 1px solid #0f62fe;
+  border-radius: 0;
+  padding: 2px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  margin-left: 8px;
+}
+
+.studio-workspace-restore-btn:hover {
+  background: #edf5ff;
+}
+
+.studio-workspace-viewing-tag {
+  display: inline-block;
+  background: #0f62fe;
+  color: #fff;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+  vertical-align: middle;
+}

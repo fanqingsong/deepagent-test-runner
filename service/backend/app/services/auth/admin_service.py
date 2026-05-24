@@ -8,7 +8,7 @@ from typing import Tuple, Optional
 import logging
 
 from app.models.auth import UserAccount
-from app.tasks.email_tasks import send_email_task
+from app.tasks.email_tasks import send_email_async
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +55,11 @@ class AdminService:
             user.suspend(reason)
 
             # Send suspension email
-            await send_email_task.kick(
-                template_id="account-suspended",
+            await send_email_async(
                 to_email=user.email,
-                context={
-                    "user_name": user.email.split('@')[0],
-                    "suspension_reason": reason,
-                }
+                subject="Account Suspended",
+                template_name="account_suspended",
+                context={"reason": reason},
             )
 
             await db.commit()
@@ -106,13 +104,12 @@ class AdminService:
             # Reactivate the user
             user.reactivate()
 
-            # Send reactivation email
-            await send_email_task.kick(
-                template_id="account-reactivated",
+            # Send reactivation email (reuse suspension template with positive message)
+            await send_email_async(
                 to_email=user.email,
-                context={
-                    "user_name": user.email.split('@')[0],
-                }
+                subject="Account Reactivated",
+                template_name="account_suspended",
+                context={"reason": "Your account has been reactivated by an administrator."},
             )
 
             await db.commit()

@@ -1,0 +1,24 @@
+.suite-ide {
+  display: flex;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+  background: #f4f4f4;
+}
+
+.suite-ide-sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.suite-ide-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

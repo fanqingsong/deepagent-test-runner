@@ -13,8 +13,10 @@ from app.models.schedule import Schedule
 from app.models.test_run import TestRun
 from app.models.test_case import TestCase
 from app.models.test_suite import TestSuite
+from app.models.suite_run import SuiteRun, SuiteRunEntry
 from app.models.conversation import ConversationThread, ConversationMessage
 from app.models.app import App
+from app.models.run_config import RunConfig
 
 __all__ = [
     "Role",
@@ -28,7 +30,10 @@ __all__ = [
     "TestRun",
     "TestCase",
     "TestSuite",
+    "SuiteRun",
+    "SuiteRunEntry",
     "ConversationThread",
     "ConversationMessage",
     "App",
+    "RunConfig",
 ]

@@ -1,8 +1,7 @@
 """
 Unified API Router Configuration
 
-Aggregates all API endpoint routers from both test-case-service and
-scheduler-service into a single unified router.
+Aggregates all API endpoint routers into a single unified router.
 """
 
 from fastapi import APIRouter
@@ -11,38 +10,30 @@ from app.api.v1.endpoints import (
     analytics,
     auth,
     users,
-    test_definitions,
     test_steps,
     test_versions,
-    schedules,
-    jobs,
     test_suites,
     test_generation,
     autonomous_planning,
     conversations,
     apps,
+    app_permissions,
+    tags,
+    run_configs,
+    reviews,
 )
 
 api_router = APIRouter()
 
-# Authentication endpoints
 api_router.include_router(
     auth.router,
     prefix="/auth",
     tags=["authentication"]
 )
 
-# User management endpoints (note: users.router already has prefix="/users")
 api_router.include_router(
     users.router,
     tags=["users"]
-)
-
-# Test case management endpoints
-api_router.include_router(
-    test_definitions.router,
-    prefix="/test-definitions",
-    tags=["test-definitions"]
 )
 
 api_router.include_router(
@@ -57,19 +48,6 @@ api_router.include_router(
     tags=["test-versions"]
 )
 
-# Scheduling and execution endpoints
-api_router.include_router(
-    schedules.router,
-    prefix="/schedules",
-    tags=["schedules"]
-)
-
-api_router.include_router(
-    jobs.router,
-    prefix="/jobs",
-    tags=["jobs"]
-)
-
 api_router.include_router(
     test_suites.router,
     prefix="/test-suites",
@@ -82,30 +60,50 @@ api_router.include_router(
     tags=["test-generation"]
 )
 
-# AI-powered autonomous planning endpoints
 api_router.include_router(
     autonomous_planning.router,
     prefix="/autonomous-planning",
     tags=["autonomous-planning"]
 )
 
-# Analytics and dashboard endpoints
 api_router.include_router(
     analytics.router,
     prefix="/analytics",
     tags=["analytics"]
 )
 
-# Human-in-the-loop conversation endpoints
 api_router.include_router(
     conversations.router,
     prefix="/conversations",
     tags=["conversations"]
 )
 
-# APP workspace endpoints
 api_router.include_router(
     apps.router,
     prefix="/apps",
     tags=["apps"]
+)
+
+api_router.include_router(
+    app_permissions.router,
+    prefix="/apps",
+    tags=["app-permissions"]
+)
+
+api_router.include_router(
+    tags.router,
+    prefix="/tags",
+    tags=["tags"]
+)
+
+api_router.include_router(
+    run_configs.router,
+    prefix="/run-configs",
+    tags=["run-configs"]
+)
+
+api_router.include_router(
+    reviews.router,
+    prefix="/reviews",
+    tags=["reviews"]
 )

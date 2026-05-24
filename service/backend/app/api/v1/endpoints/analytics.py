@@ -9,7 +9,8 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.services.analytics_service import AnalyticsService
-from app.core.security import verify_token
+from app.core.security import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 analytics_service = AnalyticsService()
@@ -18,7 +19,7 @@ analytics_service = AnalyticsService()
 @router.get("/dashboard")
 async def get_dashboard_summary(
     days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -29,8 +30,8 @@ async def get_dashboard_summary(
     - Average duration
     - Success/failure rates
     """
-    is_admin = current_user.get("is_admin", False) or (current_user.get("roles") and 'admin' in current_user.get("roles", []))
-    user_id = int(current_user.get("sub")) if not is_admin and current_user.get("provider") == "local" else None
+    is_admin = current_user.is_admin or current_user.has_role("admin")
+    user_id = None if is_admin else current_user.id
 
     summary = await analytics_service.get_dashboard_summary(
         db=db,
@@ -63,7 +64,7 @@ async def get_dashboard_summary(
 @router.get("/test-runs")
 async def get_test_runs(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of runs to return"),
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -72,8 +73,8 @@ async def get_test_runs(
     Returns test runs ordered by creation date (newest first).
     Non-admin users only see their own test runs.
     """
-    is_admin = current_user.get("is_admin", False) or (current_user.get("roles") and 'admin' in current_user.get("roles", []))
-    user_id = int(current_user.get("sub")) if not is_admin and current_user.get("provider") == "local" else None
+    is_admin = current_user.is_admin or current_user.has_role("admin")
+    user_id = None if is_admin else current_user.id
 
     runs = await analytics_service.get_recent_test_runs(
         db=db,
@@ -88,7 +89,7 @@ async def get_test_runs(
 @router.get("/test-runs/{run_id}")
 async def get_test_run_details(
     run_id: str,
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -104,10 +105,60 @@ async def get_test_run_details(
     return test_cases
 
 
+@router.get("/suite-dashboard")
+async def get_suite_dashboard(
+    days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get suite-centric dashboard data."""
+    is_admin = current_user.is_admin or current_user.has_role("admin")
+    user_id = None if is_admin else current_user.id
+
+    summary = await analytics_service.get_suite_dashboard_summary(
+        db=db, days=days, user_id=user_id, is_admin=is_admin,
+    )
+    suites = await analytics_service.get_suites_with_latest_run(
+        db=db, user_id=user_id, is_admin=is_admin,
+    )
+
+    return {"summary": summary, "suites": suites}
+
+
+@router.get("/suite-runs/timeline/{suite_id}")
+async def get_suite_run_timeline(
+    suite_id: int,
+    limit: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get run timeline for a specific suite."""
+    timeline = await analytics_service.get_suite_run_timeline(
+        db=db, suite_id=suite_id, limit=limit,
+    )
+    return timeline
+
+
+@router.get("/suite-runs/{run_id}/entries")
+async def get_suite_run_entries(
+    run_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get suite run entries with test case details."""
+    detail = await analytics_service.get_suite_run_with_test_cases(
+        db=db, run_id=run_id,
+    )
+    if not detail:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Suite run {run_id} not found")
+    return detail
+
+
 @router.get("/slowest-tests")
 async def get_slowest_tests(
     limit: int = Query(20, ge=1, le=100, description="Maximum number of tests to return"),
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -127,7 +178,7 @@ async def get_slowest_tests(
 @router.get("/flaky-tests")
 async def get_flaky_tests(
     days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -147,7 +198,7 @@ async def get_flaky_tests(
 @router.get("/failure-patterns")
 async def get_failure_patterns(
     limit: int = Query(10, ge=1, le=50, description="Maximum number of patterns to return"),
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """

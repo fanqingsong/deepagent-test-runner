@@ -52,10 +52,10 @@ flowchart TD
 - Factory: `app/core/agent_config.py` → `get_llm()`
 
 **Service Interactions:**
-- **Unified Backend** (`service/backend/`): test definitions, schedules, jobs, analytics, auth (MFA, sessions)
+- **Unified Backend** (`service/backend/`): test definitions, schedules, jobs, analytics, sessions
 - **Celery Workers** execute tests via LangGraph + Playwright; load test data from PostgreSQL (not HTTP self-calls)
 - **Job metadata** stored in Redis (`app/core/job_store.py`) for status polling across API restarts
-- Frontend uses hash-based routing: `#dashboard`, `#tests`, `#schedules`
+- Frontend uses hash-based routing: `#dashboard`, `#studio`, `#schedules`
 - Use `docker compose` (not `docker-compose`) from `service/`
 
 ## Development Commands
@@ -129,61 +129,77 @@ This project uses an IBM Carbon-inspired design system. Before creating or modif
 - **Depth**: Background-color layering, not shadows (flat design)
 - **Inputs**: Bottom-border only, #f4f4f4 background
 
-**Routing:** Hash-based (`#dashboard`, `#tests`, `#schedules`)
+**Routing:** Hash-based (`#dashboard`, `#studio`, `#schedules`)
 
 **API Calls:** Via Nginx on port 8080 (or Vite dev with same-origin `/api/v1`)
 - Unified API: `http://localhost:8080/api/v1/` (or `http://localhost:8011/api/v1/` direct to backend)
 - Analytics: `http://localhost:8080/api/v1/analytics/`
 
-**Component Patterns:**
-- Table layouts for lists (TestList, ScheduleList, RecentTests)
-- Modal popups for create/edit forms
-- Pagination for large datasets
-- Status badges with color coding (passed=green, failed=red, running=blue)
+**Frontend Structure:**
+- `pages/`: Page-level components (DashboardPage, StudioPage, SchedulesPage)
+- `components/`: Reusable UI components
+- `services/`: API service layer
+- `hooks/`: Custom React hooks
+- `contexts/`: React context providers
+- `App.jsx`: Main routing and layout component
 
 **State Management:**
+- Direct state updates for simple cases
 - `refreshKey` pattern to trigger list refreshes after CRUD operations
-- `on*Created` callbacks to close modals and refresh lists
-- Direct state updates, no Redux/context for simple cases
+- Context providers for shared state (auth, notifications)
 
 **When modifying UI:**
 - Always check DESIGN.md first for the correct patterns
 - Prefer creating new components following the design system over patching old ones
 - Test responsive behavior at 320px, 672px, 1056px, and 1312px breakpoints
 
+## Internationalization (i18n)
+
+**Current Status:** English only
+
+**Required Languages:**
+- English (en) - Current default
+- Chinese (zh) - Primary secondary language
+
+**Implementation Requirements:**
+
+1. **Frontend i18n:**
+   - Use `react-i18next` or similar i18n library
+   - Create translation files in `frontend/src/locales/` directory
+   - Structure: `locales/en.json`, `locales/zh.json`
+   - Language switcher component in the navigation bar
+   - Persist language preference in localStorage
+
+2. **Backend i18n:**
+   - Error messages and API responses should support multiple languages
+   - Use `Accept-Language` header to determine user's language preference
+   - Translation files for backend messages in `backend/app/locales/`
+
+3. **Translation Coverage:**
+   - All UI text (buttons, labels, headings, messages)
+   - Error messages and validation text
+   - Status badges and tooltips
+   - Date/time formatting (locale-specific)
+   - Number formatting (locale-specific)
+
+4. **Best Practices:**
+   - Never hardcode user-facing text in components
+   - Use translation keys consistently
+   - Keep translations in sync across languages
+   - Test with both languages during development
+
 ## Backend Development
 
 **Unified Backend (FastAPI):**
-- `app/api/v1/endpoints/`: REST endpoints
-- `app/services/`: Business logic (execution_service.py, schedule_manager.py)
-- `app/tasks/`: Celery tasks (test_execution.py, schedule_sync.py)
-- `app/models/`: SQLAlchemy ORM models (test_run.py, schedule.py, test_case.py)
-- `app/agents/`: LangGraph agent pipeline (supervisor_graph.py, executor_agent.py, nodes.py)
+- `app/api/`: REST endpoints (organized by domain)
+- `app/services/`: Business logic (execution, schedules, sessions)
+- `app/tasks/`: Celery tasks (test_execution, schedule_sync)
+- `app/models/`: SQLAlchemy ORM models
+- `app/agents/`: LangGraph agent pipeline (supervisor_graph, executor_agent, nodes)
 - `app/agent_tools/`: Playwright tools for browser automation
-- `app/core/agent_config.py`: LLM factory (`get_llm()`)
-
-**Authentication Service (FastAPI):**
-- `app/api/v1/endpoints/`: REST endpoints (auth.py, mfa.py, password.py, admin.py)
-- `app/services/`: Business logic (auth_service.py, mfa_service.py, session_service.py, audit_service.py)
-- `app/models/`: SQLAlchemy ORM models (user_account.py, user_session.py, mfa_secret.py, recovery_code.py, email_token.py, audit_log.py)
-- `app/tasks/`: Celery tasks (email_tasks.py, maintenance_tasks.py)
-- `app/core/`: Configuration and security (config.py, security.py, rate_limit.py, celery_app.py)
-
-**Authentication Flow:**
-1. **Registration:** User submits email/password → AuthService.register_user() → creates user_account → queues verification email via Celery
-2. **Email Verification:** User clicks email link → token validation → user_account.is_verified = True
-3. **Login:** User submits credentials → AuthService.authenticate_user() → validates password → creates user_session → returns JWT tokens
-4. **MFA Setup:** Authenticated user requests setup → MFAService.setup_mfa() → generates TOTP secret + QR code + 10 backup codes
-5. **MFA Enable:** User verifies TOTP code → MFAService.enable_mfa() → marks MFA enabled
-6. **Password Reset:** User requests reset → generates token → emails link → token validation → password update → invalidate all sessions
-
-**Security Architecture:**
-- **Rate Limiting:** Sliding window using Redis sorted sets (5 login attempts/15min, 3 password resets/hour, 10 MFA verifications/5min)
-- **Account Lockout:** 5 failed login attempts triggers 15-minute lock (user_account.failed_login_attempts, account_locked_until)
-- **Session Management:** Max 5 concurrent sessions, oldest inactive terminated on 6th (session_service.create_user_session())
-- **MFA:** TOTP secrets (160-bit Base32), 10 single-use backup codes (bcrypt hashed), 30-second window with ±1 step skew tolerance
-- **Audit Logging:** All security events logged to audit_logs table with IP address, user agent, auto-deletion after 90 days
-- **Email Queue:** Celery tasks with exponential backoff retry (30s, 5m, 15m), failure tracking after 3 attempts
+- `app/core/`: Configuration and security (agent_config, job_store, security)
+- `app/schemas/`: Pydantic schemas for request/response validation
+- `app/middleware/`: Custom middleware (auth, CORS)
 
 **Critical Service Methods:**
 - `ExecutionService.save_test_results()`: Saves both test_runs summary AND test_cases details
@@ -222,6 +238,9 @@ This project uses an IBM Carbon-inspired design system. Before creating or modif
 
 **Issue:** Invalid Date in frontend
 - **Solution:** Database timestamps are milliseconds, use `new Date(parseInt(timestamp))` in JavaScript
+
+**Issue:** Schedule executing infinitely
+- **Solution:** Check `next_run_time` is properly updated after execution, verify `is_active` status
 
 ## Configuration Files
 

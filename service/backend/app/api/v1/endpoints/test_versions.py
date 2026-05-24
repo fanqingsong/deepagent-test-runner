@@ -12,7 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.core.permissions import RequirePermission
+from app.core.security import get_current_user
 from app.models import TestDefinition, TestStep, TestVersion
+from app.models.user import User
 from app.schemas import TestDefinitionResponse, TestVersionSnapshot
 
 router = APIRouter()
@@ -21,6 +24,7 @@ router = APIRouter()
 @router.get("/test-definition/{test_definition_id}", response_model=List[TestVersionSnapshot])
 async def list_test_versions(
     test_definition_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -54,6 +58,7 @@ async def list_test_versions(
 @router.get("/{version_id}", response_model=TestVersionSnapshot)
 async def get_test_version(
     version_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -77,6 +82,7 @@ async def get_test_version(
 async def restore_test_version(
     test_definition_id: int,
     version_id: int,
+    current_user: User = Depends(RequirePermission("update:test")),
     db: AsyncSession = Depends(get_db)
 ):
     """

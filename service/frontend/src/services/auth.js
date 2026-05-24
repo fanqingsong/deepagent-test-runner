@@ -220,6 +220,14 @@ class AuthClient {
   }
 
   /**
+   * Update current user profile
+   */
+  async updateProfile(data) {
+    const response = await this.client.put('/me', data);
+    return response.data;
+  }
+
+  /**
    * Setup MFA (get QR code and secret)
    */
   async setupMFA() {

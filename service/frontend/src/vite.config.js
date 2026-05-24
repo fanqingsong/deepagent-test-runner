@@ -4,10 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [
     react({
-      fastRefresh: false,
-      babel: {
-        plugins: []
-      }
+      fastRefresh: true,
     })
   ],
   resolve: {
@@ -19,11 +16,26 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: true,
     cors: true,
-    hmr: false,
+    hmr: true,
+    proxy: {
+      '/api/v1': {
+        target: 'http://cc-test-backend:8001',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://cc-test-backend:8001',
+        ws: true,
+      },
+    },
+    watch: {
+      usePolling: true,
+      interval: 1000,
+      ignored: ['**/node_modules/**', '**/.vite/**', '**/.cache/**'],
+    },
     compress: false
   },
   optimizeDeps: {
-    force: true,
+    force: false,
     include: [
       'react',
       'react-dom',

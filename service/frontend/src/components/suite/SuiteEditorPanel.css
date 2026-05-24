@@ -1,0 +1,163 @@
+.suite-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f4f4f4;
+}
+
+/* Header */
+.suite-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.suite-editor-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.suite-editor-name {
+  font-size: 16px;
+  font-weight: 400;
+  color: #161616;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suite-editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.suite-editor-status-badge {
+  border: 1px solid;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.suite-editor-run-btn {
+  background: #0f62fe;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  padding: 0 16px;
+  height: 32px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.suite-editor-run-btn:hover:not(:disabled) {
+  background: #0043ce;
+}
+
+.suite-editor-run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.suite-editor-delete-btn {
+  background: none;
+  border: 1px solid #da1e28;
+  color: #da1e28;
+  border-radius: 0;
+  padding: 0 12px;
+  height: 32px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.suite-editor-delete-btn:hover {
+  background: #fff1f1;
+}
+
+/* Tabs */
+.suite-editor-tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+  padding: 0 20px;
+}
+
+.suite-editor-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #525252;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.suite-editor-tab:hover {
+  color: #161616;
+}
+
+.suite-editor-tab--active {
+  color: #0f62fe;
+  border-bottom-color: #0f62fe;
+  font-weight: 600;
+}
+
+/* Content */
+.suite-editor-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Empty state */
+.suite-editor-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8d8d8d;
+  text-align: center;
+  padding: 48px;
+}
+
+.suite-editor-empty-icon {
+  font-size: 48px;
+  color: #c6c6c6;
+  margin-bottom: 16px;
+}
+
+.suite-editor-empty h3 {
+  font-weight: 400;
+  margin: 0 0 8px;
+  color: #525252;
+}
+
+.suite-editor-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* New suite form in editor */
+.suite-editor-new-form {
+  padding: 20px;
+  max-width: 600px;
+}
+
+.suite-editor-new-form .studio-workspace-field-group {
+  margin-bottom: 16px;
+}
+
+.suite-editor-new-form .studio-workspace-secondary-btn {
+  margin-top: 8px;
+}

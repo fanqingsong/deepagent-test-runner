@@ -42,3 +42,4 @@ opentelemetry-exporter-jaeger==1.21.0
 opentelemetry-instrumentation-sqlalchemy==0.42b0
 structlog==23.2.0
 python-json-logger==2.0.7
+watchdog>=4.0.0

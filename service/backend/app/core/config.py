@@ -89,6 +89,10 @@ class Settings(BaseSettings):
         default="noreply@example.com",
         description="From email address for sent emails"
     )
+    EMAIL_FROM_NAME: str = Field(
+        default="Test Studio",
+        description="Display name for sent emails"
+    )
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")

@@ -1,0 +1,163 @@
+.review-panel {
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.review-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.review-panel-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.review-panel-count {
+  background: #f1c21b;
+  color: #1c1c1c;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 24px;
+}
+
+.review-panel-loading,
+.review-panel-empty {
+  text-align: center;
+  color: #8d8d8d;
+  padding: 48px 0;
+  font-size: 14px;
+}
+
+.review-section {
+  margin-bottom: 32px;
+}
+
+.review-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #525252;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #f4f4f4;
+  border: 1px solid #e0e0e0;
+}
+
+.review-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.review-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+}
+
+.review-item-desc {
+  font-size: 13px;
+  color: #525252;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-item-meta {
+  font-size: 12px;
+  color: #8d8d8d;
+}
+
+.review-item-actions,
+.review-item-reject-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.review-btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+.review-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.review-btn-approve {
+  background: #42be65;
+  color: #fff;
+}
+
+.review-btn-approve:hover:not(:disabled) {
+  background: #3cc056;
+}
+
+.review-btn-reject {
+  background: #da1e28;
+  color: #fff;
+}
+
+.review-btn-reject:hover:not(:disabled) {
+  background: #c41922;
+}
+
+.review-btn-reject-outline {
+  background: transparent;
+  color: #da1e28;
+  border: 1px solid #da1e28;
+}
+
+.review-btn-reject-outline:hover:not(:disabled) {
+  background: #fff1f1;
+}
+
+.review-btn-cancel {
+  background: transparent;
+  color: #525252;
+  border: 1px solid #c6c6c6;
+}
+
+.review-btn-cancel:hover {
+  background: #e8e8e8;
+}
+
+.review-reject-input {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid #c6c6c6;
+  background: #fff;
+  width: 200px;
+  outline: none;
+}
+
+.review-reject-input:focus {
+  border-color: #0f62fe;
+}

@@ -80,6 +80,17 @@ class TestDefinition(Base):
         ForeignKey("apps.id"), nullable=True,
     )
 
+    # Review/approval workflow
+    review_status: Mapped[str] = mapped_column(
+        String(20), default="draft", nullable=False,
+        comment="draft|pending_review|approved|rejected",
+    )
+    reviewed_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"), nullable=True,
+    )
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # Relationships
     test_steps: Mapped[List["TestStep"]] = relationship(
         "TestStep",

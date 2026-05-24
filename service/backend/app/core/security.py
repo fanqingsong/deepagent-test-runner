@@ -163,7 +163,11 @@ async def get_current_user(
     if user is None:
         email = payload.get("email", "")
         if email:
-            result = await db.execute(select(User).where(User.email == email))
+            result = await db.execute(
+                select(User)
+                .options(selectinload(User.roles).selectinload(Role.permissions))
+                .where(User.email == email)
+            )
             user = result.scalar_one_or_none()
             if user is None:
                 user = User(

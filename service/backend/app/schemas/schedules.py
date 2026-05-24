@@ -53,6 +53,7 @@ class ScheduleCreate(BaseModel):
         le=3600,
         description="Seconds between retries"
     )
+    run_config_id: Optional[int] = Field(None, description="Run config template ID")
 
     @model_validator(mode='after')
     def validate_target_config(self):
@@ -87,6 +88,7 @@ class ScheduleUpdate(BaseModel):
     allow_concurrent: Optional[bool] = None
     max_retries: Optional[int] = Field(None, ge=0, le=10)
     retry_interval_seconds: Optional[int] = Field(None, ge=10, le=3600)
+    run_config_id: Optional[int] = None
 
 
 class ScheduleResponse(BaseModel):
@@ -106,6 +108,7 @@ class ScheduleResponse(BaseModel):
     allow_concurrent: bool
     max_retries: int
     retry_interval_seconds: int
+    run_config_id: Optional[int]
     next_run_time: Optional[datetime]
     last_run_time: Optional[datetime]
     created_at: datetime

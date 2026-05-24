@@ -1,0 +1,503 @@
+/* Role Management - IBM Carbon Design System */
+
+.role-management {
+  width: 100%;
+}
+
+.role-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--cds-spacing-2xl);
+}
+
+.role-management-title {
+  margin: 0;
+  font-size: var(--cds-heading-03);
+  font-weight: var(--cds-font-weight-regular);
+  color: var(--cds-text-primary);
+}
+
+.role-create-btn {
+  padding: var(--cds-button-padding-sm);
+  background: var(--cds-button-primary);
+  color: var(--cds-text-on-color);
+  border: none;
+  border-radius: var(--cds-border-radius);
+  cursor: pointer;
+  font-weight: var(--cds-font-weight-regular);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  height: var(--cds-button-height-compact);
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-sm);
+  transition: background-color var(--cds-transition-normal);
+}
+
+.role-create-btn:hover {
+  background: var(--cds-button-primary-hover);
+}
+
+.role-create-btn:active {
+  background: var(--cds-button-primary-active);
+}
+
+.role-create-btn:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
+/* Table */
+.role-table-container {
+  overflow-x: auto;
+  border-radius: var(--cds-border-radius);
+}
+
+.role-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.role-table thead {
+  background: #f4f4f4;
+  color: var(--cds-text-primary);
+}
+
+.role-table thead th {
+  padding: var(--cds-table-header-padding);
+  text-align: left;
+  font-weight: var(--cds-font-weight-semibold);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  color: var(--cds-text-primary);
+  letter-spacing: var(--cds-letter-spacing-body);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.role-table tbody tr {
+  transition: background-color var(--cds-transition-normal);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.role-table tbody tr:hover {
+  background-color: var(--cds-background-layer-01);
+}
+
+.role-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.role-table td {
+  padding: var(--cds-table-cell-padding);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  color: var(--cds-text-primary);
+}
+
+.role-name-cell {
+  min-width: 120px;
+  font-weight: var(--cds-font-weight-regular);
+}
+
+.role-desc-cell {
+  min-width: 200px;
+  max-width: 350px;
+  color: var(--cds-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-perm-count-cell {
+  min-width: 80px;
+  text-align: center;
+}
+
+.role-perm-count {
+  display: inline-block;
+  padding: var(--cds-spacing-xs) var(--cds-spacing-md);
+  background: var(--cds-tag-gray);
+  color: var(--cds-tag-gray-text);
+  border-radius: var(--cds-border-radius-tag);
+  font-size: var(--cds-caption-01);
+  font-family: var(--cds-font-family);
+}
+
+.role-system-cell {
+  min-width: 80px;
+}
+
+.role-system-badge {
+  display: inline-block;
+  padding: var(--cds-spacing-xs) var(--cds-spacing-md);
+  background: var(--cds-tag-blue);
+  color: var(--cds-tag-blue-text);
+  border-radius: var(--cds-border-radius-tag);
+  font-size: var(--cds-caption-01);
+  font-family: var(--cds-font-family);
+  font-weight: var(--cds-font-weight-regular);
+}
+
+.role-actions-cell {
+  min-width: 120px;
+  text-align: center;
+}
+
+.role-action-buttons {
+  display: flex;
+  gap: var(--cds-spacing-sm);
+  justify-content: center;
+  align-items: center;
+}
+
+.role-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--cds-border-radius);
+  cursor: pointer;
+  transition: background-color var(--cds-transition-normal);
+  color: var(--cds-text-on-color);
+  font-size: var(--cds-caption-01);
+  font-family: var(--cds-font-family);
+  font-weight: var(--cds-font-weight-regular);
+}
+
+.role-action-btn:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
+.role-action-btn.edit-btn {
+  background: var(--cds-interactive-01);
+}
+
+.role-action-btn.edit-btn:hover {
+  opacity: 0.9;
+}
+
+.role-action-btn.delete-btn {
+  background: var(--cds-support-error);
+}
+
+.role-action-btn.delete-btn:hover {
+  opacity: 0.9;
+}
+
+.role-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Modal form */
+.role-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-xl);
+}
+
+.role-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-sm);
+}
+
+.role-form-label {
+  font-weight: var(--cds-font-weight-regular);
+  font-size: var(--cds-caption-01);
+  font-family: var(--cds-font-family);
+  letter-spacing: var(--cds-letter-spacing-caption);
+  color: var(--cds-text-primary);
+}
+
+.role-form-label.required::after {
+  content: '*';
+  color: var(--cds-support-error);
+  margin-left: var(--cds-spacing-xs);
+}
+
+.role-form-input {
+  width: 100%;
+  padding: 0 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--cds-border-radius);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  color: var(--cds-text-primary);
+  background: #f4f4f4;
+  height: var(--cds-input-height);
+  transition: border-color var(--cds-transition-normal);
+}
+
+.role-form-input:focus {
+  outline: none;
+  border-bottom-color: var(--cds-focus);
+}
+
+.role-form-input:disabled {
+  background: var(--cds-background-layer-02);
+  color: var(--cds-text-placeholder);
+  cursor: not-allowed;
+}
+
+.role-form-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--cds-border-radius);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  color: var(--cds-text-primary);
+  background: #f4f4f4;
+  min-height: 72px;
+  resize: vertical;
+  transition: border-color var(--cds-transition-normal);
+}
+
+.role-form-textarea:focus {
+  outline: none;
+  border-bottom-color: var(--cds-focus);
+}
+
+/* Permission selector */
+.permission-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-lg);
+}
+
+.permission-group {
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-border-radius);
+  overflow: hidden;
+}
+
+.permission-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--cds-spacing-md) var(--cds-spacing-lg);
+  background: var(--cds-background-layer-01);
+  cursor: pointer;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  font-weight: var(--cds-font-weight-semibold);
+  color: var(--cds-text-primary);
+  text-transform: capitalize;
+  user-select: none;
+  transition: background-color var(--cds-transition-normal);
+}
+
+.permission-group-header:hover {
+  background: var(--cds-background-layer-02);
+}
+
+.permission-group-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-md);
+}
+
+.permission-select-all-btn {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-border-radius);
+  color: var(--cds-text-secondary);
+  font-size: var(--cds-caption-01);
+  font-family: var(--cds-font-family);
+  cursor: pointer;
+  transition: all var(--cds-transition-normal);
+}
+
+.permission-select-all-btn:hover {
+  background: var(--cds-background-layer-02);
+  color: var(--cds-text-primary);
+}
+
+.permission-group-arrow {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  transition: transform var(--cds-transition-normal);
+}
+
+.permission-group-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.permission-group-body {
+  padding: var(--cds-spacing-md) var(--cds-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-sm);
+}
+
+.permission-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-md);
+  padding: 4px 0;
+}
+
+.permission-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--cds-interactive-01);
+}
+
+.permission-checkbox-label {
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Form actions */
+.role-form-actions {
+  display: flex;
+  gap: var(--cds-spacing-md);
+  margin-top: var(--cds-spacing-lg);
+}
+
+.role-save-btn {
+  padding: var(--cds-button-padding-sm);
+  background: var(--cds-button-primary);
+  color: var(--cds-text-on-color);
+  border: none;
+  border-radius: var(--cds-border-radius);
+  cursor: pointer;
+  font-weight: var(--cds-font-weight-regular);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  height: var(--cds-button-height-compact);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--cds-transition-normal);
+}
+
+.role-save-btn:hover:not(:disabled) {
+  background: var(--cds-button-primary-hover);
+}
+
+.role-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.role-cancel-btn {
+  padding: var(--cds-button-padding-sm);
+  background: var(--cds-button-secondary);
+  color: var(--cds-text-on-color);
+  border: none;
+  border-radius: var(--cds-border-radius);
+  cursor: pointer;
+  font-weight: var(--cds-font-weight-regular);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  height: var(--cds-button-height-compact);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--cds-transition-normal);
+}
+
+.role-cancel-btn:hover {
+  background: var(--cds-button-secondary-hover);
+}
+
+/* Error alert */
+.role-form-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cds-spacing-md);
+  padding: var(--cds-spacing-md);
+  border-radius: var(--cds-border-radius);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  background: var(--cds-tag-red);
+  border: 1px solid var(--cds-support-error);
+  color: var(--cds-support-error);
+}
+
+/* Loading */
+.role-management-loading {
+  text-align: center;
+  padding: var(--cds-layout-2xl) var(--cds-layout-sm);
+  color: var(--cds-text-secondary);
+  font-size: var(--cds-body-long-01);
+  font-family: var(--cds-font-family);
+}
+
+/* Delete confirmation */
+.role-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-lg);
+}
+
+.role-delete-confirm-text {
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  color: var(--cds-text-primary);
+  line-height: 1.6;
+}
+
+.role-delete-confirm-actions {
+  display: flex;
+  gap: var(--cds-spacing-md);
+  justify-content: flex-end;
+}
+
+.role-delete-confirm-btn {
+  padding: var(--cds-button-padding-sm);
+  background: var(--cds-support-error);
+  color: var(--cds-text-on-color);
+  border: none;
+  border-radius: var(--cds-border-radius);
+  cursor: pointer;
+  font-weight: var(--cds-font-weight-regular);
+  font-size: var(--cds-body-short-01);
+  font-family: var(--cds-font-family);
+  height: var(--cds-button-height-compact);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--cds-transition-normal);
+}
+
+.role-delete-confirm-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.role-delete-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 672px) {
+  .role-management-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cds-spacing-lg);
+  }
+
+  .role-table-container {
+    border-radius: 0;
+  }
+
+  .role-action-buttons {
+    flex-direction: column;
+    gap: var(--cds-spacing-xs);
+  }
+}

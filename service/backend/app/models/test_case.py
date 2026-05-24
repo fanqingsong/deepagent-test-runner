@@ -8,7 +8,6 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -46,11 +45,6 @@ class TestCase(Base):
     end_time: Mapped[int] = mapped_column(BigInteger, nullable=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     screenshot_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    # Adaptive Execution fields
-    adaptive_decisions: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)
-    recovery_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    execution_variance: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

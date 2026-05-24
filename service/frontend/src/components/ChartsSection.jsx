@@ -21,7 +21,7 @@ function ChartsSection({ dashboardData, timeRange, onTimeRangeChange }) {
 
   return (
     <div>
-      {/* 时间范围选择器 */}
+      {/* Time range selector */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -34,7 +34,7 @@ function ChartsSection({ dashboardData, timeRange, onTimeRangeChange }) {
           fontWeight: 'bold',
           color: '#333'
         }}>
-          测试趋势分析
+          Test Trend Analysis
         </h2>
         <div style={{
           display: 'flex',
@@ -44,31 +44,31 @@ function ChartsSection({ dashboardData, timeRange, onTimeRangeChange }) {
             onClick={() => handleTimeRangeChange('7d')}
             style={buttonStyle(timeRange === '7d')}
           >
-            最近7天
+            Last 7 days
           </button>
           <button
             onClick={() => handleTimeRangeChange('30d')}
             style={buttonStyle(timeRange === '30d')}
           >
-            最近30天
+            Last 30 days
           </button>
           <button
             onClick={() => handleTimeRangeChange('90d')}
             style={buttonStyle(timeRange === '90d')}
           >
-            最近90天
+            Last 90 days
           </button>
         </div>
       </div>
 
-      {/* 图表网格 */}
+      {/* Chart grid */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
         gap: '20px',
         marginBottom: '20px'
       }}>
-        {/* 趋势图 */}
+        {/* Trend chart */}
         <div style={{
           gridColumn: timeRange === '7d' ? 'span 1' : 'span 2'
         }}>
@@ -78,13 +78,13 @@ function ChartsSection({ dashboardData, timeRange, onTimeRangeChange }) {
           />
         </div>
 
-        {/* 通过率饼图 */}
+        {/* Pass rate pie chart */}
         <div>
           <PassRateChart stats={dashboardData.summary || {}} />
         </div>
       </div>
 
-      {/* 时长图表 */}
+      {/* Duration chart */}
       <div>
         <DurationChart
           data={dashboardData.byDay || []}

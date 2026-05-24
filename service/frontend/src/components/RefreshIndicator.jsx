@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 
 /**
- * 刷新指示器组件
- * 在数据后台刷新时显示右上角小型提示
+ * Refresh indicator component
+ * Displays a small prompt in the upper right corner when data is being refreshed in the background
  *
- * @param {boolean} refreshing - 是否正在刷新
+ * @param {boolean} refreshing - Whether currently refreshing
  */
 const RefreshIndicator = ({ refreshing }) => {
   useEffect(() => {
-    // 添加全局动画样式
+    // Add global animation styles
     if (!document.getElementById('refresh-indicator-styles')) {
       const style = document.createElement('style');
       style.id = 'refresh-indicator-styles';
@@ -53,7 +53,7 @@ const RefreshIndicator = ({ refreshing }) => {
         borderRadius: '50%',
         animation: 'refresh-indicator-spin 0.6s linear infinite',
       }}></div>
-      <span>更新中...</span>
+      <span>Updating...</span>
     </div>
   );
 };

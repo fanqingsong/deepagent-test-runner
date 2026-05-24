@@ -85,6 +85,16 @@ class AuthService {
   }
 
   /**
+   * Update stored user info (e.g., after fetching /auth/me)
+   */
+  updateStoredUser(user) {
+    const rememberMe = localStorage.getItem('remember_me') === '1' || sessionStorage.getItem('remember_me') === '1';
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem(USER_KEY, JSON.stringify(user));
+    this.notifyAuthChange();
+  }
+
+  /**
    * Clear auth data
    */
   clearAuthData() {

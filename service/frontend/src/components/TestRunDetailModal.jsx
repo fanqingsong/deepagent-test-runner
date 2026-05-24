@@ -22,7 +22,7 @@ function TestRunDetailModal({ run, onClose }) {
       const cases = await getTestRunDetails(run.run_id);
       setTestCases(cases);
     } catch (err) {
-      setError('加载测试用例失败: ' + err.message);
+      setError('Failed to load test cases: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -31,10 +31,10 @@ function TestRunDetailModal({ run, onClose }) {
   const getStatusBadge = (status) => {
     const className = `status-badge ${status || 'running'}`;
     const label = {
-      passed: '通过',
-      failed: '失败',
-      running: '运行中',
-      skipped: '跳过'
+      passed: 'Passed',
+      failed: 'Failed',
+      running: 'Running',
+      skipped: 'Skipped'
     };
     return (
       <span className={className}>
@@ -54,7 +54,7 @@ function TestRunDetailModal({ run, onClose }) {
     // timestamp is in milliseconds
     const date = new Date(parseInt(timestamp));
     if (isNaN(date.getTime())) return '-';
-    return date.toLocaleTimeString('zh-CN');
+    return date.toLocaleTimeString('en-US');
   };
 
   const handleSaveRegression = async () => {
@@ -62,10 +62,10 @@ function TestRunDetailModal({ run, onClose }) {
     setSaving(true);
     try {
       await saveAsRegression(run.test_definition_id, run.run_id);
-      alert('已成功保存为回归测试');
+      alert('Successfully saved as regression test');
       onClose();
     } catch (err) {
-      alert('保存回归测试失败: ' + err.message);
+      alert('Failed to save regression test: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -75,8 +75,8 @@ function TestRunDetailModal({ run, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container test-run-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">测试运行详情</h2>
-          <button className="modal-close-btn" onClick={onClose} aria-label="关闭">
+          <h2 className="modal-title">Test Run Details</h2>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
@@ -85,45 +85,45 @@ function TestRunDetailModal({ run, onClose }) {
           {/* Run Summary */}
           <div className="run-summary">
             <div className="summary-item">
-              <span className="summary-label">测试名称：</span>
-              <span className="summary-value">{run.test_name || '未知测试'}</span>
+              <span className="summary-label">Test Name:</span>
+              <span className="summary-value">{run.test_name || 'Unknown Test'}</span>
             </div>
             <div className="summary-item">
-              <span className="summary-label">运行ID：</span>
+              <span className="summary-label">Run ID:</span>
               <span className="summary-value">{run.run_id}</span>
             </div>
             <div className="summary-item">
-              <span className="summary-label">状态：</span>
+              <span className="summary-label">Status:</span>
               <span className="summary-value">{getStatusBadge(run.status)}</span>
             </div>
             {run.error_message && (
               <div className="summary-item full-width">
-                <span className="summary-label">失败原因：</span>
+                <span className="summary-label">Failure Reason:</span>
                 <span className="summary-value error-message-text">{run.error_message}</span>
               </div>
             )}
             <div className="summary-item">
-              <span className="summary-label">执行时间：</span>
+              <span className="summary-label">Execution Time:</span>
               <span className="summary-value">
-                {new Date(run.created_at).toLocaleString('zh-CN')}
+                {new Date(run.created_at).toLocaleString('en-US')}
               </span>
             </div>
             {(run.total_tests > 0 || run.passed > 0 || run.failed > 0) && (
               <>
                 <div className="summary-item">
-                  <span className="summary-label">总测试数：</span>
+                  <span className="summary-label">Total Tests:</span>
                   <span className="summary-value">{run.total_tests || 0}</span>
                 </div>
                 <div className="summary-item">
-                  <span className="summary-label">通过：</span>
+                  <span className="summary-label">Passed:</span>
                   <span className="summary-value success">{run.passed || 0}</span>
                 </div>
                 <div className="summary-item">
-                  <span className="summary-label">失败：</span>
+                  <span className="summary-label">Failed:</span>
                   <span className="summary-value failure">{run.failed || 0}</span>
                 </div>
                 <div className="summary-item">
-                  <span className="summary-label">跳过：</span>
+                  <span className="summary-label">Skipped:</span>
                   <span className="summary-value skipped">{run.skipped || 0}</span>
                 </div>
               </>
@@ -132,19 +132,19 @@ function TestRunDetailModal({ run, onClose }) {
 
           {/* Test Cases */}
           <div className="test-cases-section">
-            <h3>测试用例详情</h3>
+            <h3>Test Case Details</h3>
 
             {loading ? (
-              <div className="loading-state">加载中...</div>
+              <div className="loading-state">Loading...</div>
             ) : error ? (
               <div className="error-state">{error}</div>
             ) : testCases.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">⚠️</div>
-                <p className="empty-title">暂无测试用例数据</p>
+                <p className="empty-title">No test case data</p>
                 {run.error_message && (
                   <div className="empty-error-details">
-                    <strong>失败原因：</strong>
+                    <strong>Failure Reason:</strong>
                     <div className="error-message-box">{run.error_message}</div>
                   </div>
                 )}
@@ -154,13 +154,13 @@ function TestRunDetailModal({ run, onClose }) {
                 <table className="test-cases-table">
                   <thead>
                     <tr>
-                      <th>测试ID</th>
-                      <th>描述</th>
-                      <th>状态</th>
-                      <th>截图</th>
-                      <th>执行时长</th>
-                      <th>开始时间</th>
-                      <th>结束时间</th>
+                      <th>Test ID</th>
+                      <th>Description</th>
+                      <th>Status</th>
+                      <th>Screenshot</th>
+                      <th>Duration</th>
+                      <th>Start Time</th>
+                      <th>End Time</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,7 +180,7 @@ function TestRunDetailModal({ run, onClose }) {
                           {testCase.screenshot_path ? (
                             <img
                               src={testCase.screenshot_path}
-                              alt={`步骤 ${index + 1} 截图`}
+                              alt={`Step ${index + 1} screenshot`}
                               className="screenshot-thumbnail"
                               onClick={() => setScreenshotUrl(testCase.screenshot_path)}
                             />
@@ -218,11 +218,11 @@ function TestRunDetailModal({ run, onClose }) {
                 opacity: saving ? 0.7 : 1
               }}
             >
-              {saving ? '保存中...' : '保存为回归测试'}
+              {saving ? 'Saving...' : 'Save as Regression Test'}
             </button>
           )}
           <button className="btn-secondary" onClick={onClose}>
-            关闭
+            Close
           </button>
         </div>
 
@@ -230,7 +230,7 @@ function TestRunDetailModal({ run, onClose }) {
           <div className="screenshot-lightbox" onClick={() => setScreenshotUrl(null)}>
             <div className="screenshot-lightbox-content" onClick={(e) => e.stopPropagation()}>
               <button className="screenshot-lightbox-close" onClick={() => setScreenshotUrl(null)}>✕</button>
-              <img src={screenshotUrl} alt="截图" className="screenshot-fullsize" />
+              <img src={screenshotUrl} alt="Screenshot" className="screenshot-fullsize" />
             </div>
           </div>
         )}

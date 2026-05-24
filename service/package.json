@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "playwright": "^1.60.0"
+  },
+  "name": "service",
+  "version": "1.0.0",
+  "description": "This directory contains the Docker Compose configuration for running AI Tests as microservices.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

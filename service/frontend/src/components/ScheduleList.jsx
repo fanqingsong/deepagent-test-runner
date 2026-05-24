@@ -15,25 +15,25 @@ export default function ScheduleList({
   );
 
   const handleDelete = async (id) => {
-    if (!confirm('确定要删除这个调度吗？')) return;
+    if (!confirm('Are you sure you want to delete this schedule?')) return;
 
     setDeletingId(id);
     try {
       await deleteSchedule(id);
     } catch (err) {
-      alert('删除失败: ' + err.message);
+      alert('Delete failed: ' + err.message);
     } finally {
       setDeletingId(null);
     }
   };
 
-  const getCronDisplay = (cronExpression) => cronExpression || '未设置';
+  const getCronDisplay = (cronExpression) => cronExpression || 'Not set';
 
   const getStatusBadge = (schedule) => {
     const isActive = schedule.is_active;
     return (
       <span className={`status-badge ${isActive ? 'active' : 'inactive'}`}>
-        {isActive ? '启用' : '禁用'}
+        {isActive ? 'Enabled' : 'Disabled'}
       </span>
     );
   };
@@ -42,7 +42,7 @@ export default function ScheduleList({
     return (
       <div className="loading-container">
         <div className="spinner"></div>
-        <p>加载中...</p>
+        <p>Loading...</p>
       </div>
     );
   }
@@ -51,31 +51,31 @@ export default function ScheduleList({
     return (
       <div className="error-container">
         <span className="error-icon">⚠️</span>
-        <span>错误: {error?.message || String(error)}</span>
+        <span>Error: {error?.message || String(error)}</span>
       </div>
     );
   }
 
   return (
     <div className="schedule-list">
-      <h2 className="list-title">调度列表</h2>
+      <h2 className="list-title">Schedule List</h2>
       {schedules.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📅</div>
-          <p className="empty-title">还没有调度任务</p>
-          <p className="empty-subtitle">点击"创建调度"来创建定时任务</p>
+          <p className="empty-title">No schedules yet</p>
+          <p className="empty-subtitle">Click "Create Schedule" to create a scheduled task</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="schedule-table">
             <thead>
               <tr>
-                <th>名称</th>
-                <th>状态</th>
+                <th>Name</th>
+                <th>Status</th>
                 <th>Cron</th>
-                <th>时区</th>
-                <th>下次运行</th>
-                <th>操作</th>
+                <th>Timezone</th>
+                <th>Next Run</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -91,7 +91,7 @@ export default function ScheduleList({
                   <td>{schedule.timezone || 'UTC'}</td>
                   <td>
                     {schedule.next_run_at
-                      ? new Date(schedule.next_run_at).toLocaleString('zh-CN')
+                      ? new Date(schedule.next_run_at).toLocaleString('en-US')
                       : '-'}
                   </td>
                   <td className="actions-cell">
@@ -100,34 +100,34 @@ export default function ScheduleList({
                         type="button"
                         className="action-btn trigger-btn"
                         onClick={() => onTriggerSchedule(schedule.id)}
-                        title="立即触发"
+                        title="Trigger now"
                       >
-                        触发
+                        Trigger
                       </button>
                       <button
                         type="button"
                         className="action-btn toggle-btn"
                         onClick={() => onToggleSchedule(schedule.id, !schedule.is_active)}
-                        title={schedule.is_active ? '禁用' : '启用'}
+                        title={schedule.is_active ? 'Disable' : 'Enable'}
                       >
-                        {schedule.is_active ? '禁用' : '启用'}
+                        {schedule.is_active ? 'Disable' : 'Enable'}
                       </button>
                       <button
                         type="button"
                         className="action-btn edit-btn"
                         onClick={() => onEditSchedule(schedule)}
-                        title="编辑"
+                        title="Edit"
                       >
-                        编辑
+                        Edit
                       </button>
                       <button
                         type="button"
                         className="action-btn delete-btn"
                         onClick={() => handleDelete(schedule.id)}
                         disabled={deletingId === schedule.id || isDeleting}
-                        title="删除"
+                        title="Delete"
                       >
-                        {deletingId === schedule.id ? '删除中...' : '删除'}
+                        {deletingId === schedule.id ? 'Deleting...' : 'Delete'}
                       </button>
                     </div>
                   </td>

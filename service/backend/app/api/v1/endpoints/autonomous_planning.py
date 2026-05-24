@@ -12,7 +12,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.permissions import RequirePermission
+from app.core.security import get_current_user
 from app.models import TestDefinition
+from app.models.user import User
 from app.agents.planner_agent import generate_test_plan as agent_generate_test_plan
 
 router = APIRouter()
@@ -92,6 +95,7 @@ class ErrorRecoveryResponse(BaseModel):
 @router.post("/generate-plan", response_model=GeneratedPlanResponse, status_code=status.HTTP_200_OK)
 async def generate_test_plan(
     request: GeneratePlanRequest,
+    current_user: User = Depends(RequirePermission("create:test")),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -132,6 +136,7 @@ async def generate_test_plan(
 async def approve_plan(
     test_definition_id: int,
     request: ApprovePlanRequest,
+    current_user: User = Depends(RequirePermission("update:test")),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -195,6 +200,7 @@ async def approve_plan(
 @router.post("/execution-decision", response_model=ExecutionDecisionResponse)
 async def make_execution_decision(
     request: ExecutionDecisionRequest,
+    current_user: User = Depends(RequirePermission("execute:test")),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -228,6 +234,7 @@ async def make_execution_decision(
 @router.post("/error-recovery", response_model=ErrorRecoveryResponse)
 async def recover_from_error(
     request: ErrorRecoveryRequest,
+    current_user: User = Depends(RequirePermission("execute:test")),
     db: AsyncSession = Depends(get_db)
 ):
     """

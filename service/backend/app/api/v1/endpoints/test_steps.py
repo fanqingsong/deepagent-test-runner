@@ -14,7 +14,8 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models import TestStep, TestDefinition
 from app.schemas import TestStepCreate, TestStepResponse, TestStepUpdate, TestStepsReplaceRequest
-from app.core.security import verify_token
+from app.core.security import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ router = APIRouter()
 @router.get("/test-definition/{test_definition_id}", response_model=List[TestStepResponse])
 async def list_test_steps(
     test_definition_id: int,
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -43,9 +44,9 @@ async def list_test_steps(
         )
 
     # Check permission: regular users can only view test steps for their own test definitions
-    is_admin = current_user.get("is_admin", False)
-    if not is_admin and current_user.get("provider") == "local" and current_user.get("sub"):
-        if test_def.created_by != int(current_user["sub"]):
+    is_admin = current_user.is_admin
+    if not is_admin:
+        if test_def.created_by != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to view test steps for this test definition"
@@ -66,7 +67,7 @@ async def list_test_steps(
 async def create_test_step(
     test_definition_id: int,
     step: TestStepCreate,
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -92,9 +93,9 @@ async def create_test_step(
         )
 
     # Check permission: regular users can only add test steps to their own test definitions
-    is_admin = current_user.get("is_admin", False)
-    if not is_admin and current_user.get("provider") == "local" and current_user.get("sub"):
-        if test_def.created_by != int(current_user["sub"]):
+    is_admin = current_user.is_admin
+    if not is_admin:
+        if test_def.created_by != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to add test steps to this test definition"
@@ -137,7 +138,7 @@ async def create_test_step(
 async def replace_test_steps(
     test_definition_id: int,
     payload: TestStepsReplaceRequest,
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -157,9 +158,9 @@ async def replace_test_steps(
             detail=f"Test definition with id {test_definition_id} not found",
         )
 
-    is_admin = current_user.get("is_admin", False)
-    if not is_admin and current_user.get("provider") == "local" and current_user.get("sub"):
-        if test_def.created_by != int(current_user["sub"]):
+    is_admin = current_user.is_admin
+    if not is_admin:
+        if test_def.created_by != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to update test steps for this test definition",
@@ -195,7 +196,7 @@ async def replace_test_steps(
 async def update_test_step(
     step_id: int,
     step_update: TestStepUpdate,
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -224,9 +225,9 @@ async def update_test_step(
     test_def = result.scalar_one_or_none()
 
     # Check permission: regular users can only update test steps for their own test definitions
-    is_admin = current_user.get("is_admin", False)
-    if not is_admin and current_user.get("provider") == "local" and current_user.get("sub"):
-        if test_def.created_by != int(current_user["sub"]):
+    is_admin = current_user.is_admin
+    if not is_admin:
+        if test_def.created_by != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to update this test step"
@@ -246,7 +247,7 @@ async def update_test_step(
 @router.delete("/{step_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_test_step(
     step_id: int,
-    current_user: dict = Depends(lambda: {}),  # Make public for development
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -275,9 +276,9 @@ async def delete_test_step(
     test_def = result.scalar_one_or_none()
 
     # Check permission: regular users can only delete test steps for their own test definitions
-    is_admin = current_user.get("is_admin", False)
-    if not is_admin and current_user.get("provider") == "local" and current_user.get("sub"):
-        if test_def.created_by != int(current_user["sub"]):
+    is_admin = current_user.is_admin
+    if not is_admin:
+        if test_def.created_by != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to delete this test step"

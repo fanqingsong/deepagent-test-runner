@@ -37,7 +37,6 @@ function LoginPage() {
   };
 
   const handleLoginSuccess = (user) => {
-    // Redirect to dashboard using hash routing
     window.location.hash = 'dashboard';
   };
 

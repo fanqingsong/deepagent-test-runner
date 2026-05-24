@@ -30,8 +30,18 @@ export const AuthProvider = ({ children }) => {
           // Verify token is still valid
           try {
             await authService.ensureValidToken();
-            const storedUser = authService.getUser();
+            let storedUser = authService.getUser();
             if (storedUser) {
+              // If user data lacks permissions, fetch fresh from /auth/me
+              if (!storedUser.permissions || storedUser.permissions.length === 0) {
+                try {
+                  const meData = await authService.getCurrentUser();
+                  storedUser = { ...storedUser, ...meData };
+                  authService.updateStoredUser(storedUser);
+                } catch (e) {
+                  // /auth/me failed, use stored user as-is
+                }
+              }
               setUser(storedUser);
             } else {
               // Token exists but no user data, clear it
@@ -39,12 +49,10 @@ export const AuthProvider = ({ children }) => {
             }
           } catch (error) {
             // Token is invalid, clear it
-            console.log('Token invalid, clearing auth data');
             authService.clearAuthData();
           }
         }
       } catch (err) {
-        console.error('Auth initialization error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -130,12 +138,32 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = user?.is_admin === true || (user?.roles && user.roles.includes('admin'));
 
+  const permissions = new Set(user?.permissions || []);
+  const roles = new Set(user?.roles || []);
+
+  const hasPermission = useCallback((perm) => {
+    return isAdmin || permissions.has(perm);
+  }, [isAdmin, permissions]);
+
+  const hasAnyPermission = useCallback((...perms) => {
+    return isAdmin || perms.some(p => permissions.has(p));
+  }, [isAdmin, permissions]);
+
+  const hasRole = useCallback((role) => {
+    return isAdmin || roles.has(role);
+  }, [isAdmin, roles]);
+
   const value = {
     user,
     loading,
     error,
     isAuthenticated: !!user || authService.isAuthenticated(),
     isAdmin,
+    permissions,
+    roles,
+    hasPermission,
+    hasAnyPermission,
+    hasRole,
     login,
     logout,
     register,

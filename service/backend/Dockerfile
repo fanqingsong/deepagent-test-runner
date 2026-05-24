@@ -58,6 +58,7 @@ RUN playwright install chromium
 
 # Create non-root user and set permissions
 RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/screenshots && \
     chown -R appuser:appuser /app && \
     chown -R appuser:appuser /home/appuser/.cache/ms-playwright
 

@@ -7,8 +7,11 @@ AI-powered test case generation from natural language requirements.
 from typing import List
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.permissions import RequirePermission
+from app.core.security import get_current_user
+from app.models.user import User
 from app.schemas.test_generation import (
     TestCaseGenerateRequest,
     TestCaseGenerateResponse,
@@ -25,7 +28,8 @@ logger = logging.getLogger(__name__)
 
 @router.post("/generate", response_model=TestCaseGenerateResponse, status_code=status.HTTP_201_CREATED)
 async def generate_test_case(
-    request: TestCaseGenerateRequest
+    request: TestCaseGenerateRequest,
+    current_user: User = Depends(RequirePermission("create:test")),
 ):
     """
     Generate a test case from natural language requirements.
@@ -61,7 +65,8 @@ async def generate_test_case(
 
 @router.post("/generate-batch", response_model=BatchGenerateResponse)
 async def generate_test_cases_batch(
-    batch_request: BatchGenerateRequest
+    batch_request: BatchGenerateRequest,
+    current_user: User = Depends(RequirePermission("create:test")),
 ):
     """
     Generate multiple test cases in batch.
@@ -111,7 +116,9 @@ async def generate_test_cases_batch(
 
 
 @router.get("/templates", response_model=List[PromptTemplate])
-async def get_prompt_templates():
+async def get_prompt_templates(
+    current_user: User = Depends(get_current_user),
+):
     """
     Get available prompt templates for different test types.
 
@@ -123,7 +130,10 @@ async def get_prompt_templates():
 
 
 @router.get("/templates/{test_type}", response_model=PromptTemplate)
-async def get_prompt_template(test_type: str):
+async def get_prompt_template(
+    test_type: str,
+    current_user: User = Depends(get_current_user),
+):
     """
     Get a specific prompt template by test type.
 
@@ -144,7 +154,8 @@ async def get_prompt_template(test_type: str):
 
 @router.post("/options", response_model=GenerationOptions)
 async def get_generation_options(
-    options: GenerationOptions
+    options: GenerationOptions,
+    current_user: User = Depends(get_current_user),
 ):
     """
     Validate and return generation options.

@@ -17,7 +17,9 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """User creation schema"""
+    username: str = Field(..., min_length=1, max_length=100)
     password: str = Field(..., min_length=8)
+    role_ids: List[int] = []
 
 
 class UserUpdate(BaseModel):
@@ -26,6 +28,11 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
+
+
+class UserProfileUpdate(BaseModel):
+    """User self-profile update schema (more restrictive than admin update)"""
+    username: Optional[str] = None
 
 
 class UserResponse(UserBase):

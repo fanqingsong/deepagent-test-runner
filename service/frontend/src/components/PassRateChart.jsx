@@ -14,21 +14,21 @@ ChartJS.register(
 );
 
 function PassRateChart({ stats = {} }) {
-  // 从统计数据中获取通过和失败的数量
+  // Get pass and fail counts from statistics
   const passed = parseInt(stats.total_passed) || parseInt(stats.successful_runs) || 0;
   const failed = parseInt(stats.total_failed) || parseInt(stats.failed_runs) || 0;
 
-  // 如果没有数据，使用模拟数据
+  // Use mock data if no data available
   const displayPassed = passed > 0 ? passed : 45;
   const displayFailed = failed > 0 ? failed : 5;
 
   const chartData = {
-    labels: ['通过', '失败'],
+    labels: ['Passed', 'Failed'],
     datasets: [{
       data: [displayPassed, displayFailed],
       backgroundColor: [
-        '#4caf50', // 绿色 - 通过
-        '#f44336'  // 红色 - 失败
+        '#4caf50', // Green - Passed
+        '#f44336'  // Red - Failed
       ],
       borderColor: [
         '#45a049',
@@ -55,7 +55,7 @@ function PassRateChart({ stats = {} }) {
       },
       title: {
         display: true,
-        text: '测试通过率',
+        text: 'Test Pass Rate',
         font: {
           size: 16,
           weight: 'bold'
@@ -110,7 +110,7 @@ function PassRateChart({ stats = {} }) {
         fontWeight: 'bold',
         color: passRate >= 80 ? '#4caf50' : passRate >= 60 ? '#ff9800' : '#f44336'
       }}>
-        总体通过率: {passRate}%
+        Overall Pass Rate: {passRate}%
       </div>
     </div>
   );

@@ -24,47 +24,47 @@ function StatsCards({ stats, totalDefinitions }) {
 
   return (
     <div className="stats-cards-container">
-      {/* 总运行数 */}
+      {/* Total runs */}
       <div className="stats-card">
-        <div className="stats-title">总运行数</div>
+        <div className="stats-title">Total Runs</div>
         <div className="stats-value total">
           {stats.total_runs || stats.successful_runs || 0}
         </div>
         <div className="stats-subtitle">
-          成功: {stats.successful_runs || 0} | 失败: {stats.failed_runs || 0}
+          Success: {stats.successful_runs || 0} | Failed: {stats.failed_runs || 0}
         </div>
       </div>
 
-      {/* 通过率 */}
+      {/* Pass rate */}
       <div className="stats-card">
-        <div className="stats-title">通过率</div>
+        <div className="stats-title">Pass Rate</div>
         <div className="stats-value passRate">
           {formatPercentage(getPassRate())}
         </div>
         <div className="stats-subtitle">
-          {stats.total_passed || 0} 通过 / {stats.total_failed || 0} 失败
+          {stats.total_passed || 0} Passed / {stats.total_failed || 0} Failed
         </div>
       </div>
 
-      {/* 平均时长 */}
+      {/* Average duration */}
       <div className="stats-card">
-        <div className="stats-title">平均执行时长</div>
+        <div className="stats-title">Avg Duration</div>
         <div className="stats-value duration">
           {formatDuration(stats.avg_duration)}
         </div>
         <div className="stats-subtitle">
-          基于所有完成的测试运行
+          Based on all completed test runs
         </div>
       </div>
 
-      {/* 测试总数 */}
+      {/* Total tests */}
       <div className="stats-card">
-        <div className="stats-title">测试用例总数</div>
+        <div className="stats-title">Total Test Cases</div>
         <div className="stats-value tests">
           {totalDefinitions || 0}
         </div>
         <div className="stats-subtitle">
-          活跃的测试定义
+          Active test definitions
         </div>
       </div>
     </div>

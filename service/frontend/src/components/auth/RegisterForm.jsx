@@ -82,7 +82,12 @@ function RegisterForm({ onRegistrationSuccess, onSwitchToLogin }) {
       }, 2000);
     } catch (err) {
       // Extract error message from response or use default
-      const errorMessage = err.response?.data?.detail || err.message || 'Registration failed. Please try again.';
+      const detail = err.response?.data?.detail;
+      const errorMessage =
+        (typeof detail === 'string' ? detail : detail?.message) ||
+        err.response?.statusText ||
+        err.message ||
+        'Registration failed. Please try again.';
       setError(errorMessage);
       setLoading(false);
     }

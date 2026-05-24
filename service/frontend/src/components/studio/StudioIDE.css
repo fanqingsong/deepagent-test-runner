@@ -1,0 +1,42 @@
+.studio-ide {
+  display: flex;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+  background: #f4f4f4;
+}
+
+.studio-ide-sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.studio-ide-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.studio-ide-aux {
+  width: 360px;
+  min-width: 0;
+  background: #fff;
+  border-left: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 200ms ease, min-width 200ms ease;
+}
+
+.studio-ide-aux--collapsed {
+  width: 0;
+  min-width: 0;
+  border-left: none;
+  overflow: hidden;
+}

@@ -26,7 +26,7 @@ from app.schemas.user import (
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("", response_model=List[UserResponse])
+@router.get("", response_model=List[UserWithRoles])
 async def list_users(
     skip: int = 0,
     limit: int = 100,
@@ -52,7 +52,19 @@ async def list_users(
         # Regular users can only see themselves
         return [current_user]
 
-    return users
+    # Attach role names to each user for the response
+    enriched = []
+    for u in users:
+        enriched.append({
+            "id": u.id,
+            "email": u.email,
+            "full_name": None,
+            "is_active": u.is_active,
+            "created_at": u.created_at,
+            "updated_at": u.updated_at,
+            "roles": [r.name for r in u.roles],
+        })
+    return enriched
 
 
 @router.get("/{user_id}", response_model=UserWithRoles)
@@ -126,6 +138,15 @@ async def create_user(
     )
 
     db.add(user)
+    await db.flush()
+
+    # Assign roles if provided
+    if user_data.role_ids:
+        roles_result = await db.execute(
+            select(Role).where(Role.id.in_(user_data.role_ids))
+        )
+        user.roles = list(roles_result.scalars().all())
+
     await db.commit()
     await db.refresh(user, ["roles"])
 

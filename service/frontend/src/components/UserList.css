@@ -249,6 +249,105 @@
   background: var(--cds-interactive-01);
 }
 
+/* Inline Role Management Dropdown */
+
+.user-role-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.user-role-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-border-radius);
+  color: var(--cds-text-secondary);
+  font-size: 10px;
+  font-family: var(--cds-font-family);
+  cursor: pointer;
+  transition: all var(--cds-transition-normal);
+  line-height: 1;
+}
+
+.user-role-dropdown-btn:hover {
+  background: var(--cds-background-layer-01);
+  color: var(--cds-text-primary);
+}
+
+.user-role-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 200px;
+  background: var(--cds-background);
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-border-radius);
+  z-index: 100;
+  padding: var(--cds-spacing-sm) 0;
+  margin-top: 4px;
+}
+
+.user-role-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--cds-spacing-sm) var(--cds-spacing-md);
+  font-size: var(--cds-body-short-02);
+  font-family: var(--cds-font-family);
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  transition: background-color var(--cds-transition-normal);
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.user-role-dropdown-item:hover {
+  background: var(--cds-background-layer-01);
+}
+
+.user-role-dropdown-item.has-role {
+  color: var(--cds-interactive-01);
+}
+
+.user-role-remove-btn {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--cds-support-error);
+  border-radius: var(--cds-border-radius);
+  color: var(--cds-support-error);
+  font-size: 11px;
+  font-family: var(--cds-font-family);
+  cursor: pointer;
+  transition: all var(--cds-transition-normal);
+}
+
+.user-role-remove-btn:hover {
+  background: var(--cds-support-error);
+  color: var(--cds-text-on-color);
+}
+
+.user-role-assign-btn {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--cds-interactive-01);
+  border-radius: var(--cds-border-radius);
+  color: var(--cds-interactive-01);
+  font-size: 11px;
+  font-family: var(--cds-font-family);
+  cursor: pointer;
+  transition: all var(--cds-transition-normal);
+}
+
+.user-role-assign-btn:hover {
+  background: var(--cds-interactive-01);
+  color: var(--cds-text-on-color);
+}
+
 /* Responsive Design */
 
 @media (max-width: 672px) {

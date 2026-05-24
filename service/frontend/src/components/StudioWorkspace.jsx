@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getStudio, updateStudio, runStudio, publishStudio, getJobStatus, getStudioRunProgress, generateStudioPlan, saveStudioSteps } from '../api';
+import { getStudio, updateStudio, runStudio, publishStudio, getJobStatus, getStudioRunProgress, generateStudioPlan, saveStudioSteps, getStudioRunHistory, getTestRunDetails, getStudioStepVersions, restoreStudioStepVersion } from '../api';
+import BrowserStream from './BrowserStream';
 import './StudioWorkspace.css';
 
 const STATUS_LABELS = {
@@ -42,6 +43,19 @@ export default function StudioWorkspace({ studioId }) {
   const [browserUrl, setBrowserUrl] = useState('');
   const [browserTitle, setBrowserTitle] = useState('');
   const [selectedScreenshot, setSelectedScreenshot] = useState(null);
+  const [runningJobId, setRunningJobId] = useState(null);
+
+  // Run history state
+  const [runHistory, setRunHistory] = useState([]);
+  const [runHistoryLoading, setRunHistoryLoading] = useState(false);
+  const [expandedRunId, setExpandedRunId] = useState(null);
+  const [expandedRunCases, setExpandedRunCases] = useState([]);
+  const [expandedRunLoading, setExpandedRunLoading] = useState(false);
+
+  // Step version state
+  const [stepVersions, setStepVersions] = useState([]);
+  const [viewingVersionId, setViewingVersionId] = useState(null);
+  const [viewedSteps, setViewedSteps] = useState(null);
 
   const loadStudio = useCallback(async () => {
     try {
@@ -68,6 +82,84 @@ export default function StudioWorkspace({ studioId }) {
     loadStudio();
   }, [loadStudio]);
 
+  const loadRunHistory = useCallback(async () => {
+    if (!studioId) return;
+    try {
+      setRunHistoryLoading(true);
+      const runs = await getStudioRunHistory(studioId, { limit: 50 });
+      setRunHistory(runs);
+    } catch {
+      /* non-critical */
+    } finally {
+      setRunHistoryLoading(false);
+    }
+  }, [studioId]);
+
+  useEffect(() => {
+    loadRunHistory();
+  }, [loadRunHistory]);
+
+  const handleToggleRunExpand = async (runId) => {
+    if (expandedRunId === runId) {
+      setExpandedRunId(null);
+      setExpandedRunCases([]);
+      return;
+    }
+    setExpandedRunId(runId);
+    setExpandedRunLoading(true);
+    try {
+      const cases = await getTestRunDetails(runId);
+      setExpandedRunCases(cases);
+    } catch {
+      setExpandedRunCases([]);
+    } finally {
+      setExpandedRunLoading(false);
+    }
+  };
+
+  const loadStepVersions = useCallback(async () => {
+    if (!studioId) return;
+    try {
+      const versions = await getStudioStepVersions(studioId);
+      setStepVersions(versions);
+    } catch {
+      /* non-critical */
+    }
+  }, [studioId]);
+
+  useEffect(() => {
+    loadStepVersions();
+  }, [loadStepVersions]);
+
+  const handleViewVersion = (version) => {
+    if (viewingVersionId === version.id) {
+      setViewingVersionId(null);
+      setViewedSteps(null);
+      return;
+    }
+    setViewingVersionId(version.id);
+    const snapshotSteps = (version.snapshot?.steps || []).map(s => ({ ...s }));
+    setViewedSteps(snapshotSteps);
+  };
+
+  const handleRestoreVersion = async (versionId) => {
+    try {
+      setError(null);
+      await restoreStudioStepVersion(studioId, versionId);
+      setViewingVersionId(null);
+      setViewedSteps(null);
+      await loadStudio();
+      loadStepVersions();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const handleBackToCurrent = () => {
+    setViewingVersionId(null);
+    setViewedSteps(null);
+  };
+
   const pollJobStatus = async (jobId) => {
     let attempts = 0;
     const maxAttempts = 120;
@@ -87,6 +179,7 @@ export default function StudioWorkspace({ studioId }) {
 
         if (job.status === 'completed' || attempts >= maxAttempts) {
           setIsRunning(false);
+          setRunningJobId(null);
           setProgressSteps([]);
           setProgressCurrent(0);
           setProgressTotal(0);
@@ -96,6 +189,8 @@ export default function StudioWorkspace({ studioId }) {
           if (pollingRef.current) clearInterval(pollingRef.current);
           pollingRef.current = null;
           await loadStudio();
+          loadRunHistory();
+          loadStepVersions();
           return;
         }
         attempts++;
@@ -183,6 +278,7 @@ export default function StudioWorkspace({ studioId }) {
         forceRegenerate: !!opts.forceRegenerate,
         useExistingPlan: !!opts.useExistingPlan,
       });
+      setRunningJobId(result.job_id);
       pollJobStatus(result.job_id);
     } catch (e) {
       setError(e.message);
@@ -366,7 +462,8 @@ export default function StudioWorkspace({ studioId }) {
             <div className="studio-workspace-section">
               <h3 className="studio-workspace-section-title">
                 Test Plan
-                {stepsSaved && <span className="studio-workspace-saved-tag">Saved</span>}
+                {viewingVersionId && <span className="studio-workspace-viewing-tag">Viewing past version</span>}
+                {!viewingVersionId && stepsSaved && <span className="studio-workspace-saved-tag">Saved</span>}
               </h3>
               <table className="studio-workspace-steps-table">
                 <thead>
@@ -378,14 +475,14 @@ export default function StudioWorkspace({ studioId }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {editedSteps.map((step, i) => (
+                  {(viewedSteps || editedSteps).map((step, i) => (
                     <tr key={i}>
                       <td className="td-step">{step.step_number || i + 1}</td>
                       <td className="td-type">{step.type}</td>
                       <td className="td-desc">
                         <EditableCell
                           value={step.description}
-                          editing={editingCell?.stepIdx === i && editingCell?.field === 'description'}
+                          editing={!viewingVersionId && editingCell?.stepIdx === i && editingCell?.field === 'description'}
                           draft={editDraft}
                           onStartEdit={() => startEdit(i, 'description', step.description)}
                           onDraftChange={setEditDraft}
@@ -396,7 +493,7 @@ export default function StudioWorkspace({ studioId }) {
                       <td className="td-verify">
                         <EditableCell
                           value={step.verification}
-                          editing={editingCell?.stepIdx === i && editingCell?.field === 'verification'}
+                          editing={!viewingVersionId && editingCell?.stepIdx === i && editingCell?.field === 'verification'}
                           draft={editDraft}
                           onStartEdit={() => startEdit(i, 'verification', step.verification)}
                           onDraftChange={setEditDraft}
@@ -431,6 +528,44 @@ export default function StudioWorkspace({ studioId }) {
                   {isRunning ? 'Running...' : 'Run Test'}
                 </button>
               </div>
+              {stepVersions.length > 0 && (
+                <div className="studio-workspace-version-bar">
+                  <span className="studio-workspace-version-label">Versions:</span>
+                  {stepVersions.map(v => (
+                    <button
+                      key={v.id}
+                      className={`studio-workspace-version-tag ${
+                        viewingVersionId === v.id ? 'studio-workspace-version-tag--active' : ''
+                      } ${v.run_status ? `studio-workspace-version-tag--${v.run_status}` : ''}`}
+                      onClick={() => handleViewVersion(v)}
+                      title={v.change_description || `v${v.version}`}
+                    >
+                      v{v.version}
+                      {v.run_status && (
+                        <span className={`version-status-badge version-status-${v.run_status}`}>
+                          {v.run_status === 'passed' ? '✓' : '✗'}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  {viewingVersionId && (
+                    <>
+                      <button
+                        className="studio-workspace-restore-btn"
+                        onClick={() => handleRestoreVersion(viewingVersionId)}
+                      >
+                        Restore this version
+                      </button>
+                      <button
+                        className="studio-workspace-secondary-btn"
+                        onClick={handleBackToCurrent}
+                      >
+                        Back to current
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -487,21 +622,51 @@ export default function StudioWorkspace({ studioId }) {
             </div>
           )}
 
+          {runHistory.length > 0 && (
+            <div className="studio-workspace-section">
+              <h3 className="studio-workspace-section-title">
+                Run History
+                <span className="studio-workspace-result-counts">
+                  {' '}{runHistory.length} runs
+                </span>
+              </h3>
+              <table className="studio-workspace-steps-table">
+                <thead>
+                  <tr>
+                    <th className="th-status">Status</th>
+                    <th className="th-desc">Run</th>
+                    <th className="th-steps-count">Steps</th>
+                    <th className="th-duration">Duration</th>
+                    <th className="th-time">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {runHistory.map((run) => (
+                    <RunHistoryRow
+                      key={run.run_id}
+                      run={run}
+                      isExpanded={expandedRunId === run.run_id}
+                      expandedCases={expandedRunCases}
+                      expandedLoading={expandedRunLoading}
+                      onToggle={() => handleToggleRunExpand(run.run_id)}
+                      onSelectScreenshot={setSelectedScreenshot}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {isRunning && (
             <>
-              {progressSteps.filter(s => s.screenshot_path).length > 0 && (
-                <div className="studio-workspace-section">
-                  <BrowserPreview
-                    latestScreenshot={
-                      progressSteps.filter(s => s.screenshot_path).slice(-1)[0]?.screenshot_path || null
-                    }
-                    browserUrl={browserUrl}
-                    browserTitle={browserTitle}
-                    progressSteps={progressSteps}
-                    onSelectScreenshot={setSelectedScreenshot}
-                  />
-                </div>
-              )}
+              <div className="studio-workspace-section">
+                <BrowserStream
+                  jobId={runningJobId}
+                  isRunning={isRunning}
+                  progressSteps={progressSteps}
+                  onSelectScreenshot={setSelectedScreenshot}
+                />
+              </div>
 
               <div className="studio-workspace-section">
                 <h3 className="studio-workspace-section-title">
@@ -675,5 +840,91 @@ function ScreenshotLightbox({ src, onClose }) {
         <img src={src} alt="Screenshot detail" className="screenshot-lightbox-image" />
       </div>
     </div>
+  );
+}
+
+function RunHistoryRow({ run, isExpanded, expandedCases, expandedLoading, onToggle, onSelectScreenshot }) {
+  const shortRunId = run.run_id ? run.run_id.slice(0, 8) : '-';
+  const timeStr = run.created_at
+    ? new Date(run.created_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '-';
+  const durStr = run.total_duration != null ? `${(run.total_duration / 1000).toFixed(1)}s` : '-';
+
+  return (
+    <>
+      <tr className={`row-${run.status} run-history-row`} onClick={onToggle} style={{ cursor: 'pointer' }}>
+        <td className="td-status">
+          <span className={`step-badge step-${run.status}`}>
+            {run.status === 'passed' ? '✓' : run.status === 'failed' ? '✗' : '·'}
+          </span>
+        </td>
+        <td className="td-desc" style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '12px' }}>
+          {shortRunId}
+        </td>
+        <td className="td-steps-count">
+          {run.passed ?? 0}/{run.total_tests ?? 0}
+        </td>
+        <td className="td-duration">{durStr}</td>
+        <td className="td-time">{timeStr}</td>
+      </tr>
+      {isExpanded && (
+        <tr className="run-history-expanded">
+          <td colSpan={5} style={{ padding: 0 }}>
+            <div className="run-history-expanded-content">
+              {expandedLoading ? (
+                <div className="studio-workspace-running">
+                  <div className="studio-workspace-typing"><span></span><span></span><span></span></div>
+                  <span className="studio-workspace-running-text">Loading details...</span>
+                </div>
+              ) : expandedCases.length === 0 ? (
+                <p className="studio-workspace-result-text">No step details available.</p>
+              ) : (
+                <table className="studio-workspace-steps-table">
+                  <thead>
+                    <tr>
+                      <th className="th-step">#</th>
+                      <th className="th-desc">Step</th>
+                      <th className="th-status">Status</th>
+                      <th className="th-duration">Duration</th>
+                      <th className="th-screenshot">Screenshot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expandedCases.map((tc, i) => (
+                      <tr key={tc.id || i} className={`row-${tc.status}`}>
+                        <td className="td-step">{i + 1}</td>
+                        <td className="td-desc">
+                          {tc.description || tc.test_id || `Step ${i + 1}`}
+                          {tc.error_message && <span className="step-error">{tc.error_message}</span>}
+                        </td>
+                        <td className="td-status">
+                          <span className={`step-badge step-${tc.status}`}>
+                            {tc.status === 'passed' ? '✓' : tc.status === 'failed' ? '✗' : '·'}
+                          </span>
+                        </td>
+                        <td className="td-duration">{tc.duration ? `${tc.duration}ms` : '-'}</td>
+                        <td className="td-screenshot">
+                          {tc.screenshot_path ? (
+                            <button
+                              className="step-screenshot-thumb"
+                              onClick={(e) => { e.stopPropagation(); onSelectScreenshot(tc.screenshot_path); }}
+                              title="Click to enlarge"
+                            >
+                              <img src={tc.screenshot_path} alt={`Step ${i + 1}`} />
+                            </button>
+                          ) : (
+                            <span className="step-screenshot-placeholder">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

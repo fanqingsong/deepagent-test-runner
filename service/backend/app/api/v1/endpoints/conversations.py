@@ -14,7 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.core.permissions import RequirePermission
+from app.core.security import get_current_user
 from app.models import ConversationThread, ConversationMessage, TestDefinition
+from app.models.user import User
 from app.models.test_case import TestCase
 from app.models.test_run import TestRun
 from app.schemas.conversation import (
@@ -36,6 +39,7 @@ router = APIRouter()
 @router.post("/", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
 async def create_conversation(
     request: ConversationCreate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new conversation thread linked to a test definition."""
@@ -61,6 +65,7 @@ async def create_conversation(
 @router.get("/{thread_id}", response_model=ConversationResponse)
 async def get_conversation(
     thread_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a conversation thread with all its messages."""
@@ -98,6 +103,7 @@ async def get_conversation(
 async def send_message(
     thread_id: int,
     request: SendMessageRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Send a user message and get an AI response with a refined plan."""
@@ -202,6 +208,7 @@ async def send_message(
 async def approve_conversation(
     thread_id: int,
     request: ApproveRequest,
+    current_user: User = Depends(RequirePermission("update:test")),
     db: AsyncSession = Depends(get_db),
 ):
     """Approve the current plan in the conversation."""
@@ -250,6 +257,7 @@ async def approve_conversation(
 async def regenerate_plan(
     thread_id: int,
     request: SendMessageRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Fully regenerate the test plan with user feedback."""
@@ -325,6 +333,7 @@ async def regenerate_plan(
 @router.get("/failure/{run_id}", response_model=FailureConversationResponse)
 async def get_failure_conversation(
     run_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the failure recovery conversation for a specific run."""
@@ -388,6 +397,7 @@ async def get_failure_conversation(
 async def respond_to_failure(
     run_id: str,
     request: FailureRecoveryRequest,
+    current_user: User = Depends(RequirePermission("update:test")),
     db: AsyncSession = Depends(get_db),
 ):
     """Respond to a test failure with a recovery action."""

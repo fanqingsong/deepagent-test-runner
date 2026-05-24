@@ -24,21 +24,21 @@ ChartJS.register(
 );
 
 function TrendChart({ data = [], timeRange = '30d' }) {
-  // 如果没有真实数据，生成模拟数据用于展示
+  // Generate mock data for display if no real data
   const chartData = data.length > 0 ? data : generateMockData();
 
   const labels = chartData.map(item => {
     const date = new Date(item.date);
     return timeRange === '7d'
-      ? date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-      : date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+      ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   });
 
   const chartDataConfig = {
     labels,
     datasets: [
       {
-        label: '通过',
+        label: 'Passed',
         data: chartData.map(item => item.passed || 0),
         borderColor: '#4caf50',
         backgroundColor: 'rgba(76, 175, 80, 0.1)',
@@ -49,7 +49,7 @@ function TrendChart({ data = [], timeRange = '30d' }) {
         pointHoverRadius: 5
       },
       {
-        label: '失败',
+        label: 'Failed',
         data: chartData.map(item => item.failed || 0),
         borderColor: '#f44336',
         backgroundColor: 'rgba(244, 67, 54, 0.1)',
@@ -77,7 +77,7 @@ function TrendChart({ data = [], timeRange = '30d' }) {
       },
       title: {
         display: true,
-        text: '测试执行趋势',
+        text: 'Test Execution Trend',
         font: {
           size: 16,
           weight: 'bold'
@@ -136,7 +136,7 @@ function TrendChart({ data = [], timeRange = '30d' }) {
   );
 }
 
-// 生成模拟数据用于展示
+// Generate mock data for display
 function generateMockData() {
   const data = [];
   const today = new Date();
@@ -145,7 +145,7 @@ function generateMockData() {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
 
-    // 生成一些随机的测试数据
+    // Generate some random test data
     const passed = Math.floor(Math.random() * 15) + 5;
     const failed = Math.floor(Math.random() * 3);
 

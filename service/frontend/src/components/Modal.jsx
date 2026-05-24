@@ -35,7 +35,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
           <button
             className="modal-close-btn"
             onClick={onClose}
-            aria-label="关闭对话框"
+            aria-label="Close dialog"
             type="button"
           >
             ×

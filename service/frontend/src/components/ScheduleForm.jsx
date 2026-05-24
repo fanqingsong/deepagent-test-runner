@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import authService from '../services/authService';
+import { getTestSuites } from '../api';
 import './ScheduleForm.css';
 
 export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCancel }) {
   const [tests, setTests] = useState([]);
+  const [suites, setSuites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -34,14 +36,14 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
     }
 
     const normalized = (detail || '').toString().trim();
-    const base = fallback || '请求失败';
+    const base = fallback || 'Request failed';
     const suffixParts = [
       typeof status === 'number' ? `HTTP ${status}` : null,
       statusText ? statusText : null,
       normalized ? normalized : null,
     ].filter(Boolean);
 
-    return suffixParts.length ? `${base}（${suffixParts.join(' - ')}）` : base;
+    return suffixParts.length ? `${base} (${suffixParts.join(' - ')})` : base;
   };
 
   const getSafeAuthHeaders = () => {
@@ -55,13 +57,13 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
   const ensureAuthOrRedirect = async () => {
     if (!authService?.isAuthenticated?.()) {
       window.location.hash = 'login';
-      throw new Error('未登录或登录已过期，请重新登录');
+      throw new Error('Not logged in or session expired, please log in again');
     }
     try {
       await authService.ensureValidToken();
     } catch {
       window.location.hash = 'login';
-      throw new Error('登录已过期，请重新登录');
+      throw new Error('Session expired, please log in again');
     }
   };
 
@@ -81,21 +83,21 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
   });
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // 获取验证消息
+  // Get validation message
   const getValidationMessage = () => {
     switch (formData.schedule_type) {
       case 'single':
-        return '请选择一个测试用例';
+        return 'Please select a test case';
       case 'suite':
-        return '请输入测试套件ID';
+        return 'Please enter test suite ID';
       case 'tag_filter':
-        return '请输入标签过滤条件';
+        return 'Please enter tag filter condition';
       default:
-        return '请完成必填字段';
+        return 'Please complete required fields';
     }
   };
 
-  // 验证表单是否有效
+  // Validate form
   const isFormValid = () => {
     switch (formData.schedule_type) {
       case 'single':
@@ -111,8 +113,8 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
 
   useEffect(() => {
     console.log('ScheduleForm - Component mounted/updated');
-    console.log('ScheduleForm - formData:', formData);
     loadTests();
+    loadSuites();
     if (editingSchedule) {
       setFormData({
         name: editingSchedule.name || '',
@@ -139,12 +141,12 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
       });
       if (response.status === 401) {
         window.location.hash = 'login';
-        throw new Error('登录已过期，请重新登录');
+        throw new Error('Session expired, please log in again');
       }
       if (!response.ok) {
-        const msg = await buildHttpErrorMessage(response, '加载测试用例失败');
+        const msg = await buildHttpErrorMessage(response, 'Failed to load test cases');
         if (response.status === 403) {
-          throw new Error(`${msg}\n（通常表示请求没带上 Authorization，或 token 验证失败/格式不正确）`);
+          throw new Error(`${msg}\n(Request missing Authorization header, or token validation failed/invalid format)`);
         }
         throw new Error(msg);
       }
@@ -155,10 +157,19 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
     }
   };
 
+  const loadSuites = async () => {
+    try {
+      const data = await getTestSuites();
+      setSuites(data);
+    } catch (err) {
+      // Non-critical — suites list is optional
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 添加调试日志
+    // Add debug logs
     console.log('ScheduleForm - handleSubmit called');
     console.log('ScheduleForm - formData:', formData);
     console.log('ScheduleForm - isFormValid:', isFormValid());
@@ -193,20 +204,20 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
       });
       if (response.status === 401) {
         window.location.hash = 'login';
-        throw new Error('登录已过期，请重新登录');
+        throw new Error('Session expired, please log in again');
       }
 
       if (!response.ok) {
-        const msg = await buildHttpErrorMessage(response, '保存调度失败');
+        const msg = await buildHttpErrorMessage(response, 'Failed to save schedule');
         if (response.status === 403) {
-          throw new Error(`${msg}\n（通常表示请求没带上 Authorization，或 token 验证失败/格式不正确）`);
+          throw new Error(`${msg}\n(Request missing Authorization header, or token validation failed/invalid format)`);
         }
         throw new Error(msg);
       }
 
       console.log('ScheduleForm - Request successful');
 
-      // 通知父组件刷新列表并关闭modal
+      // Notify parent component to refresh list and close modal
       onScheduleCreated();
     } catch (err) {
       console.error('ScheduleForm - Error:', err);
@@ -225,12 +236,12 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
   };
 
   const cronPresets = [
-    { label: '每分钟', value: '* * * * *' },
-    { label: '每小时', value: '0 * * * *' },
-    { label: '每天凌晨2点', value: '0 2 * * *' },
-    { label: '每周一上午9点', value: '0 9 * * 1' },
-    { label: '每月1号凌晨3点', value: '0 3 1 * *' },
-    { label: '工作日上午9点', value: '0 9 * * 1-5' }
+    { label: 'Every minute', value: '* * * * *' },
+    { label: 'Every hour', value: '0 * * * *' },
+    { label: 'Daily at 2 AM', value: '0 2 * * *' },
+    { label: 'Every Monday at 9 AM', value: '0 9 * * 1' },
+    { label: 'First day of month at 3 AM', value: '0 3 1 * *' },
+    { label: 'Weekdays at 9 AM', value: '0 9 * * 1-5' }
   ];
 
   return (
@@ -250,19 +261,19 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
       )}
 
       <div className="form-group">
-        <label className="form-label required">调度名称</label>
+        <label className="form-label required">Schedule Name</label>
         <input
           type="text"
           required
           className="form-input"
           value={formData.name}
           onChange={(e) => setFormData({...formData, name: e.target.value})}
-          placeholder="例如：每日回归测试"
+          placeholder="e.g., Daily regression test"
         />
       </div>
 
       <div className="form-group">
-        <label className="form-label">调度类型</label>
+        <label className="form-label">Schedule Type</label>
         <select
           className="form-select"
           value={formData.schedule_type}
@@ -277,20 +288,20 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
             }));
           }}
         >
-          <option value="single">单个测试</option>
-          <option value="suite">测试套件</option>
-          <option value="tag_filter">标签筛选</option>
+          <option value="single">Single Test</option>
+          <option value="suite">Test Suite</option>
+          <option value="tag_filter">Tag Filter</option>
         </select>
       </div>
 
       <div className="form-group">
-        <label className="form-label required">Cron 表达式</label>
+        <label className="form-label required">Cron Expression</label>
         <select
           className="form-select"
           value={formData.cron_expression}
           onChange={(e) => setFormData({...formData, cron_expression: e.target.value})}
         >
-          <option value="">选择预设...</option>
+          <option value="">Select preset...</option>
           {cronPresets.map(preset => (
             <option key={preset.value} value={preset.value}>
               {preset.label} ({preset.value})
@@ -303,22 +314,22 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
           className="form-input"
           value={formData.cron_expression}
           onChange={(e) => setFormData({...formData, cron_expression: e.target.value})}
-          placeholder="* * * * * (分 时 日 月 周)"
+          placeholder="* * * * * (min hour day month weekday)"
         />
         <div className="form-helper">
-          <span>格式：分 时 日 月 周 (例如：0 2 * * * = 每天凌晨2点)</span>
+          <span>Format: min hour day month weekday (e.g., 0 2 * * * = daily at 2 AM)</span>
         </div>
       </div>
 
       <div className="form-group">
-        <label className="form-label">时区</label>
+        <label className="form-label">Timezone</label>
         <select
           className="form-select"
           value={formData.timezone}
           onChange={(e) => setFormData({...formData, timezone: e.target.value})}
         >
           <option value="UTC">UTC</option>
-          <option value="Asia/Shanghai">Asia/Shanghai (中国标准时间)</option>
+          <option value="Asia/Shanghai">Asia/Shanghai (China Standard Time)</option>
           <option value="America/New_York">America/New_York</option>
           <option value="Europe/London">Europe/London</option>
         </select>
@@ -326,10 +337,10 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
 
       {formData.schedule_type === 'single' && (
         <div className="form-group">
-          <label className="form-label required">选择测试用例</label>
+          <label className="form-label required">Select Test Case</label>
           <div className="test-selection-list">
             {tests.length === 0 ? (
-              <div className="test-empty">暂无测试用例</div>
+              <div className="test-empty">No test cases available</div>
             ) : (
               tests.map(test => (
                 <label
@@ -349,43 +360,45 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
             )}
           </div>
           <div className="form-helper">
-            {formData.test_definition_id ? '✓ 已选择1个测试用例' : '请选择1个测试用例'}
+            {formData.test_definition_id ? '✓ 1 test case selected' : 'Please select 1 test case'}
           </div>
         </div>
       )}
 
       {formData.schedule_type === 'suite' && (
         <div className="form-group">
-          <label className="form-label required">测试套件ID</label>
-          <input
-            type="number"
-            required
-            className="form-input"
+          <label className="form-label required">Select Test Suite</label>
+          <select
+            className="form-select"
             value={formData.test_suite_id || ''}
             onChange={(e) => setFormData({...formData, test_suite_id: parseInt(e.target.value) || null})}
-            placeholder="输入测试套件ID"
-          />
+          >
+            <option value="">Select suite...</option>
+            {suites.map(suite => (
+              <option key={suite.id} value={suite.id}>
+                {suite.name} ({suite.test_definition_ids?.length || 0} tests)
+              </option>
+            ))}
+          </select>
           <div className="form-helper">
-            <span className="form-helper-icon">💡</span>
-            <span>提示：测试套件功能开发中，请先使用"单个测试"类型</span>
+            {suites.length === 0 ? 'No test suites available, please create one in the Test Suites page first' : `${suites.length} suites available`}
           </div>
         </div>
       )}
 
       {formData.schedule_type === 'tag_filter' && (
         <div className="form-group">
-          <label className="form-label required">标签过滤条件</label>
+          <label className="form-label required">Tag Filter</label>
           <input
             type="text"
             required
             className="form-input"
             value={formData.tag_filter || ''}
             onChange={(e) => setFormData({...formData, tag_filter: e.target.value})}
-            placeholder="例如：smoke,regression"
+            placeholder="e.g., smoke,regression"
           />
           <div className="form-helper">
-            <span className="form-helper-icon">💡</span>
-            <span>提示：输入标签，用逗号分隔（例如：smoke,regression）。标签过滤功能开发中。</span>
+            <span>Enter tag names (e.g., smoke, regression, app-generated). The system will automatically match all published tests containing these tags.</span>
           </div>
         </div>
       )}
@@ -400,10 +413,10 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
           {loading ? (
             <>
               <div className="btn-spinner"></div>
-              <span>保存中...</span>
+              <span>Saving...</span>
             </>
           ) : (
-            <span>{editingSchedule ? '💾 更新调度' : '✨ 创建调度'}</span>
+            <span>{editingSchedule ? '💾 Update Schedule' : '✨ Create Schedule'}</span>
           )}
         </button>
         {!isFormValid() && !loading && (
@@ -417,7 +430,7 @@ export default function ScheduleForm({ onScheduleCreated, editingSchedule, onCan
           className="form-btn form-btn-secondary"
           onClick={onCancel}
         >
-          <span>✕ 完成</span>
+          <span>✕ Done</span>
         </button>
       </div>
     </form>

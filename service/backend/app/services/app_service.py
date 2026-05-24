@@ -84,10 +84,10 @@ class AppService:
         await self.db.flush()
 
         app = App(
-            name=data["name"],
+            name=data.get("name") or "未命名测试",
             description=data.get("description"),
-            url=data["url"],
-            test_goal=data["test_goal"],
+            url=data.get("url") or "",
+            test_goal=data.get("test_goal") or "",
             test_context=data.get("test_context", {}),
             icon=data.get("icon", "test-tube"),
             color=data.get("color", "#0f62fe"),
@@ -210,15 +210,53 @@ class AppService:
     # Save steps to test_steps table
     # ------------------------------------------------------------------
 
-    async def _persist_steps(self, app: App, test_def: "TestDefinition") -> int:
-        """Write current_plan steps into test_steps rows. Returns count saved."""
+    async def _persist_steps(
+        self, app: App, test_def: "TestDefinition", run_status: str = "", run_summary: str = ""
+    ) -> int:
+        """Write current_plan steps into test_steps rows. Returns count saved.
+
+        Before overwriting, creates a TestVersion snapshot of existing steps.
+        """
         from app.models.test_step import TestStep
+        from app.models.test_version import TestVersion
         from sqlalchemy import delete as sa_delete
 
         plan = app.current_plan or {}
         steps = plan.get("steps", [])
         if not steps:
             return 0
+
+        # Snapshot existing steps before overwriting
+        existing = await self.db.execute(
+            select(TestStep)
+            .where(TestStep.test_definition_id == test_def.id)
+            .order_by(TestStep.step_number)
+        )
+        existing_steps = existing.scalars().all()
+
+        if existing_steps:
+            snapshot_data = {
+                "steps": [
+                    {
+                        "step_number": s.step_number,
+                        "description": s.description,
+                        "type": s.type,
+                        "params": s.params,
+                        "expected_result": s.expected_result,
+                    }
+                    for s in existing_steps
+                ]
+            }
+            description = run_summary or "Saved before overwrite"
+            version = TestVersion(
+                test_definition_id=test_def.id,
+                version=test_def.version,
+                snapshot=snapshot_data,
+                change_description=description,
+                created_by="system",
+            )
+            self.db.add(version)
+            test_def.version += 1
 
         await self.db.execute(
             sa_delete(TestStep).where(
@@ -261,6 +299,88 @@ class AppService:
             "test_definition_id": test_def.id,
             "steps_count": count,
             "status": "saved",
+        }
+
+    # ------------------------------------------------------------------
+    # Step version history
+    # ------------------------------------------------------------------
+
+    async def get_step_versions(self, app_id: int) -> list:
+        """Return version history for the app's test definition steps."""
+        from app.models.test_version import TestVersion
+
+        app = await self.get_app(app_id)
+        if not app or not app.test_definition_id:
+            return []
+
+        result = await self.db.execute(
+            select(TestVersion)
+            .where(TestVersion.test_definition_id == app.test_definition_id)
+            .order_by(TestVersion.version.desc())
+        )
+        versions = result.scalars().all()
+
+        out = []
+        for v in versions:
+            desc = v.change_description or ""
+            run_status = ""
+            if desc.lower().startswith("passed"):
+                run_status = "passed"
+            elif desc.lower().startswith("failed"):
+                run_status = "failed"
+
+            out.append({
+                "id": v.id,
+                "version": v.version,
+                "snapshot": v.snapshot,
+                "change_description": desc,
+                "run_status": run_status,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+            })
+        return out
+
+    async def restore_step_version(self, app_id: int, version_id: int) -> dict:
+        """Restore steps from a previous version snapshot."""
+        from app.models.test_version import TestVersion
+
+        app = await self.get_app(app_id)
+        if not app:
+            raise ValueError(f"App {app_id} not found")
+        if not app.test_definition_id:
+            raise ValueError("App has no test definition")
+
+        td_stmt = select(TestDefinition).where(
+            TestDefinition.id == app.test_definition_id
+        )
+        test_def = (await self.db.execute(td_stmt)).scalar_one_or_none()
+        if not test_def:
+            raise ValueError("Test definition not found")
+
+        ver_stmt = select(TestVersion).where(
+            TestVersion.id == version_id,
+            TestVersion.test_definition_id == test_def.id,
+        )
+        version = (await self.db.execute(ver_stmt)).scalar_one_or_none()
+        if not version:
+            raise ValueError("Version not found")
+
+        # Update current_plan with snapshot steps
+        snapshot_steps = (version.snapshot or {}).get("steps", [])
+        current_plan = app.current_plan or {}
+        current_plan["steps"] = snapshot_steps
+        app.current_plan = current_plan
+        app.iteration_count += 1
+
+        # Persist (will auto-create version snapshot of current steps before overwriting)
+        count = await self._persist_steps(
+            app, test_def, run_summary=f"Restored from v{version.version}"
+        )
+        await self.db.commit()
+
+        return {
+            "app_id": app.id,
+            "restored_from_version": version.version,
+            "steps_count": count,
         }
 
     # ------------------------------------------------------------------
@@ -423,18 +543,24 @@ class AppService:
             test_def = None
 
         if test_def:
-            test_def.is_draft = False
             test_def.name = app.name
             test_def.description = app.description or app.test_goal
-            test_def.plan_generation_status = "approved"
+            # Auto-tag
+            auto_tags = ["app-generated", "submitted", f"app-{app.id}"]
+            existing_tags = list(test_def.tags or [])
+            for t in auto_tags:
+                if t not in existing_tags:
+                    existing_tags.append(t)
+            test_def.tags = existing_tags
         else:
-            # Ensure draft exists first, then convert to published
             test_def = await self._ensure_draft_test_definition(app, app.current_plan or {})
 
-        # Persist steps before publishing
+        # Persist steps before submitting
         await self._persist_steps(app, test_def)
 
-        app.status = "published"
+        # Submit for admin review instead of directly publishing
+        test_def.review_status = "pending_review"
+        app.status = "pending_review"
         await self.db.commit()
         await self.db.refresh(test_def)
 
@@ -443,7 +569,7 @@ class AppService:
             "test_definition_id": test_def.id,
             "test_id": test_def.test_id,
             "name": test_def.name,
-            "status": "published",
+            "status": "pending_review",
         }
 
     # ------------------------------------------------------------------
@@ -521,7 +647,8 @@ class AppService:
                     )
                     td_row = (await self.db.execute(td_stmt)).scalar_one_or_none()
                     if td_row:
-                        await self._persist_steps(app, td_row)
+                        summary = f"Passed: {passed}/{total} steps"
+                        await self._persist_steps(app, td_row, run_status="passed", run_summary=summary)
                 if thread_id is not None:
                     result_msg = ConversationMessage(
                         thread_id=thread_id,

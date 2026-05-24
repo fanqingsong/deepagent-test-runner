@@ -39,6 +39,7 @@ celery_app.conf.update(
     task_routes={
         "app.tasks.test_execution.execute_test": {"queue": "test_execution"},
         "app.tasks.test_execution.retry_test_with_modifications": {"queue": "test_execution"},
+        "app.tasks.test_execution.execute_suite": {"queue": "test_execution"},
         "app.tasks.schedule_sync.*": {"queue": "schedule_sync"},
         "app.tasks.email_tasks.*": {"queue": "email_tasks"},
         "app.tasks.maintenance_tasks.*": {"queue": "maintenance"},
@@ -46,7 +47,7 @@ celery_app.conf.update(
 
     # Worker settings
     worker_prefetch_multiplier=1,
-    worker_concurrency=2,
+    worker_concurrency=4,
 
     # Task timeout — kill tasks that run too long (10 min hard, 9 min soft)
     task_time_limit=600,
