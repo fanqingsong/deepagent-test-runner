@@ -78,23 +78,12 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const login = useCallback(async (provider, username, password) => {
+  const login = useCallback(async (username, password) => {
     setLoading(true);
     setError(null);
 
     try {
-      let data;
-      switch (provider) {
-        case 'local':
-          data = await authService.loginLocal(username, password);
-          break;
-        case 'casdoor':
-          data = await authService.loginCasdoor(username, password);
-          break;
-        default:
-          throw new Error(`Invalid provider: ${provider}`);
-      }
-
+      const data = await authService.loginLocal(username, password);
       setUser(data.user);
       return { success: true, data };
     } catch (err) {
@@ -103,22 +92,6 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
-    }
-  }, []);
-
-  const loginOidc = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await authService.oidcLogin();
-      // OIDC login redirects, so we won't reach here
-      return { success: true };
-    } catch (err) {
-      const errorMsg = err.message || 'OIDC login failed';
-      setError(errorMsg);
-      setLoading(false);
-      return { success: false, error: errorMsg };
     }
   }, []);
 
@@ -164,7 +137,6 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user || authService.isAuthenticated(),
     isAdmin,
     login,
-    loginOidc,
     logout,
     register,
     setError,

@@ -141,7 +141,7 @@ async def _execute_single_step(
             {"messages": [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=prompt)]},
             config={
                 "configurable": {"thread_id": f"step-{uuid4()}"},
-                "recursion_limit": 25,
+                "recursion_limit": 50,
             },
         )
         parsed = _parse_single_result(result.get("messages", []))
@@ -209,11 +209,29 @@ async def interpret_and_execute_batch(
     logger.info("Executor agent: starting step-by-step execution of %d steps", len(test_steps))
 
     results: List[Dict[str, Any]] = []
+    failed_early = False
     for idx, step in enumerate(test_steps):
+        if failed_early:
+            # Skip remaining steps after a failure — they depend on prior steps
+            logger.info("Executor agent: skipping step %d/%d (prior step failed)", idx + 1, len(test_steps))
+            results.append({
+                "step_number": step.get("step_number", idx + 1),
+                "description": step.get("description", ""),
+                "status": "skipped",
+                "details": "",
+                "error": "Skipped: a previous step failed",
+                "mode": "langgraph_executor",
+                "duration": 0,
+            })
+            continue
+
         logger.info("Executor agent: executing step %d/%d", idx + 1, len(test_steps))
         result = await _execute_single_step(page, step, idx, len(test_steps), run_id, context)
         results.append(result)
         logger.info("Executor agent: step %d result=%s", result["step_number"], result["status"])
+
+        if result["status"] == "failed":
+            failed_early = True
 
         # Push incremental progress to Redis for streaming display
         try:

@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models import TestStep, TestDefinition
 from app.schemas import TestStepCreate, TestStepResponse, TestStepUpdate, TestStepsReplaceRequest
-from app.services.unified_auth import verify_token
+from app.core.security import verify_token
 
 router = APIRouter()
 

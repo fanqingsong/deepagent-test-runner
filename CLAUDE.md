@@ -52,7 +52,7 @@ flowchart TD
 - Factory: `app/core/agent_config.py` → `get_llm()`
 
 **Service Interactions:**
-- **Unified Backend** (`service/backend/`): test definitions, schedules, jobs, analytics, auth (MFA, sessions), SSO config
+- **Unified Backend** (`service/backend/`): test definitions, schedules, jobs, analytics, auth (MFA, sessions)
 - **Celery Workers** execute tests via LangGraph + Playwright; load test data from PostgreSQL (not HTTP self-calls)
 - **Job metadata** stored in Redis (`app/core/job_store.py`) for status polling across API restarts
 - Frontend uses hash-based routing: `#dashboard`, `#tests`, `#schedules`

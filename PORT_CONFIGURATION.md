@@ -11,7 +11,6 @@
 | **Backend** | **8011** | 8001 | FastAPI 后端 | Foundation 内部使用 8001 |
 | **PostgreSQL** | **5433** | 5432 | 数据库 | Foundation 使用 5434 |
 | **Redis** | **6380** | 6379 | 缓存 | Foundation 内部使用 6379 |
-| **Casdoor** | **8006** | 8000 | 认证服务 | Foundation 使用 8003 |
 | **SonarQube** | **9002** | 9000 | 代码分析 | Foundation 使用 9000-9001 |
 | **OWASP ZAP** | **8091** | 8080 | 安全测试 | Foundation 使用 8082 |
 
@@ -30,7 +29,6 @@
 - Redis: localhost:6380
 
 **其他服务:**
-- Casdoor: http://localhost:8006
 - SonarQube: http://localhost:9002/sonarqube
 - OWASP ZAP: http://localhost:8091
 
@@ -40,7 +38,7 @@
 |------|----------------------|-----------|------|
 | 5173 | ❌ (改为 5174) | ✅ (Nginx前端) | 已解决冲突 |
 | 8001 | ✅ (内部端口) | ✅ (内部端口) | 无冲突 |
-| 8003 | ❌ (改为 8006) | ✅ (Casdoor) | 已解决冲突 |
+| 8003 | ❌ | ✅ (Casdoor) | 无冲突 |
 | 8080 | ❌ (改为 8085) | ❌ | 已解决冲突 |
 | 8082 | ❌ | ✅ (Adminer) | 无冲突 |
 | 9000-9001 | ❌ (改为 9002) | ✅ (MinIO) | 已解决冲突 |

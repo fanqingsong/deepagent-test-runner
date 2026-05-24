@@ -9,7 +9,7 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.services.analytics_service import AnalyticsService
-from app.services.unified_auth import verify_token
+from app.core.security import verify_token
 
 router = APIRouter()
 analytics_service = AnalyticsService()

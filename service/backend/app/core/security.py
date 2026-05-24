@@ -101,6 +101,27 @@ def decode_access_token(token: str) -> dict:
         ) from e
 
 
+async def verify_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    """
+    Verify JWT token and return decoded payload as dict.
+
+    FastAPI dependency for authenticating requests via Bearer token.
+    """
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    payload["provider"] = "local"
+    user_id = payload.get("sub")
+    if user_id:
+        return payload
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)

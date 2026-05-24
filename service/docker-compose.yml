@@ -114,9 +114,12 @@ services:
     volumes:
       # Mount source for hot reload in development
       - ./backend/app:/app/app
+      # Mount alembic for migration development
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
       # Mount screenshots directory for static file serving
       - ./screenshots:/app/screenshots
-    command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -243,39 +246,6 @@ services:
       - test-network
     restart: unless-stopped
 
-  casdoor-postgres:
-    image: postgres:13-alpine
-    container_name: cc-test-casdoor-postgres
-    environment:
-      POSTGRES_DB: casdoor
-      POSTGRES_USER: casdoor
-      POSTGRES_PASSWORD: ${CASDOOR_POSTGRES_PASSWORD}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - casdoor_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U casdoor -d casdoor"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - test-network
-    restart: unless-stopped
-
-  casdoor:
-    image: casbin/casdoor:latest
-    container_name: cc-test-casdoor
-    ports:
-      - "8006:8000"
-    volumes:
-      - ./casdoor/conf/app.conf:/conf/app.conf:ro
-    depends_on:
-      casdoor-postgres:
-        condition: service_healthy
-    networks:
-      - test-network
-    restart: unless-stopped
-
   # SonarQube Code Quality and Security Analysis
   sonarqube-db:
     image: postgres:15-alpine
@@ -341,7 +311,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  casdoor_postgres_data:
   sonarqube_db_data:
   sonarqube_data:
   sonarqube_extensions:

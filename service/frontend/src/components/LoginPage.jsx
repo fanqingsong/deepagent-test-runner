@@ -15,7 +15,7 @@ import PasswordResetForm from './auth/PasswordResetForm';
 import './LoginPage.css';
 
 function LoginPage() {
-  const { login, loginOidc } = useAuth();
+  const { login } = useAuth();
 
   const [activeTab, setActiveTab] = useState('local');
   const [showRegister, setShowRegister] = useState(false);

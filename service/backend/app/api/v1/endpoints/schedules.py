@@ -26,7 +26,7 @@ from app.schemas.schedules import (
     ScheduleTriggerResponse
 )
 from app.services import get_schedule_manager, get_execution_service
-from app.services.unified_auth import verify_token
+from app.core.security import verify_token
 
 router = APIRouter()
 

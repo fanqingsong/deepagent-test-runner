@@ -1,7 +1,7 @@
 /**
  * Authentication Service
  *
- * Handles authentication with local JWT.
+ * Handles authentication with local JWT tokens.
  */
 
 // Use the current origin (protocol + hostname + port) to work in all environments
@@ -11,7 +11,7 @@ const API_BASE_URL = `${BASE_URL}/api/v1`;
 
 const TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
-const PROVIDER_KEY = 'auth_provider'; // 'local' or 'casdoor'
+const PROVIDER_KEY = 'auth_provider';
 const USER_KEY = 'user_info';
 
 class AuthService {
@@ -160,80 +160,6 @@ class AuthService {
   }
 
   /**
-   * Casdoor password login
-   */
-  async loginCasdoor(username, password) {
-    const response = await fetch(`${API_BASE_URL}/auth/login/casdoor`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Casdoor login failed');
-    }
-
-    const data = await response.json();
-    this.setAuthData(data.access_token, data.refresh_token, 'casdoor', data.user);
-    return data;
-  }
-
-  /**
-   * OIDC login - Get authorization URL
-   */
-  async oidcLogin() {
-    const response = await fetch(`${API_BASE_URL}/auth/oidc/login`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'OIDC login failed');
-    }
-
-    const data = await response.json();
-
-    // Save state for callback verification
-    sessionStorage.setItem('oidc_state', data.state);
-    sessionStorage.setItem('auth_provider', 'casdoor');
-
-    // Redirect to Casdoor login page
-    window.location.href = data.auth_url;
-
-    return data;
-  }
-
-  /**
-   * OIDC callback handling
-   */
-  async handleOidcCallback(code, state) {
-    // Verify state
-    const savedState = sessionStorage.getItem('oidc_state');
-    if (state !== savedState) {
-      throw new Error('Invalid state parameter');
-    }
-
-    const response = await fetch(
-      `${API_BASE_URL}/auth/oidc/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'OIDC callback failed');
-    }
-
-    const data = await response.json();
-    this.setAuthData(data.access_token, data.refresh_token, 'casdoor', data.user);
-
-    // Clean up session storage
-    sessionStorage.removeItem('oidc_state');
-    sessionStorage.removeItem('auth_provider');
-
-    return data;
-  }
-
-  /**
    * Logout
    */
   async logout() {
@@ -287,10 +213,7 @@ class AuthService {
       throw new Error('No refresh token');
     }
 
-    let url = `${API_BASE_URL}/auth/refresh`;
-    if (provider === 'casdoor') {
-      url += '?provider=casdoor';
-    }
+    const url = `${API_BASE_URL}/auth/refresh`;
 
     const headers = { 'Content-Type': 'application/json' };
 
@@ -344,7 +267,7 @@ class AuthService {
       return this.getAccessToken();
     }
 
-    // Token expired - try to refresh for both local and casdoor
+    // Token expired - try to refresh
     try {
       await this.refreshToken();
       return this.getAccessToken();

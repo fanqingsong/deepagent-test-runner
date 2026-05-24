@@ -276,6 +276,7 @@ async def result_builder_node(
     # Build result from step_results
     passed = sum(1 for r in step_results if r.get("status") == "passed")
     failed = sum(1 for r in step_results if r.get("status") == "failed")
+    skipped = sum(1 for r in step_results if r.get("status") == "skipped")
     total = len(step_results)
 
     total_duration = sum(r.get("duration", 0) for r in step_results)
@@ -289,7 +290,7 @@ async def result_builder_node(
         "total_tests": total,
         "passed": passed,
         "failed": failed,
-        "skipped": 0,
+        "skipped": skipped,
         "status": (
             "passed"
             if failed == 0 and not plan_error and not execution_error

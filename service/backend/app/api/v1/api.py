@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     analytics,
     auth,
     users,
+    test_definitions,
     test_steps,
     test_versions,
     schedules,
@@ -37,6 +38,12 @@ api_router.include_router(
     tags=["users"]
 )
 
+# Test case management endpoints
+api_router.include_router(
+    test_definitions.router,
+    prefix="/test-definitions",
+    tags=["test-definitions"]
+)
 
 api_router.include_router(
     test_steps.router,
@@ -96,7 +103,7 @@ api_router.include_router(
     tags=["conversations"]
 )
 
-# Studio workspace endpoints
+# APP workspace endpoints
 api_router.include_router(
     apps.router,
     prefix="/apps",
