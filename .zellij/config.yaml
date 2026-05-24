@@ -1,0 +1,16 @@
+# .zellij/config.yaml
+
+# 直接在配置中定义布局
+layouts:
+  - layout:
+      # 在这里写你的布局定义
+      # 例如，一个简单的左右分栏布局
+      split_direction: Horizontal
+      children:
+        - size: 60%
+          children:
+            - edit: src/main.rs
+        - size: 40%
+          children:
+            - command: cargo
+              args: [ "run" ]
