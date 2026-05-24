@@ -126,8 +126,17 @@ def execute_scheduled_tests(schedule_id: int):
                     logger.info(f"Schedule {schedule_id} is not active, skipping")
                     return
 
-                # Update last run time
+                # Update last run time and calculate next run time
                 schedule.last_run_time = datetime.utcnow()
+
+                # Calculate next run time using croniter
+                from croniter import croniter
+                try:
+                    cron = croniter(schedule.cron_expression, datetime.utcnow())
+                    schedule.next_run_time = cron.get_next(datetime)
+                except Exception as e:
+                    logger.error(f"Failed to calculate next run time for schedule {schedule_id}: {e}")
+
                 await db.commit()
 
                 # Check execution limits
