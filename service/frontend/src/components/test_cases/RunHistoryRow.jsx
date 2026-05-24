@@ -27,14 +27,14 @@ export default function RunHistoryRow({ run, isExpanded, expandedCases, expanded
           <td colSpan={5} style={{ padding: 0 }}>
             <div className="run-history-expanded-content">
               {expandedLoading ? (
-                <div className="studio-workspace-running">
-                  <div className="studio-workspace-typing"><span></span><span></span><span></span></div>
-                  <span className="studio-workspace-running-text">Loading details...</span>
+                <div className="test-case-workspace-running">
+                  <div className="test-case-workspace-typing"><span></span><span></span><span></span></div>
+                  <span className="test-case-workspace-running-text">Loading details...</span>
                 </div>
               ) : expandedCases.length === 0 ? (
-                <p className="studio-workspace-result-text">No step details available.</p>
+                <p className="test-case-workspace-result-text">No step details available.</p>
               ) : (
-                <table className="studio-workspace-steps-table">
+                <table className="test-case-workspace-steps-table">
                   <thead>
                     <tr>
                       <th className="th-step">#</th>

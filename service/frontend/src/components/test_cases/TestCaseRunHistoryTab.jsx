@@ -1,7 +1,7 @@
 import RunHistoryRow from './RunHistoryRow';
-import './studio-shared.css';
+import './test-cases-shared.css';
 
-export default function StudioRunHistoryTab({
+export default function TestCaseRunHistoryTab({
   runHistory,
   runHistoryLoading,
   expandedRunId,
@@ -28,14 +28,14 @@ export default function StudioRunHistoryTab({
 
   return (
     <div style={{ padding: '20px' }}>
-      <div className="studio-section">
-        <h3 className="studio-section-title">
+      <div className="test-case-section">
+        <h3 className="test-case-section-title">
           Run History
           <span style={{ fontWeight: 400, color: '#525252', fontSize: '13px', marginLeft: '8px' }}>
             {runHistory.length} runs
           </span>
         </h3>
-        <table className="studio-workspace-steps-table">
+        <table className="test-case-workspace-steps-table">
           <thead>
             <tr>
               <th className="th-status">Status</th>

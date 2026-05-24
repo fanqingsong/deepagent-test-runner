@@ -183,6 +183,32 @@ async def list_test_suites(
     return list(result.scalars().all())
 
 
+@router.get("/marketplace", response_model=List[TestSuiteResponse])
+async def list_published_suites(
+    search: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch approved test suites for marketplace display."""
+    limit = min(limit, 1000)
+
+    query = select(TestSuite).where(TestSuite.review_status == "approved")
+
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            (TestSuite.name.ilike(search_pattern)) |
+            (TestSuite.description.ilike(search_pattern))
+        )
+
+    query = query.order_by(TestSuite.created_at.desc()).offset(skip).limit(limit)
+
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
 @router.get("/{suite_id}", response_model=TestSuiteResponse)
 async def get_test_suite(
     suite_id: int,
@@ -303,6 +329,60 @@ async def delete_test_suite(
     await db.commit()
 
     return None
+
+
+@router.post("/{suite_id}/copy", response_model=TestSuiteResponse)
+async def copy_test_suite(
+    suite_id: int,
+    current_user: User = Depends(RequirePermission("create:suite")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Copy an existing test suite to create a new one in the user's workspace."""
+    result = await db.execute(
+        select(TestSuite).where(TestSuite.id == suite_id)
+    )
+    suite = result.scalar_one_or_none()
+
+    if not suite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Test suite with ID {suite_id} not found",
+        )
+
+    # Create a copy with updated metadata
+    new_suite = TestSuite(
+        name=f"{suite.name} (Copy)",
+        description=suite.description,
+        test_definition_ids=suite.test_definition_ids,
+        tags=suite.tags,
+        execution_mode=suite.execution_mode,
+        max_concurrency=suite.max_concurrency,
+        fail_strategy=suite.fail_strategy,
+        retry_config=suite.retry_config,
+        environment_vars=suite.environment_vars,
+        suite_entries=suite.suite_entries,
+        is_dynamic=suite.is_dynamic,
+        dynamic_tag_rule=suite.dynamic_tag_rule,
+        setup_test_id=suite.setup_test_id,
+        teardown_test_id=suite.teardown_test_id,
+        schedule_enabled=False,  # Disable schedule for copied suite
+        cron_expression=None,
+        timezone=None,
+        schedule_allow_concurrent=None,
+        schedule_max_retries=None,
+        schedule_retry_interval=None,
+        review_status="draft",  # Reset to draft
+        reviewed_by=None,
+        reviewed_at=None,
+        rejection_reason=None,
+        created_by=str(current_user.id),
+    )
+
+    db.add(new_suite)
+    await db.commit()
+    await db.refresh(new_suite)
+
+    return new_suite
 
 
 @router.get("/{suite_id}/resolve", response_model=List[dict])

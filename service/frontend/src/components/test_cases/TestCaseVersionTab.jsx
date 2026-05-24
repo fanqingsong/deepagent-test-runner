@@ -1,6 +1,6 @@
-import './studio-shared.css';
+import './test-cases-shared.css';
 
-export default function StudioVersionTab({
+export default function TestCaseVersionTab({
   stepVersions,
   viewingVersionId,
   viewedSteps,
@@ -26,8 +26,8 @@ export default function StudioVersionTab({
 
   return (
     <div style={{ padding: '20px' }}>
-      <div className="studio-section">
-        <h3 className="studio-section-title">
+      <div className="test-case-section">
+        <h3 className="test-case-section-title">
           Version History
           <span style={{ fontWeight: 400, color: '#525252', fontSize: '13px', marginLeft: '8px' }}>
             {stepVersions.length} versions
@@ -58,19 +58,19 @@ export default function StudioVersionTab({
           <>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
               <button
-                className="studio-workspace-restore-btn"
+                className="test-case-workspace-restore-btn"
                 onClick={() => onRestoreVersion(viewingVersionId)}
               >
                 Restore this version
               </button>
               <button
-                className="studio-workspace-secondary-btn"
+                className="test-case-workspace-secondary-btn"
                 onClick={onBackToCurrent}
               >
                 Back to current
               </button>
             </div>
-            <table className="studio-workspace-steps-table">
+            <table className="test-case-workspace-steps-table">
               <thead>
                 <tr>
                   <th className="th-step">#</th>

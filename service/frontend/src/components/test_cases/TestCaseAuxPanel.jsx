@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getConversation, sendMessage, createConversation } from '../../api';
-import './StudioAuxPanel.css';
+import './TestCaseAuxPanel.css';
 
 const QUICK_ACTIONS = [
   { label: 'Optimize Test Steps', prompt: 'Please help me optimize the current test case steps to make them clearer and more comprehensive' },
@@ -8,7 +8,7 @@ const QUICK_ACTIONS = [
   { label: 'Generate New Scenarios', prompt: 'Please suggest some additional test scenarios based on the current test case' },
 ];
 
-export default function StudioAuxPanel({ studioId, onClose }) {
+export default function TestCaseAuxPanel({ testCaseId, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,10 +16,10 @@ export default function StudioAuxPanel({ studioId, onClose }) {
   const messagesEndRef = useRef(null);
 
   const loadConversation = useCallback(async () => {
-    if (!studioId) return;
+    if (!testCaseId) return;
     try {
       // Try to get existing conversation for this studio/app
-      const conv = await createConversation(studioId, 'assistant', {});
+      const conv = await createConversation(testCaseId, 'assistant', {});
       if (conv?.id) {
         setThreadId(conv.id);
         const detail = await getConversation(conv.id);
@@ -34,7 +34,7 @@ export default function StudioAuxPanel({ studioId, onClose }) {
       // No existing conversation, start fresh
       setMessages([]);
     }
-  }, [studioId]);
+  }, [testCaseId]);
 
   useEffect(() => { loadConversation(); }, [loadConversation]);
 
@@ -54,7 +54,7 @@ export default function StudioAuxPanel({ studioId, onClose }) {
     try {
       let tid = threadId;
       if (!tid) {
-        const conv = await createConversation(studioId, 'assistant', {});
+        const conv = await createConversation(testCaseId, 'assistant', {});
         tid = conv.id;
         setThreadId(tid);
       }

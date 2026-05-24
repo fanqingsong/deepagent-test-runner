@@ -1,0 +1,181 @@
+.test-cases-marketplace-page {
+  min-height: 100vh;
+  background: #f4f4f4;
+  padding: 48px 32px;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.test-cases-marketplace-header {
+  max-width: 1584px;
+  margin: 0 auto 32px;
+  text-align: center;
+}
+
+.test-cases-marketplace-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 48px;
+  font-weight: 300;
+  line-height: 1.17;
+  color: #161616;
+  margin: 0 0 16px 0;
+}
+
+.test-cases-marketplace-subtitle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.50;
+  color: #525252;
+  margin: 0;
+}
+
+.test-cases-marketplace-filters {
+  max-width: 1584px;
+  margin: 0 auto 32px;
+}
+
+.test-cases-marketplace-search-row {
+  display: flex;
+  gap: 8px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.test-cases-marketplace-search {
+  flex: 1;
+  background: #ffffff;
+  color: #161616;
+  border: none;
+  border-bottom: 2px solid #c6c6c6;
+  border-radius: 0;
+  padding: 0 16px;
+  height: 48px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  transition: border-color 0.15s ease;
+}
+
+.test-cases-marketplace-search:focus {
+  outline: none;
+  border-bottom-color: #0f62fe;
+}
+
+.test-cases-marketplace-search::placeholder {
+  color: #6f6f6f;
+}
+
+.test-cases-marketplace-search-btn {
+  background: #0f62fe;
+  color: #ffffff;
+  border: none;
+  border-radius: 0;
+  padding: 0 32px;
+  height: 48px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.test-cases-marketplace-search-btn:hover {
+  background: #0353e9;
+}
+
+.test-cases-marketplace-error {
+  max-width: 1584px;
+  margin: 0 auto 32px;
+  padding: 16px;
+  background: #f8d7d7;
+  border-left: 4px solid #da1e28;
+  color: #161616;
+  font-size: 14px;
+}
+
+.test-cases-marketplace-loading {
+  max-width: 1584px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 48px;
+  font-size: 16px;
+  color: #525252;
+}
+
+.test-cases-marketplace-empty {
+  max-width: 1584px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 96px 48px;
+  background: #ffffff;
+}
+
+.test-cases-marketplace-empty-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.test-cases-marketplace-empty h3 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.33;
+  color: #161616;
+  margin: 0 0 8px 0;
+}
+
+.test-cases-marketplace-empty p {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #525252;
+  margin: 0;
+}
+
+.test-cases-marketplace-grid {
+  max-width: 1584px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1056px) {
+  .test-cases-marketplace-page {
+    padding: 32px 16px;
+  }
+
+  .test-cases-marketplace-title {
+    font-size: 32px;
+  }
+
+  .test-cases-marketplace-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 672px) {
+  .test-cases-marketplace-page {
+    padding: 24px 16px;
+  }
+
+  .test-cases-marketplace-title {
+    font-size: 24px;
+  }
+
+  .test-cases-marketplace-search-row {
+    flex-direction: column;
+  }
+
+  .test-cases-marketplace-search-btn {
+    padding: 0 16px;
+  }
+
+  .test-cases-marketplace-grid {
+    grid-template-columns: 1fr;
+  }
+}

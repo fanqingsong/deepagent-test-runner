@@ -2,7 +2,7 @@ export default function EditableCell({ value, editing, draft, onStartEdit, onDra
   if (editing) {
     return (
       <input
-        className="studio-workspace-edit-input"
+        className="test-case-workspace-edit-input"
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
         onKeyDown={onKeyDown}
@@ -12,7 +12,7 @@ export default function EditableCell({ value, editing, draft, onStartEdit, onDra
     );
   }
   return (
-    <span className="studio-workspace-editable-cell" onClick={onStartEdit}>
+    <span className="test-case-workspace-editable-cell" onClick={onStartEdit}>
       {value || '-'}
     </span>
   );

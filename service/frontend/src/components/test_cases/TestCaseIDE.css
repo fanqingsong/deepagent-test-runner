@@ -1,11 +1,11 @@
-.studio-ide {
+.test-cases-ide {
   display: flex;
   height: calc(100vh - 48px);
   overflow: hidden;
   background: #f4f4f4;
 }
 
-.studio-ide-sidebar {
+.test-cases-ide-sidebar {
   width: 280px;
   min-width: 280px;
   background: #fff;
@@ -15,7 +15,7 @@
   overflow: hidden;
 }
 
-.studio-ide-main {
+.test-cases-ide-main {
   flex: 1;
   overflow: hidden;
   display: flex;
@@ -23,7 +23,7 @@
   min-width: 0;
 }
 
-.studio-ide-aux {
+.test-cases-ide-aux {
   width: 360px;
   min-width: 0;
   background: #fff;
@@ -34,7 +34,7 @@
   transition: width 200ms ease, min-width 200ms ease;
 }
 
-.studio-ide-aux--collapsed {
+.test-cases-ide-aux--collapsed {
   width: 0;
   min-width: 0;
   border-left: none;

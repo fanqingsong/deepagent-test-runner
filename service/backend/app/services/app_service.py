@@ -114,7 +114,8 @@ class AppService:
             .options(
                 selectinload(App.conversation_thread).selectinload(
                     ConversationThread.messages
-                )
+                ),
+                selectinload(App.test_definition),
             )
             .where(App.id == app_id)
         )
@@ -163,6 +164,81 @@ class AppService:
             return None
         app.status = "archived"
         await self.db.commit()
+        return app
+
+    async def copy_app(self, app_id: int, user_id: int) -> App:
+        """Copy an existing app to create a new one for the user."""
+        original = await self.get_app(app_id)
+        if not original:
+            raise ValueError(f"App {app_id} not found")
+
+        # Create new conversation thread for the copy
+        thread = ConversationThread(
+            thread_type="planning",
+            status="active",
+            created_by=user_id,
+            metadata={"source": "app_copy", "original_app_id": app_id},
+        )
+        self.db.add(thread)
+        await self.db.flush()
+
+        # Create the copy with modified metadata
+        app = App(
+            name=f"{original.name} (Copy)",
+            description=original.description,
+            url=original.url,
+            test_goal=original.test_goal,
+            test_context=original.test_context,
+            icon=original.icon,
+            color=original.color,
+            status="draft",
+            current_plan=original.current_plan,
+            iteration_count=0,
+            created_by=user_id,
+            conversation_thread_id=thread.id,
+        )
+        self.db.add(app)
+        await self.db.flush()
+
+        # Add system message to the new thread
+        system_msg = ConversationMessage(
+            thread_id=thread.id,
+            role="system",
+            content=f"Copied from: {original.name}\nTarget: {app.url}\nGoal: {app.test_goal}",
+            metadata={"type": "app_copied", "original_app_id": app_id, "app_id": app.id},
+        )
+        self.db.add(system_msg)
+
+        # Copy test definition if exists
+        if original.test_definition_id:
+            original_test_def = await self.db.execute(
+                select(TestDefinition).where(TestDefinition.id == original.test_definition_id)
+            )
+            original_test_def = original_test_def.scalar_one_or_none()
+
+            if original_test_def:
+                test_def = TestDefinition(
+                    name=f"[APP] {app.name}",
+                    description=app.description or app.test_goal,
+                    test_id=f"app-{app.id}-{uuid.uuid4().hex[:8]}",
+                    url=app.url,
+                    test_goal=app.test_goal,
+                    test_context=app.test_context,
+                    ai_generated_plan=app.current_plan,
+                    plan_generation_status="generated" if app.current_plan else "pending",
+                    environment={},
+                    tags=["app-copied"],
+                    is_active=True,
+                    is_draft=True,
+                    source_app_id=app.id,
+                    created_by=user_id,
+                )
+                self.db.add(test_def)
+                await self.db.flush()
+                app.test_definition_id = test_def.id
+
+        await self.db.commit()
+        await self.db.refresh(app)
         return app
 
     # ------------------------------------------------------------------

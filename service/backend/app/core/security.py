@@ -245,3 +245,78 @@ async def get_current_user_optional(
         return await get_current_user(credentials, db)
     except HTTPException:
         return None
+
+
+async def get_current_user_ws(
+    token: str,
+    db: AsyncSession
+) -> User:
+    """
+    Get the current authenticated user from JWT token (WebSocket).
+
+    Similar to get_current_user but accepts token string directly
+    instead of using HTTPBearer dependency.
+
+    Args:
+        token: JWT token string
+        db: Database session
+
+    Returns:
+        User: Authenticated user model
+
+    Raises:
+        HTTPException: If token is invalid or user not found
+    """
+    payload = decode_access_token(token)
+
+    # Extract user ID from token
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
+    # Fetch user from database with roles and permissions
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.roles).selectinload(Role.permissions))
+        .where(User.id == int(user_id))
+    )
+    user = result.scalar_one_or_none()
+
+    # Fallback: auto-create User from user_accounts if not found in users table
+    if user is None:
+        email = payload.get("email", "")
+        if email:
+            result = await db.execute(
+                select(User)
+                .options(selectinload(User.roles).selectinload(Role.permissions))
+                .where(User.email == email)
+            )
+            user = result.scalar_one_or_none()
+            if user is None:
+                user = User(
+                    username=email.split("@")[0],
+                    email=email,
+                    hashed_password="",
+                    is_active=True,
+                    is_admin=False,
+                )
+                db.add(user)
+                await db.commit()
+                await db.refresh(user)
+                result = await db.execute(
+                    select(User)
+                    .options(selectinload(User.roles).selectinload(Role.permissions))
+                    .where(User.id == user.id)
+                )
+                user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    return user

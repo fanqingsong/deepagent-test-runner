@@ -7,21 +7,21 @@ const STATUS_OPTIONS = [
   { value: 'published', label: 'Published' },
 ];
 
-export default function StudioListFilterBar({ search, onSearchChange, statusFilter, onStatusFilterChange }) {
+export default function TestCaseListFilterBar({ search, onSearchChange, statusFilter, onStatusFilterChange }) {
   return (
-    <div className="studio-list-filter-bar">
+    <div className="test-case-list-filter-bar">
       <input
-        className="studio-list-search"
+        className="test-case-list-search"
         type="text"
         placeholder="Search..."
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
       />
-      <div className="studio-list-status-tabs">
+      <div className="test-case-list-status-tabs">
         {STATUS_OPTIONS.map(opt => (
           <button
             key={opt.value}
-            className={`studio-list-tab ${statusFilter === opt.value ? 'studio-list-tab--active' : ''}`}
+            className={`test-case-list-tab ${statusFilter === opt.value ? 'test-case-list-tab--active' : ''}`}
             onClick={() => onStatusFilterChange(opt.value)}
             title={opt.label}
           >

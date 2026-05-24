@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { listStudios } from '../../api';
+import { listTestCases } from '../../api';
 
 export default function SuiteEntriesTab({ suite, onUpdateEntries }) {
   const entries = suite?.suite_entries || [];
@@ -23,7 +23,7 @@ export default function SuiteEntriesTab({ suite, onUpdateEntries }) {
     let cancelled = false;
     (async () => {
       try {
-        const data = await listStudios({ limit: 200 });
+        const data = await listTestCases({ limit: 200 });
         if (!cancelled) setAvailableTests(Array.isArray(data) ? data : []);
       } catch {
         /* non-critical */
@@ -39,7 +39,7 @@ export default function SuiteEntriesTab({ suite, onUpdateEntries }) {
     (async () => {
       try {
         setLoading(true);
-        const data = await listStudios({ limit: 200 });
+        const data = await listTestCases({ limit: 200 });
         if (!cancelled) setAvailableTests(Array.isArray(data) ? data : []);
       } catch {
         /* non-critical */

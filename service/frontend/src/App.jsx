@@ -9,12 +9,16 @@ import UserForm from './components/UserForm';
 import Modal from './components/Modal';
 import PermissionGate from './components/PermissionGate';
 import RoleManagement from './components/RoleManagement';
-import StudioIDE from './components/studio/StudioIDE';
+import TestCasesIDE from './components/test_cases/TestCaseIDE';
 import SuiteIDE from './components/suite/SuiteIDE';
 import ReviewPanel from './components/admin/ReviewPanel';
 import Sidebar from './components/Sidebar';
 import AppHeader from './components/AppHeader';
 import Profile from './pages/Profile';
+import TestCasesMarketplacePage from './pages/TestCasesMarketplacePage';
+import SuiteMarketplacePage from './pages/SuiteMarketplacePage';
+import ChatFab from './components/ChatFab';
+import ChatModal from './components/ChatModal';
 
 function AppContent() {
   const { user, logout, isAuthenticated, loading } = useAuth();
@@ -38,8 +42,11 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(() => {
     const hash = window.location.hash.slice(1);
-    if (['dashboard', 'users', 'roles', 'suites', 'reviews', 'profile'].includes(hash) || hash.startsWith('studio')) {
-      return hash.startsWith('studio') ? 'studio' : hash;
+    if (['dashboard', 'users', 'roles', 'suites', 'reviews', 'profile', 'test-cases-marketplace', 'suites-marketplace'].includes(hash) || hash.startsWith('test-cases')) {
+      if (hash.startsWith('test-cases')) {
+        return hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases';
+      }
+      return hash;
     }
     return 'dashboard';
   });
@@ -49,13 +56,14 @@ function AppContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1056);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      if (hash.startsWith('studio')) {
-        setCurrentView('studio');
-      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'suites' || hash === 'reviews' || hash === 'profile') {
+      if (hash.startsWith('test-cases')) {
+        setCurrentView(hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases');
+      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'suites' || hash === 'reviews' || hash === 'profile' || hash === 'test-cases-marketplace' || hash === 'suites-marketplace') {
         setCurrentView(hash);
       }
     };
@@ -179,8 +187,8 @@ function AppContent() {
         minHeight: 'calc(100vh - 48px)',
         transition: 'margin-left var(--cds-transition-normal) ease'
       }}>
-        {currentView === 'studio' ? (
-          <StudioIDE />
+        {currentView === 'test-cases' ? (
+          <TestCasesIDE />
         ) : currentView === 'suites' ? (
           <SuiteIDE />
         ) : currentView === 'users' ? (
@@ -253,10 +261,30 @@ function AppContent() {
           </div>
         ) : currentView === 'profile' ? (
           <Profile />
+        ) : currentView === 'test-cases-marketplace' ? (
+          <TestCasesMarketplacePage />
+        ) : currentView === 'suites-marketplace' ? (
+          <SuiteMarketplacePage />
         ) : (
           <DashboardView />
         )}
       </div>
+
+      {/* Chat Components */}
+      <ChatFab
+        onClick={() => {
+          console.log('ChatFab clicked, setting isChatOpen to true');
+          setIsChatOpen(true);
+        }}
+        className={isChatOpen ? 'hidden' : ''}
+      />
+      <ChatModal
+        isOpen={isChatOpen}
+        onClose={() => {
+          console.log('ChatModal close requested');
+          setIsChatOpen(false);
+        }}
+      />
     </div>
   );
 }

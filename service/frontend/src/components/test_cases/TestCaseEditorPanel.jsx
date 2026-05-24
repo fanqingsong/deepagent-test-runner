@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  getStudio, updateStudio, runStudio, publishStudio, getJobStatus,
-  getStudioRunProgress, generateStudioPlan, saveStudioSteps,
-  getStudioRunHistory, getTestRunDetails, getStudioStepVersions,
-  restoreStudioStepVersion,
+  getTestCase, updateTestCase, runTestCase, publishTestCase, getJobStatus,
+  getTestCaseRunProgress, generateTestCasePlan, saveTestCasesSteps,
+  getTestCaseRunHistory, getTestRunDetails, getTestCaseStepVersions,
+  restoreTestCaseStepVersion,
 } from '../../api';
 import PermissionGate from '../PermissionGate';
-import StudioConfigTab from './StudioConfigTab';
-import StudioPlanTab from './StudioPlanTab';
-import StudioRunHistoryTab from './StudioRunHistoryTab';
-import StudioVersionTab from './StudioVersionTab';
-import StudioPermissionTab from './StudioPermissionTab';
+import TestCaseConfigTab from './TestCaseConfigTab';
+import TestCasePlanTab from './TestCasePlanTab';
+import TestCaseRunHistoryTab from './TestCaseRunHistoryTab';
+import TestCaseVersionTab from './TestCaseVersionTab';
+import TestCasePermissionTab from './TestCasePermissionTab';
 import ScreenshotLightbox from './ScreenshotLightbox';
-import './StudioEditorPanel.css';
-import './studio-shared.css';
+import './TestCaseEditorPanel.css';
+import './test-cases-shared.css';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -39,8 +39,8 @@ const TABS = [
   { key: 'permissions', label: 'Permissions' },
 ];
 
-export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanelOpen, onStudioChanged }) {
-  const [studio, setStudio] = useState(null);
+export default function TestCaseEditorPanel({ testCaseId, onToggleAuxPanel, auxPanelOpen, onTestCaseChanged }) {
+  const [testCase, setTestCase] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('config');
@@ -88,12 +88,12 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
   const [viewingVersionId, setViewingVersionId] = useState(null);
   const [viewedSteps, setViewedSteps] = useState(null);
 
-  const loadStudio = useCallback(async () => {
-    if (!studioId) return;
+  const loadTestCase = useCallback(async () => {
+    if (!testCaseId) return;
     try {
       setLoading(true);
-      const data = await getStudio(studioId);
-      setStudio(data);
+      const data = await getTestCase(testCaseId);
+      setTestCase(data);
       setError(null);
       setFormName(data.name || '');
       setFormUrl(data.url || '');
@@ -109,30 +109,30 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
     } finally {
       setLoading(false);
     }
-  }, [studioId]);
+  }, [testCaseId]);
 
-  useEffect(() => { loadStudio(); }, [loadStudio]);
+  useEffect(() => { loadTestCase(); }, [loadTestCase]);
 
   const loadRunHistory = useCallback(async () => {
-    if (!studioId) return;
+    if (!testCaseId) return;
     try {
       setRunHistoryLoading(true);
-      const runs = await getStudioRunHistory(studioId, { limit: 50 });
+      const runs = await getTestCaseRunHistory(testCaseId, { limit: 50 });
       setRunHistory(runs);
     } catch { /* non-critical */ } finally {
       setRunHistoryLoading(false);
     }
-  }, [studioId]);
+  }, [testCaseId]);
 
   useEffect(() => { loadRunHistory(); }, [loadRunHistory]);
 
   const loadStepVersions = useCallback(async () => {
-    if (!studioId) return;
+    if (!testCaseId) return;
     try {
-      const versions = await getStudioStepVersions(studioId);
+      const versions = await getTestCaseStepVersions(testCaseId);
       setStepVersions(versions);
     } catch { /* non-critical */ }
-  }, [studioId]);
+  }, [testCaseId]);
 
   useEffect(() => { loadStepVersions(); }, [loadStepVersions]);
 
@@ -141,13 +141,13 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
     try {
       setSavingConfig(true);
       setError(null);
-      await updateStudio(studioId, {
+      await updateTestCase(testCaseId, {
         name: formName, url: formUrl,
         test_goal: formGoal, description: formDesc || null,
       });
       setConfigDirty(false);
-      await loadStudio();
-      onStudioChanged?.();
+      await loadTestCase();
+      onTestCaseChanged?.();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -160,14 +160,14 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
       setIsGenerating(true);
       setError(null);
       if (configDirty) {
-        await updateStudio(studioId, {
+        await updateTestCase(testCaseId, {
           name: formName, url: formUrl,
           test_goal: formGoal, description: formDesc || null,
         });
         setConfigDirty(false);
       }
-      await generateStudioPlan(studioId);
-      await loadStudio();
+      await generateTestCasePlan(testCaseId);
+      await loadTestCase();
       setActiveTab('plan');
     } catch (e) {
       setError(e.message);
@@ -181,12 +181,12 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
       setIsSavingSteps(true);
       setError(null);
       if (planEdited) {
-        await updateStudio(studioId, {
-          current_plan: { ...studio.current_plan, steps: editedSteps },
+        await updateTestCase(testCaseId, {
+          current_plan: { ...testCase.current_plan, steps: editedSteps },
         });
         setPlanEdited(false);
       }
-      await saveStudioSteps(studioId);
+      await saveTestCasesSteps(testCaseId);
       setStepsSaved(true);
     } catch (e) {
       setError(e.message);
@@ -202,7 +202,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
       try {
         const job = await getJobStatus(jobId);
         try {
-          const progress = await getStudioRunProgress(studioId);
+          const progress = await getTestCaseRunProgress(testCaseId);
           if (progress.completed_steps?.length > 0) {
             setProgressSteps(progress.completed_steps);
             setProgressCurrent(progress.current_step || 0);
@@ -222,7 +222,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
           setSelectedScreenshot(null);
           if (pollingRef.current) clearInterval(pollingRef.current);
           pollingRef.current = null;
-          await loadStudio();
+          await loadTestCase();
           loadRunHistory();
           loadStepVersions();
           return;
@@ -238,12 +238,12 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
       setIsRunning(true);
       setError(null);
       if (planEdited) {
-        await updateStudio(studioId, {
-          current_plan: { ...studio.current_plan, steps: editedSteps },
+        await updateTestCase(testCaseId, {
+          current_plan: { ...testCase.current_plan, steps: editedSteps },
         });
         setPlanEdited(false);
       }
-      const result = await runStudio(studioId, {
+      const result = await runTestCase(testCaseId, {
         forceRegenerate: !!opts.forceRegenerate,
         useExistingPlan: !!opts.useExistingPlan,
       });
@@ -259,8 +259,8 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
     try {
       setPublishing(true);
       setError(null);
-      await publishStudio(studioId);
-      await loadStudio();
+      await publishTestCase(testCaseId);
+      await loadTestCase();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -330,10 +330,10 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
   const handleRestoreVersion = async (versionId) => {
     try {
       setError(null);
-      await restoreStudioStepVersion(studioId, versionId);
+      await restoreTestCaseStepVersion(testCaseId, versionId);
       setViewingVersionId(null);
       setViewedSteps(null);
-      await loadStudio();
+      await loadTestCase();
       loadStepVersions();
     } catch (e) {
       setError(e.message);
@@ -347,13 +347,13 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
 
   const isBusy = isRunning || isGenerating || isSavingSteps;
   const hasPlan = editedSteps.length > 0;
-  const hasResult = studio?.latest_result && studio.latest_result.status;
-  const canPublish = (studio?.status === 'passed') && !publishing;
-  const latestResult = studio?.latest_result || {};
+  const hasResult = testCase?.latest_result && testCase.latest_result.status;
+  const canPublish = (testCase?.status === 'passed') && !publishing;
+  const latestResult = testCase?.latest_result || {};
   const resultSteps = latestResult.steps || [];
 
   // Empty state
-  if (!studioId) {
+  if (!testCaseId) {
     return (
       <div className="studio-editor">
         <div className="studio-editor-empty">
@@ -365,7 +365,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
     );
   }
 
-  if (loading && !studio) {
+  if (loading && !testCase) {
     return (
       <div className="studio-editor">
         <div className="studio-editor-empty">Loading...</div>
@@ -378,12 +378,12 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
       {/* Header */}
       <div className="studio-editor-header">
         <div className="studio-editor-header-info">
-          <h1 className="studio-editor-name">{studio?.name || 'Unnamed Test'}</h1>
+          <h1 className="studio-editor-name">{testCase?.name || 'Unnamed Test'}</h1>
         </div>
         <div className="studio-editor-header-actions">
           {error && <span style={{ color: '#da1e28', fontSize: '13px' }}>{error}</span>}
-          <span className={`studio-editor-status-badge status-${studio?.status}`}>
-            {STATUS_LABELS[studio?.status] || studio?.status}
+          <span className={`studio-editor-status-badge status-${testCase?.status}`}>
+            {STATUS_LABELS[testCase?.status] || testCase?.status}
           </span>
           <PermissionGate permission="update:app">
             {canPublish && (
@@ -392,10 +392,10 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
               </button>
             )}
           </PermissionGate>
-          {studio?.status === 'pending_review' && (
+          {testCase?.status === 'pending_review' && (
             <span className="studio-editor-published-tag" style={{ background: '#f1c21b', color: '#1c1c1c' }}>Pending Admin Review</span>
           )}
-          {studio?.status === 'published' && (
+          {testCase?.status === 'published' && (
             <span className="studio-editor-published-tag">Published</span>
           )}
           <button
@@ -423,7 +423,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
       {/* Content */}
       <div className="studio-editor-content">
         {activeTab === 'config' && (
-          <StudioConfigTab
+          <TestCaseConfigTab
             formName={formName}
             formUrl={formUrl}
             formGoal={formGoal}
@@ -436,7 +436,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
           />
         )}
         {activeTab === 'plan' && (
-          <StudioPlanTab
+          <TestCasePlanTab
             editedSteps={editedSteps}
             viewedSteps={viewedSteps}
             hasPlan={hasPlan}
@@ -476,7 +476,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
           />
         )}
         {activeTab === 'history' && (
-          <StudioRunHistoryTab
+          <TestCaseRunHistoryTab
             runHistory={runHistory}
             runHistoryLoading={runHistoryLoading}
             expandedRunId={expandedRunId}
@@ -487,7 +487,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
           />
         )}
         {activeTab === 'versions' && (
-          <StudioVersionTab
+          <TestCaseVersionTab
             stepVersions={stepVersions}
             viewingVersionId={viewingVersionId}
             viewedSteps={viewedSteps}
@@ -505,7 +505,7 @@ export default function StudioEditorPanel({ studioId, onToggleAuxPanel, auxPanel
           />
         )}
         {activeTab === 'permissions' && (
-          <StudioPermissionTab studioId={studioId} />
+          <TestCasePermissionTab testCaseId={testCaseId} />
         )}
       </div>
 

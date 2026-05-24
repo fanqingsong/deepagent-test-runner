@@ -59,6 +59,26 @@ async def list_apps(
     return apps
 
 
+@router.get("/marketplace", response_model=List[AppSummaryResponse])
+async def list_published_apps(
+    search: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Fetch published test cases for marketplace display."""
+    svc = AppService(db)
+    apps = await svc.list_apps(
+        current_user.id,
+        status="published",
+        search=search,
+        skip=skip,
+        limit=limit
+    )
+    return apps
+
+
 @router.get("/{app_id}", response_model=AppResponse)
 async def get_app(
     app_id: int,
@@ -175,6 +195,21 @@ async def publish_app(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return AppPublishResponse(**result)
+
+
+@router.post("/{app_id}/copy", response_model=AppResponse)
+async def copy_app(
+    app_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RequirePermission("create:app")),
+):
+    """Copy an existing app to create a new one in the user's workspace."""
+    svc = AppService(db)
+    try:
+        app = await svc.copy_app(app_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return _build_response(app)
 
 
 @router.get("/{app_id}/runs")

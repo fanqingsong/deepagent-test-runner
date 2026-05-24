@@ -7,7 +7,7 @@ import SuiteConfigTab from './SuiteConfigTab';
 import SuiteEntriesTab from './SuiteEntriesTab';
 import SuiteRunHistoryTab from './SuiteRunHistoryTab';
 import Toast from '../Toast';
-import '../studio/studio-shared.css';
+import '../test_cases/test-cases-shared.css';
 import './SuiteEditorPanel.css';
 
 const TABS = [

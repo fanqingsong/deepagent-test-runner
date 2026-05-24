@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  getStudioPermissions, addStudioPermission,
-  updateStudioPermission, removeStudioPermission,
+  getTestCasePermissions, addTestCasePermission,
+  updateTestCasePermission, removeTestCasePermission,
 } from '../../api';
 import PermissionGate from '../PermissionGate';
-import './studio-shared.css';
+import './test-cases-shared.css';
 
 const PERMISSION_LABELS = {
   view: 'View',
@@ -15,7 +15,7 @@ const PERMISSION_LABELS = {
 
 const PERMISSION_TYPES = ['view', 'edit', 'execute', 'admin'];
 
-export default function StudioPermissionTab({ studioId }) {
+export default function TestCasePermissionTab({ testCaseId }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -24,18 +24,18 @@ export default function StudioPermissionTab({ studioId }) {
   const [adding, setAdding] = useState(false);
 
   const loadPermissions = useCallback(async () => {
-    if (!studioId) return;
+    if (!testCaseId) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await getStudioPermissions(studioId);
+      const data = await getTestCasePermissions(testCaseId);
       setPermissions(data);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [studioId]);
+  }, [testCaseId]);
 
   useEffect(() => { loadPermissions(); }, [loadPermissions]);
 
@@ -44,7 +44,7 @@ export default function StudioPermissionTab({ studioId }) {
     try {
       setAdding(true);
       setError(null);
-      await addStudioPermission(studioId, {
+      await addTestCasePermission(testCaseId, {
         userId: parseInt(addUserId),
         permissionType: addPermType,
       });
@@ -61,7 +61,7 @@ export default function StudioPermissionTab({ studioId }) {
   const handleUpdate = async (userId, newType) => {
     try {
       setError(null);
-      await updateStudioPermission(studioId, userId, { permissionType: newType });
+      await updateTestCasePermission(testCaseId, userId, { permissionType: newType });
       await loadPermissions();
     } catch (e) {
       setError(e.message);
@@ -71,7 +71,7 @@ export default function StudioPermissionTab({ studioId }) {
   const handleRemove = async (userId) => {
     try {
       setError(null);
-      await removeStudioPermission(studioId, userId);
+      await removeTestCasePermission(testCaseId, userId);
       await loadPermissions();
     } catch (e) {
       setError(e.message);
@@ -89,13 +89,13 @@ export default function StudioPermissionTab({ studioId }) {
   return (
     <div style={{ padding: '20px' }}>
       {error && (
-        <div className="studio-workspace-msg-error">{error}</div>
+        <div className="test-case-workspace-msg-error">{error}</div>
       )}
 
       {/* Add permission */}
       <PermissionGate permission="update:app">
-        <div className="studio-section">
-          <h3 className="studio-section-title">Add Collaborator</h3>
+        <div className="test-case-section">
+          <h3 className="test-case-section-title">Add Collaborator</h3>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <input
               type="number"
@@ -131,7 +131,7 @@ export default function StudioPermissionTab({ studioId }) {
               ))}
             </select>
             <button
-              className="studio-workspace-run-btn"
+              className="test-case-workspace-run-btn"
               onClick={handleAdd}
               disabled={!addUserId.trim() || adding}
             >
@@ -142,8 +142,8 @@ export default function StudioPermissionTab({ studioId }) {
       </PermissionGate>
 
       {/* Permissions list */}
-      <div className="studio-section">
-        <h3 className="studio-section-title">
+      <div className="test-case-section">
+        <h3 className="test-case-section-title">
           Collaborators
           <span style={{ fontWeight: 400, color: '#525252', fontSize: '13px', marginLeft: '8px' }}>
             {permissions.length} members
@@ -155,7 +155,7 @@ export default function StudioPermissionTab({ studioId }) {
             No collaborators yet. Add a user by their ID above.
           </p>
         ) : (
-          <table className="studio-workspace-steps-table">
+          <table className="test-case-workspace-steps-table">
             <thead>
               <tr>
                 <th className="th-desc">User</th>
@@ -195,7 +195,7 @@ export default function StudioPermissionTab({ studioId }) {
                   <td style={{ textAlign: 'right' }}>
                     <PermissionGate permission="update:app">
                       <button
-                        className="studio-workspace-secondary-btn"
+                        className="test-case-workspace-secondary-btn"
                         onClick={() => handleRemove(perm.user_id)}
                         style={{ color: '#da1e28', borderColor: '#da1e28' }}
                       >

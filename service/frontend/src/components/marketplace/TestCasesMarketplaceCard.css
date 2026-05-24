@@ -1,0 +1,228 @@
+.test-cases-marketplace-card {
+  background: #ffffff;
+  border: none;
+  border-radius: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: background-color 0.15s ease;
+}
+
+.test-cases-marketplace-card:hover {
+  background: #f4f4f4;
+}
+
+.test-cases-marketplace-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.test-cases-marketplace-card-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  border-radius: 50%;
+}
+
+.test-cases-marketplace-card-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.test-cases-marketplace-card-status {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+}
+
+.test-cases-marketplace-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.test-cases-marketplace-card-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.40;
+  color: #161616;
+  margin: 0;
+}
+
+.test-cases-marketplace-card-description {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #525252;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.test-cases-marketplace-card-url {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.33;
+  letter-spacing: 0.32px;
+  color: #6f6f6f;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.test-cases-marketplace-card-url svg {
+  flex-shrink: 0;
+}
+
+.test-cases-marketplace-card-goal {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  color: #161616;
+  background: #f4f4f4;
+  padding: 8px 12px;
+  border-radius: 0;
+}
+
+.test-cases-marketplace-card-goal strong {
+  font-weight: 600;
+}
+
+.test-cases-marketplace-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.test-cases-marketplace-card-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.test-cases-marketplace-card-stat {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  color: #525252;
+  background: #f4f4f4;
+  padding: 4px 8px;
+  border-radius: 24px;
+}
+
+.test-cases-marketplace-card-use-btn {
+  background: #0f62fe;
+  color: #ffffff;
+  border: none;
+  border-radius: 0;
+  padding: 8px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.test-cases-marketplace-card-use-btn:hover {
+  background: #0353e9;
+}
+
+.test-cases-marketplace-card-use-btn:disabled {
+  background: #8d8d8d;
+  cursor: not-allowed;
+}
+
+.test-cases-marketplace-confirm {
+  font-family: 'IBM Plex Sans', sans-serif;
+  color: #161616;
+}
+
+.test-cases-marketplace-confirm p {
+  font-size: 14px;
+  line-height: 1.29;
+  margin: 0 0 8px 0;
+}
+
+.test-cases-marketplace-confirm strong {
+  font-weight: 600;
+}
+
+.test-cases-marketplace-confirm-sub {
+  font-size: 14px;
+  color: #525252;
+  margin-bottom: 24px;
+}
+
+.test-cases-marketplace-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.studio-btn-primary,
+.studio-btn-secondary {
+  padding: 10px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.studio-btn-primary {
+  background: #0f62fe;
+  color: #ffffff;
+}
+
+.studio-btn-primary:hover:not(:disabled) {
+  background: #0353e9;
+}
+
+.studio-btn-primary:disabled {
+  background: #8d8d8d;
+  cursor: not-allowed;
+}
+
+.studio-btn-secondary {
+  background: #393939;
+  color: #ffffff;
+}
+
+.studio-btn-secondary:hover:not(:disabled) {
+  background: #4c4c4c;
+}
+
+.studio-btn-secondary:disabled {
+  background: #8d8d8d;
+  cursor: not-allowed;
+}

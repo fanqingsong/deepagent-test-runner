@@ -6,7 +6,7 @@ export const DashboardIcon = ({ size = 20 }) => (
   </svg>
 );
 
-export const StudioIcon = ({ size = 20 }) => (
+export const TestCasesIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M2 2h16v16H2V2zm2 2v12h12V4H4zm2 2h8v8H6V6z"/>
   </svg>
@@ -33,6 +33,12 @@ export const RolesIcon = ({ size = 20 }) => (
 export const ReviewsIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M16 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h8v2zm0-3H6V9h8v2zm0-3H6V6h8v2z"/>
+  </svg>
+);
+
+export const MarketplaceIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2L2 5v6c0 5.25 3.75 9.67 8 10.75 4.25-1.08 8-5.5 8-10.75V5l-8-3zm0 2.18l6 2.25v5.57c0 3.99-2.85 7.39-6 8.43-3.15-1.04-6-4.44-6-8.43V9.43l6-2.25zM8 7.5l-2 2 5 5 7-7-2-2-5 5-3-3z"/>
   </svg>
 );
 
@@ -81,5 +87,63 @@ export const UserIcon = ({ size = 20 }) => (
 export const LogoutIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M11 7h2v2h-2V7zm0 4h2v6h-2v-6zm-4 6H3v-2h4v2zm0-4H3v-2h4v2zm0-4H3V7h4v2zm6 8h6c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2z"/>
+  </svg>
+);
+
+export const ChatIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 2h16v14H6l-4 4v-4H2V2zm2 2v10h2v2.83L9.17 14H16V4H4z"/>
+  </svg>
+);
+
+export const CloseIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14.95 4.05l-1.41-1.41L10 8.17 6.46 4.64 5.05 6.05 8.59 9.59l-3.54 3.54 1.41 1.41L10 11l3.54 3.54 1.41-1.41L11 10l3.95-3.95z"/>
+  </svg>
+);
+
+export const MaximizeIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 4h24v24H4V4zm2 2v20h20V6H6z"/>
+  </svg>
+);
+
+export const RestoreIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 4v6h6V6H12v-2zm0 8v6h6v-6H12zm0 8v6h6v-6H12zm8-16v6h6V6h-6zm0 8v6h6v-6h-6zm0 8v6h6v-6h-6z"/>
+  </svg>
+);
+
+export const ToolIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.5 2.5l-7 7-2-2-6 6 2 2 6-6 2 2 7-7-2-2z"/>
+  </svg>
+);
+
+export const ChatListIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 2h16v14H6l-4 4v-4H2V2zm2 2v10h2v2.83L9.17 14H16V4H4z"/>
+    <rect x="5" y="6" width="8" height="2"/>
+    <rect x="5" y="10" width="6" height="2"/>
+  </svg>
+);
+
+export const CompressIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 8h2V6h2V4H4v4zm10-4v2h2v2h2V4h-4zM6 12H4v4h4v-2H6v-2zm12 0h-2v2h-2v2h4v-4z"/>
+  </svg>
+);
+
+export const AddIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 15L17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15 17 15z"/>
+  </svg>
+);
+
+export const TrashIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 12h2v10h-2zM18 12h2v10h-2z"/>
+    <path d="M4 6v2h2v20a2 2 0 002 2h16a2 2 0 002-2V8h2V6H4zm4 22V8h16v20H8z"/>
+    <path d="M12 2h8v2h-8z"/>
   </svg>
 );

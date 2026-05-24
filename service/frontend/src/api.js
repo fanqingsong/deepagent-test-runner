@@ -336,51 +336,51 @@ export const getRegressionTests = async () => {
   return response.json();
 };
 
-// Studio Workspace
-export const createStudio = async (data) => {
+// Test Cases Workspace
+export const createTestCase = async (data) => {
   const response = await apiFetch(`${TEST_API}/apps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to create Studio'));
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to create Test Case'));
   return response.json();
 };
 
-export const listStudios = async (params = {}) => {
+export const listTestCases = async (params = {}) => {
   const qs = new URLSearchParams();
   if (params.status) qs.set('status', params.status);
   if (params.search) qs.set('search', params.search);
   const response = await apiFetch(`${TEST_API}/apps/?${qs.toString()}`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load Studio list'));
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load Test Case list'));
   return response.json();
 };
 
-export const getStudio = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load Studio'));
+export const getTestCase = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load Test Case'));
   return response.json();
 };
 
-export const updateStudio = async (studioId, data) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}`, {
+export const updateTestCase = async (testCaseId, data) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to update Studio'));
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to update Test Case'));
   return response.json();
 };
 
-export const archiveStudio = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}`, { method: 'DELETE' });
+export const archiveTestCase = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}`, { method: 'DELETE' });
   if (!response.ok && response.status !== 204) {
-    throw new Error(await parseApiError(response, 'Failed to delete Studio'));
+    throw new Error(await parseApiError(response, 'Failed to delete Test Case'));
   }
 };
 
-export const runStudio = async (studioId, { forceRegenerate, useExistingPlan } = {}) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/run`, {
+export const runTestCase = async (testCaseId, { forceRegenerate, useExistingPlan } = {}) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -388,12 +388,12 @@ export const runStudio = async (studioId, { forceRegenerate, useExistingPlan } =
       use_existing_plan: !!useExistingPlan,
     }),
   });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to run Studio'));
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to run Test Case'));
   return response.json();
 };
 
-export const generateStudioPlan = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/generate-plan`, {
+export const generateTestCasePlan = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/generate-plan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -401,8 +401,8 @@ export const generateStudioPlan = async (studioId) => {
   return response.json();
 };
 
-export const saveStudioSteps = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/save-steps`, {
+export const saveTestCasesSteps = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/save-steps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -410,28 +410,28 @@ export const saveStudioSteps = async (studioId) => {
   return response.json();
 };
 
-export const getStudioRunProgress = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/run-progress`);
+export const getTestCaseRunProgress = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/run-progress`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to get progress'));
   return response.json();
 };
 
-export const getStudioRunHistory = async (studioId, { limit = 50, offset = 0 } = {}) => {
+export const getTestCaseRunHistory = async (testCaseId, { limit = 50, offset = 0 } = {}) => {
   const response = await apiFetch(
-    `${TEST_API}/apps/${studioId}/runs?limit=${limit}&offset=${offset}`
+    `${TEST_API}/apps/${testCaseId}/runs?limit=${limit}&offset=${offset}`
   );
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load run history'));
   return response.json();
 };
 
-export const getStudioStepVersions = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/step-versions`);
+export const getTestCaseStepVersions = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load version history'));
   return response.json();
 };
 
-export const restoreStudioStepVersion = async (studioId, versionId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/step-versions/${versionId}/restore`, {
+export const restoreTestCaseStepVersion = async (testCaseId, versionId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/restore`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -439,8 +439,8 @@ export const restoreStudioStepVersion = async (studioId, versionId) => {
   return response.json();
 };
 
-export const refineStudio = async (studioId, feedback) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/refine`, {
+export const refineTestCase = async (testCaseId, feedback) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/refine`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ feedback }),
@@ -449,24 +449,24 @@ export const refineStudio = async (studioId, feedback) => {
   return response.json();
 };
 
-export const publishStudio = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/publish`, {
+export const publishTestCase = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to publish Studio'));
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to publish Test Case'));
   return response.json();
 };
 
-// Studio Permissions
-export const getStudioPermissions = async (studioId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/permissions`);
+// Test Case Permissions
+export const getTestCasePermissions = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load permission list'));
   return response.json();
 };
 
-export const addStudioPermission = async (studioId, { userId, permissionType }) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/permissions`, {
+export const addTestCasePermission = async (testCaseId, { userId, permissionType }) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId, permission_type: permissionType }),
@@ -475,8 +475,8 @@ export const addStudioPermission = async (studioId, { userId, permissionType }) 
   return response.json();
 };
 
-export const updateStudioPermission = async (studioId, userId, { permissionType }) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/permissions/${userId}`, {
+export const updateTestCasePermission = async (testCaseId, userId, { permissionType }) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions/${userId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ permission_type: permissionType }),
@@ -485,8 +485,8 @@ export const updateStudioPermission = async (studioId, userId, { permissionType 
   return response.json();
 };
 
-export const removeStudioPermission = async (studioId, userId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${studioId}/permissions/${userId}`, {
+export const removeTestCasePermission = async (testCaseId, userId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions/${userId}`, {
     method: 'DELETE',
   });
   if (!response.ok && response.status !== 204) {
@@ -761,5 +761,123 @@ export const submitSuiteForReview = async (suiteId) => {
     headers: { 'Content-Type': 'application/json' },
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to submit for review'));
+  return response.json();
+};
+
+// --- Marketplace ---
+
+export const listPublishedTestCases = async (params = {}) => {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.search) qs.set('search', params.search);
+  if (params.skip !== undefined) qs.set('skip', params.skip);
+  if (params.limit !== undefined) qs.set('limit', params.limit);
+  const response = await apiFetch(`${TEST_API}/apps/marketplace?${qs.toString()}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load published test cases'));
+  return response.json();
+};
+
+export const listPublishedSuites = async (params = {}) => {
+  const qs = new URLSearchParams();
+  if (params.search) qs.set('search', params.search);
+  if (params.skip !== undefined) qs.set('skip', params.skip);
+  if (params.limit !== undefined) qs.set('limit', params.limit);
+  const response = await apiFetch(`${TEST_API}/test-suites/marketplace?${qs.toString()}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load published suites'));
+  return response.json();
+};
+
+export const copyTestCaseToWorkspace = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/copy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to copy test case'));
+  return response.json();
+};
+
+export const copySuiteToWorkspace = async (suiteId) => {
+  const response = await apiFetch(`${TEST_API}/test-suites/${suiteId}/copy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to copy suite'));
+  return response.json();
+};
+
+// --- Chat API ---
+
+const CHAT_API = `${BASE_URL}/api/v1/chat`;
+
+export const createChatConversation = async (title) => {
+  const response = await apiFetch(`${CHAT_API}/conversations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to create conversation'));
+  return response.json();
+};
+
+export const listChatConversations = async () => {
+  const response = await apiFetch(`${CHAT_API}/conversations`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load conversations'));
+  return response.json();
+};
+
+export const getChatConversation = async (conversationId) => {
+  const response = await apiFetch(`${CHAT_API}/conversations/${conversationId}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load conversation'));
+  return response.json();
+};
+
+export const deleteChatConversation = async (conversationId) => {
+  const response = await apiFetch(`${CHAT_API}/conversations/${conversationId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok && response.status !== 204) {
+    throw new Error(await parseApiError(response, 'Failed to delete conversation'));
+  }
+};
+
+export const getChatMessages = async (conversationId) => {
+  const response = await apiFetch(`${CHAT_API}/conversations/${conversationId}/messages`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load messages'));
+  return response.json();
+};
+
+export const sendChatMessage = async (conversationId, content) => {
+  const response = await apiFetch(`${CHAT_API}/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to send message'));
+  return response.json();
+};
+
+export const sendSimpleChatMessage = async (content) => {
+  const response = await apiFetch(`${CHAT_API}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to send message'));
+  return response.json();
+};
+
+export const getChatWebSocketURL = (threadId) => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  const token = authService.getAccessToken();
+  return `${protocol}//${host}/api/v1/chat/ws/chat/${threadId}?token=${token}`;
+};
+
+export const compressConversation = async (conversationId) => {
+  const response = await apiFetch(`${CHAT_API}/conversations/${conversationId}/compress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to compress conversation'));
   return response.json();
 };

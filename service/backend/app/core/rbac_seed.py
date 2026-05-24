@@ -46,6 +46,7 @@ PERMISSIONS = [
     # Conversation
     {"name": "create:conversation", "resource": "conversation", "action": "create", "description": "Create conversations"},
     {"name": "read:conversation", "resource": "conversation", "action": "read", "description": "View conversations"},
+    {"name": "delete:conversation", "resource": "conversation", "action": "delete", "description": "Delete conversations"},
     # Test suite
     {"name": "create:suite", "resource": "suite", "action": "create", "description": "Create test suites"},
     {"name": "read:suite", "resource": "suite", "action": "read", "description": "View test suites"},

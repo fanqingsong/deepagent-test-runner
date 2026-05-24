@@ -1,8 +1,8 @@
 import EditableCell from './EditableCell';
 import BrowserStream from '../BrowserStream';
-import './studio-shared.css';
+import './test-cases-shared.css';
 
-export default function StudioPlanTab({
+export default function TestCasePlanTab({
   // Plan data
   editedSteps, viewedSteps, hasPlan, planEdited, stepsSaved,
   // Editing
@@ -24,7 +24,7 @@ export default function StudioPlanTab({
         <div style={{ textAlign: 'center', padding: '48px', color: '#525252' }}>
           <p style={{ marginBottom: '16px' }}>No test plan yet. Generate one from your test goal.</p>
           <button
-            className="studio-workspace-run-btn"
+            className="test-case-workspace-run-btn"
             onClick={onGeneratePlan}
             disabled={isBusy || !formGoal?.trim()}
           >
@@ -34,22 +34,22 @@ export default function StudioPlanTab({
       )}
 
       {isGenerating && !hasPlan && (
-        <div className="studio-workspace-running">
-          <div className="studio-workspace-typing">
+        <div className="test-case-workspace-running">
+          <div className="test-case-workspace-typing">
             <span></span><span></span><span></span>
           </div>
-          <span className="studio-workspace-running-text">Generating test plan...</span>
+          <span className="test-case-workspace-running-text">Generating test plan...</span>
         </div>
       )}
 
       {hasPlan && (
-        <div className="studio-section">
-          <h3 className="studio-section-title">
+        <div className="test-case-section">
+          <h3 className="test-case-section-title">
             Test Plan
-            {viewingVersionId && <span className="studio-workspace-viewing-tag">Viewing past version</span>}
-            {!viewingVersionId && stepsSaved && <span className="studio-workspace-saved-tag">Saved</span>}
+            {viewingVersionId && <span className="test-case-workspace-viewing-tag">Viewing past version</span>}
+            {!viewingVersionId && stepsSaved && <span className="test-case-workspace-saved-tag">Saved</span>}
           </h3>
-          <table className="studio-workspace-steps-table">
+          <table className="test-case-workspace-steps-table">
             <thead>
               <tr>
                 <th className="th-step">#</th>
@@ -91,21 +91,21 @@ export default function StudioPlanTab({
           </table>
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
             <button
-              className="studio-workspace-secondary-btn"
+              className="test-case-workspace-secondary-btn"
               onClick={onGeneratePlan}
               disabled={isBusy}
             >
               Regenerate
             </button>
             <button
-              className="studio-workspace-secondary-btn"
+              className="test-case-workspace-secondary-btn"
               onClick={onSaveSteps}
               disabled={!hasPlan || isBusy}
             >
               {isSavingSteps ? 'Saving...' : stepsSaved ? 'Saved' : 'Save Steps'}
             </button>
             <button
-              className="studio-workspace-run-btn"
+              className="test-case-workspace-run-btn"
               onClick={() => onRun({ useExistingPlan: true })}
               disabled={!hasPlan || isBusy}
             >
@@ -113,8 +113,8 @@ export default function StudioPlanTab({
             </button>
           </div>
           {stepVersions.length > 0 && (
-            <div className="studio-workspace-version-bar">
-              <span className="studio-workspace-version-label">Versions:</span>
+            <div className="test-case-workspace-version-bar">
+              <span className="test-case-workspace-version-label">Versions:</span>
               {stepVersions.map(v => (
                 <button
                   key={v.id}
@@ -135,13 +135,13 @@ export default function StudioPlanTab({
               {viewingVersionId && (
                 <>
                   <button
-                    className="studio-workspace-restore-btn"
+                    className="test-case-workspace-restore-btn"
                     onClick={() => onRestoreVersion(viewingVersionId)}
                   >
                     Restore this version
                   </button>
                   <button
-                    className="studio-workspace-secondary-btn"
+                    className="test-case-workspace-secondary-btn"
                     onClick={onBackToCurrent}
                   >
                     Back to current
@@ -154,8 +154,8 @@ export default function StudioPlanTab({
       )}
 
       {hasResult && (
-        <div className="studio-section">
-          <h3 className="studio-section-title">
+        <div className="test-case-section">
+          <h3 className="test-case-section-title">
             Result: {latestResult.status === 'passed' ? 'PASSED' : 'FAILED'}
             <span style={{ fontWeight: 400, color: '#525252', fontSize: '13px', marginLeft: '8px' }}>
               {latestResult.passed}/{latestResult.total} steps
@@ -163,7 +163,7 @@ export default function StudioPlanTab({
             </span>
           </h3>
           {resultSteps.length > 0 ? (
-            <table className="studio-workspace-steps-table">
+            <table className="test-case-workspace-steps-table">
               <thead>
                 <tr>
                   <th className="th-step">#</th>
@@ -191,7 +191,7 @@ export default function StudioPlanTab({
               </tbody>
             </table>
           ) : (
-            <p className="studio-workspace-result-text">
+            <p className="test-case-workspace-result-text">
               {latestResult.status === 'passed'
                 ? 'All steps passed!'
                 : 'Test failed. Edit the plan steps and click "Run Test" to retry.'}
@@ -202,7 +202,7 @@ export default function StudioPlanTab({
 
       {isRunning && (
         <>
-          <div className="studio-section">
+          <div className="test-case-section">
             <BrowserStream
               jobId={runningJobId}
               isRunning={isRunning}
@@ -210,15 +210,15 @@ export default function StudioPlanTab({
               onSelectScreenshot={onSelectScreenshot}
             />
           </div>
-          <div className="studio-section">
-            <h3 className="studio-section-title">
+          <div className="test-case-section">
+            <h3 className="test-case-section-title">
               Running
-              <span className="studio-workspace-progress-counts">
+              <span className="test-case-workspace-progress-counts">
                 {' '}{progressCurrent}/{progressTotal || '?'} steps completed
               </span>
             </h3>
             {progressSteps.length > 0 ? (
-              <table className="studio-workspace-steps-table">
+              <table className="test-case-workspace-steps-table">
                 <thead>
                   <tr>
                     <th className="th-step">#</th>
@@ -261,21 +261,21 @@ export default function StudioPlanTab({
                     <tr className="row-pending">
                       <td className="td-step">{progressSteps.length + 1}</td>
                       <td className="td-desc" colSpan={4}>
-                        <span className="studio-workspace-typing">
+                        <span className="test-case-workspace-typing">
                           <span></span><span></span><span></span>
                         </span>
-                        <span className="studio-workspace-running-text">executing...</span>
+                        <span className="test-case-workspace-running-text">executing...</span>
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             ) : (
-              <div className="studio-workspace-running">
-                <div className="studio-workspace-typing">
+              <div className="test-case-workspace-running">
+                <div className="test-case-workspace-typing">
                   <span></span><span></span><span></span>
                 </div>
-                <span className="studio-workspace-running-text">Generating test plan...</span>
+                <span className="test-case-workspace-running-text">Generating test plan...</span>
               </div>
             )}
           </div>

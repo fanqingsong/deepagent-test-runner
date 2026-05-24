@@ -90,7 +90,7 @@ class Settings(BaseSettings):
         description="From email address for sent emails"
     )
     EMAIL_FROM_NAME: str = Field(
-        default="Test Studio",
+        default="Test Cases",
         description="Display name for sent emails"
     )
 

@@ -2,15 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import PermissionGate from './PermissionGate';
 import {
   DashboardIcon,
-  StudioIcon,
+  TestCasesIcon,
   TestSuiteIcon,
-  UsersIcon,
-  RolesIcon,
-  ReviewsIcon,
   SettingsIcon,
   ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronDownIcon
+  ChevronRightIcon
 } from './Icons';
 import './Sidebar.css';
 
@@ -22,17 +18,39 @@ const menuItems = [
     path: '#dashboard'
   },
   {
-    id: 'studio',
-    label: 'Studio',
-    icon: StudioIcon,
-    path: '#studios',
-    permission: 'read:app'
+    id: 'test-cases',
+    label: 'Test Cases',
+    icon: TestCasesIcon,
+    permission: 'read:app',
+    children: [
+      {
+        id: 'test-cases-marketplace',
+        label: 'Marketplace',
+        path: '#test-cases-marketplace'
+      },
+      {
+        id: 'test-cases-workspace',
+        label: 'My Workspace',
+        path: '#test-cases'
+      }
+    ]
   },
   {
     id: 'suites',
     label: 'Test Suites',
     icon: TestSuiteIcon,
-    path: '#suites'
+    children: [
+      {
+        id: 'suites-marketplace',
+        label: 'Marketplace',
+        path: '#suites-marketplace'
+      },
+      {
+        id: 'suites-workspace',
+        label: 'My Workspace',
+        path: '#suites'
+      }
+    ]
   },
   {
     id: 'admin',
@@ -55,15 +73,14 @@ const menuItems = [
         label: 'Role Management',
         path: '#roles',
         anyPermission: ['read:role', 'create:role']
+      },
+      {
+        id: 'reviews',
+        label: 'Review Management',
+        path: '#reviews',
+        anyPermission: ['review:test', 'review:suite']
       }
     ]
-  },
-  {
-    id: 'reviews',
-    label: 'Review Management',
-    icon: ReviewsIcon,
-    path: '#reviews',
-    anyPermission: ['review:test', 'review:suite']
   }
 ];
 
@@ -166,7 +183,7 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
 
 function Sidebar({ isOpen, isCollapsed, onToggle, onMobileClose, isDesktop }) {
   const [activePath, setActivePath] = useState('');
-  const [expandedSubmenus, setExpandedSubmenus] = useState(new Set(['admin']));
+  const [expandedSubmenus, setExpandedSubmenus] = useState(new Set(['admin', 'test-cases', 'suites']));
 
   useEffect(() => {
     const handleHashChange = () => {

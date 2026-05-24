@@ -1,0 +1,56 @@
+.chat-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0f62fe;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 0;
+  z-index: 9999;
+}
+
+.chat-fab:hover {
+  background-color: #0353e9;
+  transform: scale(1.1);
+}
+
+.chat-fab:focus {
+  outline: 2px solid #0f62fe;
+  outline-offset: 2px;
+}
+
+.chat-fab:active {
+  transform: scale(1.05);
+}
+
+.chat-fab.hidden {
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat-fab .unread-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background-color: #da1e28;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+}
+
+@media (max-width: 672px) {
+  .chat-fab {
+    bottom: 16px;
+    right: 16px;
+  }
+}

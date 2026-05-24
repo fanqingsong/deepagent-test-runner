@@ -8,20 +8,22 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     analytics,
-    auth,
-    users,
-    test_steps,
-    test_versions,
-    test_suites,
-    test_generation,
-    autonomous_planning,
-    conversations,
-    apps,
     app_permissions,
-    tags,
-    run_configs,
+    apps,
+    auth,
+    autonomous_planning,
+    chat,
+    conversations,
     reviews,
+    run_configs,
+    tags,
+    test_generation,
+    test_steps,
+    test_suites,
+    test_versions,
+    users,
 )
+from app.api.v1.websockets import chat as chat_ws
 
 api_router = APIRouter()
 
@@ -106,4 +108,16 @@ api_router.include_router(
     reviews.router,
     prefix="/reviews",
     tags=["reviews"]
+)
+
+api_router.include_router(
+    chat.router,
+    prefix="/chat",
+    tags=["chat"]
+)
+
+api_router.include_router(
+    chat_ws.router,
+    prefix="/chat",
+    tags=["chat-websocket"]
 )

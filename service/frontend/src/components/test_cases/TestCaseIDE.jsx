@@ -1,50 +1,50 @@
 import { useState, useEffect, useCallback } from 'react';
-import { listStudios, createStudio, archiveStudio } from '../../api';
+import { listTestCases, createTestCase, archiveTestCase } from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
 import PermissionGate from '../PermissionGate';
-import StudioListPanel from './StudioListPanel';
-import StudioEditorPanel from './StudioEditorPanel';
-import StudioAuxPanel from './StudioAuxPanel';
-import './StudioIDE.css';
+import TestCaseListPanel from './TestCaseListPanel';
+import TestCaseEditorPanel from './TestCaseEditorPanel';
+import TestCaseAuxPanel from './TestCaseAuxPanel';
+import './TestCaseIDE.css';
 
-export default function StudioIDE() {
-  const [studios, setStudios] = useState([]);
+export default function TestCasesIDE() {
+  const [testCases, setTestCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [selectedStudioId, setSelectedStudioId] = useState(null);
+  const [selectedTestCaseId, setSelectedTestCaseId] = useState(null);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
 
-  // Initialize selected studio from hash
+  // Initialize selected test case from hash
   useEffect(() => {
     const hash = window.location.hash.slice(1);
-    const match = hash.match(/^studios?\/(\d+)/);
+    const match = hash.match(/^test-cases?\/(\d+)/);
     if (match) {
-      setSelectedStudioId(parseInt(match[1]));
+      setSelectedTestCaseId(parseInt(match[1]));
     }
   }, []);
 
   // Sync hash when selection changes
   useEffect(() => {
-    if (selectedStudioId) {
+    if (selectedTestCaseId) {
       const currentHash = window.location.hash.slice(1);
-      const newHash = `studios/${selectedStudioId}`;
+      const newHash = `test-cases/${selectedTestCaseId}`;
       if (currentHash !== newHash) {
         window.history.replaceState(null, '', `#${newHash}`);
       }
     }
-  }, [selectedStudioId]);
+  }, [selectedTestCaseId]);
 
-  const loadStudios = useCallback(async () => {
+  const loadTestCases = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await listStudios({
+      const data = await listTestCases({
         status: statusFilter || undefined,
         search: search || undefined,
       });
-      setStudios(data);
+      setTestCases(data);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -52,29 +52,29 @@ export default function StudioIDE() {
     }
   }, [statusFilter, search]);
 
-  useEffect(() => { loadStudios(); }, [loadStudios]);
+  useEffect(() => { loadTestCases(); }, [loadTestCases]);
 
   const handleSelect = useCallback((id) => {
-    setSelectedStudioId(id);
+    setSelectedTestCaseId(id);
   }, []);
 
   const handleCreate = async () => {
     try {
-      const studio = await createStudio({});
-      await loadStudios();
-      setSelectedStudioId(studio.id);
+      const testCase = await createTestCase({});
+      await loadTestCases();
+      setSelectedTestCaseId(testCase.id);
     } catch (e) {
       setError(e.message);
     }
   };
 
-  const handleArchive = async (studioId) => {
+  const handleArchive = async (testCaseId) => {
     try {
-      await archiveStudio(studioId);
-      if (selectedStudioId === studioId) {
-        setSelectedStudioId(null);
+      await archiveTestCase(testCaseId);
+      if (selectedTestCaseId === testCaseId) {
+        setSelectedTestCaseId(null);
       }
-      loadStudios();
+      loadTestCases();
     } catch (e) {
       setError(e.message);
     }
@@ -89,13 +89,13 @@ export default function StudioIDE() {
   };
 
   return (
-    <div className="studio-ide">
-      <div className="studio-ide-sidebar">
-        <StudioListPanel
-          studios={studios}
+    <div className="test-cases-ide">
+      <div className="test-cases-ide-sidebar">
+        <TestCaseListPanel
+          testCases={testCases}
           loading={loading}
           error={error}
-          selectedStudioId={selectedStudioId}
+          selectedTestCaseId={selectedTestCaseId}
           onSelect={handleSelect}
           search={search}
           onSearchChange={handleSearchChange}
@@ -106,19 +106,19 @@ export default function StudioIDE() {
         />
       </div>
 
-      <div className="studio-ide-main">
-        <StudioEditorPanel
-          studioId={selectedStudioId}
+      <div className="test-cases-ide-main">
+        <TestCaseEditorPanel
+          testCaseId={selectedTestCaseId}
           onToggleAuxPanel={() => setRightPanelOpen(prev => !prev)}
           auxPanelOpen={rightPanelOpen}
-          onStudioChanged={loadStudios}
+          onTestCaseChanged={loadTestCases}
         />
       </div>
 
-      <div className={`studio-ide-aux ${rightPanelOpen ? '' : 'studio-ide-aux--collapsed'}`}>
+      <div className={`test-cases-ide-aux ${rightPanelOpen ? '' : 'test-cases-ide-aux--collapsed'}`}>
         {rightPanelOpen && (
-          <StudioAuxPanel
-            studioId={selectedStudioId}
+          <TestCaseAuxPanel
+            testCaseId={selectedTestCaseId}
             onClose={() => setRightPanelOpen(false)}
           />
         )}

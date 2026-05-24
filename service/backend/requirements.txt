@@ -4,10 +4,12 @@ alembic==1.13.1
 asyncpg==0.29.0
 bcrypt==4.1.2
 celery[redis]==5.3.6
-langchain>=0.3.0,<1.0.0
-langchain-openai>=0.3.0,<1.0.0
+langchain>=1.0.0,<2.0.0
+langchain-core>=1.4.0,<2.0.0
+langchain-openai>=1.0.0,<2.0.0
 langchain-community>=0.3.0,<1.0.0
-langgraph>=0.3.0,<1.0.0
+langgraph>=1.0.0,<2.0.0
+deepagents
 croniter==2.0.1
 email-validator==2.1.0
 fastapi==0.109.0
