@@ -36,6 +36,12 @@ from app.activities.test_activities import (
     mark_run_failed,
 )
 
+from app.activities.schedule_activities import (
+    get_active_schedules,
+    update_schedule_next_run,
+    execute_scheduled_test,
+)
+
 __all__ = [
     "get_default_retry_policy",
     "get_long_running_retry_policy",
@@ -43,4 +49,7 @@ __all__ = [
     "run_browser_automation",
     "save_results",
     "mark_run_failed",
+    "get_active_schedules",
+    "update_schedule_next_run",
+    "execute_scheduled_test",
 ]
