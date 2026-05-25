@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     conversations,
     reviews,
     run_configs,
+    schedules,
     tags,
     test_generation,
     test_steps,
@@ -108,6 +109,12 @@ api_router.include_router(
     reviews.router,
     prefix="/reviews",
     tags=["reviews"]
+)
+
+api_router.include_router(
+    schedules.router,
+    prefix="/schedules",
+    tags=["schedules"]
 )
 
 api_router.include_router(
