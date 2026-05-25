@@ -73,9 +73,9 @@ export default function TestCaseVersionTab({
           {stepVersions.map(v => (
             <button
               key={v.id}
-              className={`studio-workspace-version-tag ${
-                viewingVersionId === v.id ? 'studio-workspace-version-tag--active' : ''
-              } ${v.run_status ? `studio-workspace-version-tag--${v.run_status}` : ''}`}
+              className={`test-case-workspace-version-tag ${
+                viewingVersionId === v.id ? 'test-case-workspace-version-tag--active' : ''
+              } ${v.run_status ? `test-case-workspace-version-tag--${v.run_status}` : ''}`}
               onClick={() => onViewVersion(v)}
               title={v.change_description || `v${v.version}`}
             >
