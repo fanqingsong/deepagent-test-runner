@@ -6,6 +6,7 @@ These activities wrap the existing execution service and agent logic.
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 # Input/Output Models for Activities
 
 
+@dataclass
 class PrepareTestInput:
     """Input for prepare_test activity."""
 
@@ -34,6 +36,7 @@ class PrepareTestInput:
     environment: Dict[str, Any]
 
 
+@dataclass
 class PrepareTestOutput:
     """Output from prepare_test activity."""
 
@@ -46,6 +49,7 @@ class PrepareTestOutput:
     mode: str
 
 
+@dataclass
 class BrowserAutomationInput:
     """Input for run_browser_automation activity."""
 
@@ -58,6 +62,7 @@ class BrowserAutomationInput:
     mode: str
 
 
+@dataclass
 class BrowserAutomationOutput:
     """Output from run_browser_automation activity."""
 
@@ -75,6 +80,7 @@ class BrowserAutomationOutput:
     skipped: int
 
 
+@dataclass
 class SaveResultsInput:
     """Input for save_results activity."""
 
@@ -82,6 +88,7 @@ class SaveResultsInput:
     results: Dict[str, Any]
 
 
+@dataclass
 class MarkRunFailedInput:
     """Input for mark_run_failed activity."""
 
