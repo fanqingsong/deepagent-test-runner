@@ -42,6 +42,180 @@ services:
       - test-network
     restart: unless-stopped
 
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: deepagent-tester-temporal
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=cc_test_user
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postgres
+    ports:
+      - "7233:7233"  # RPC
+      - "8088:8088"  # Web UI
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "localhost:7233", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  temporal-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: deepagent-tester-temporal-worker
+    command: python -m app.temporal.worker_main
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      TEMPORAL_HOST_URL: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: unified-backend-task-queue
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      # LLM Configuration
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Studio}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8085}
+    volumes:
+      # Mount source for hot reload in development
+      - ./backend/app:/app/app
+      # Mount screenshots directory for test execution artifacts
+      - ./screenshots:/app/screenshots
+    depends_on:
+      temporal:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  # celery-worker:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: deepagent-tester-celery-worker
+  #   command: /usr/local/bin/watchmedo auto-restart --directory=/app/app --pattern="*.py" --recursive -- celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q test_execution,schedule_sync,email_tasks,maintenance -n worker@%h
+  #   environment:
+  #     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  #     REDIS_URL: redis://redis:6379/0
+  #     CELERY_BROKER_URL: redis://redis:6379/0
+  #     CELERY_RESULT_BACKEND: redis://redis:6379/0
+  #     SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+  #     POSTGRES_HOST: postgres
+  #     POSTGRES_PORT: 5432
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+  #     # LLM Configuration
+  #     LLM_API_KEY: ${LLM_API_KEY:-}
+  #     LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+  #     LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
+  #     OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  #     JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+  #     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+  #     JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+  #     SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+  #     SMTP_PORT: ${SMTP_PORT:-587}
+  #     SMTP_USER: ${SMTP_USER:-}
+  #     SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  #     EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+  #     EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Studio}
+  #     FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8085}
+  #   volumes:
+  #     # Mount source for hot reload in development
+  #     - ./backend/app:/app/app
+  #     # Mount screenshots directory for test execution artifacts
+  #     - ./screenshots:/app/screenshots
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping --timeout 5 || exit 1"]
+  #     interval: 30s
+  #     timeout: 15s
+  #     retries: 3
+  #     start_period: 30s
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+
+  # celery-beat:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: deepagent-tester-celery-beat
+  #   command: celery -A app.core.celery_app beat --loglevel=info
+  #   environment:
+  #     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  #     REDIS_URL: redis://redis:6379/0
+  #     CELERY_BROKER_URL: redis://redis:6379/0
+  #     CELERY_RESULT_BACKEND: redis://redis:6379/0
+  #     SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+  #     POSTGRES_HOST: postgres
+  #     POSTGRES_PORT: 5432
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+  #     # LLM Configuration
+  #     LLM_API_KEY: ${LLM_API_KEY:-}
+  #     LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+  #     LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
+  #     OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  #     JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+  #     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+  #     JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+  #   volumes:
+  #     # Mount source for hot reload in development
+  #     - ./backend/app:/app/app
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 15s
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+
   nginx:
     image: nginx:alpine
     container_name: deepagent-tester-nginx
