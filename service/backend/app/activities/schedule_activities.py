@@ -6,6 +6,7 @@ These activities handle schedule synchronization and execution.
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -26,46 +27,48 @@ logger = logging.getLogger(__name__)
 # Input/Output Models for Activities
 
 
+@dataclass
 class GetActiveSchedulesInput:
     """Input for get_active_schedules activity."""
-
     pass
 
 
+@dataclass
 class GetActiveSchedulesOutput:
     """Output from get_active_schedules activity."""
-
     schedules: List[Dict[str, Any]]
 
 
+@dataclass
 class UpdateScheduleNextRunInput:
     """Input for update_schedule_next_run activity."""
-
     schedule_id: int
 
 
+@dataclass
 class UpdateScheduleNextRunOutput:
     """Output from update_schedule_next_run activity."""
-
     schedule_id: int
     next_run_time: Optional[datetime]
     success: bool
 
 
+@dataclass
 class ExecuteScheduledTestInput:
     """Input for execute_scheduled_test activity."""
-
     schedule_id: int
 
 
+@dataclass
 class ExecuteScheduledTestOutput:
     """Output from execute_scheduled_test activity."""
-
     schedule_id: int
     run_id: Optional[str]
     success: bool
     message: str
     tests_queued: int
+    test_definition_ids: Optional[List[int]] = None
+    environment: Optional[Dict[str, Any]] = None
 
 
 # Activity Implementations
@@ -104,7 +107,7 @@ async def get_active_schedules(input: GetActiveSchedulesInput) -> GetActiveSched
                 "max_retries": schedule.max_retries,
                 "retry_interval_seconds": schedule.retry_interval_seconds,
                 "timeout_seconds": schedule.timeout_seconds,
-                "environment": schedule.environment,
+                "environment": schedule.environment_overrides,
             })
 
         logger.info(f"Found {len(schedule_dicts)} active schedules")
