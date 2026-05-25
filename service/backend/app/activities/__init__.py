@@ -29,4 +29,18 @@ def get_long_running_retry_policy() -> activity.RetryPolicy:
         non_retryable_error_types=["ValidationError", "AuthError"],
     )
 
-__all__ = ["get_default_retry_policy", "get_long_running_retry_policy"]
+from app.activities.test_activities import (
+    prepare_test,
+    run_browser_automation,
+    save_results,
+    mark_run_failed,
+)
+
+__all__ = [
+    "get_default_retry_policy",
+    "get_long_running_retry_policy",
+    "prepare_test",
+    "run_browser_automation",
+    "save_results",
+    "mark_run_failed",
+]
