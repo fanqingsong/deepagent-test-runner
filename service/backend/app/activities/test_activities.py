@@ -282,8 +282,7 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
 
                 result = graph_result.get("final_result")
                 if not result:
-                    # Fallback: build result from state
-                    result = _build_result_from_state(graph_result, test_definition_id, run_id, start_time)
+                    raise ValueError("Graph execution completed but no final_result was produced")
 
                 logger.info(f"Supervisor: run {run_id} completed with status {result.get('status')}")
 
@@ -374,7 +373,7 @@ async def mark_run_failed(input: MarkRunFailedInput) -> None:
     Mark a test run as failed in the database.
 
     This activity wraps the ExecutionService.mark_run_failed method
-    to handle failure scenarios and create failure conversations.
+    to handle failure scenarios.
 
     Args:
         input: MarkRunFailedInput with run_id and optional error_message
@@ -388,124 +387,5 @@ async def mark_run_failed(input: MarkRunFailedInput) -> None:
         svc = ExecutionService(db)
         await svc.mark_run_failed(run_id, error_message)
 
-        # Create failure conversation thread
-        await _create_failure_conversation(db, run_id, error_message)
-
     await run_with_session(_mark_failed)
     logger.info(f"Marked run {run_id} as failed")
-
-
-# Helper Functions
-
-
-def _build_result_from_state(
-    state: Dict[str, Any],
-    test_definition_id: int,
-    run_id: str,
-    start_time: float,
-) -> Dict[str, Any]:
-    """Build a result dict from supervisor state when result_builder didn't run."""
-    step_results = state.get("step_results") or []
-    now_ms = datetime.now(timezone.utc).timestamp() * 1000
-
-    passed = sum(1 for r in step_results if r.get("status") == "passed")
-    failed = sum(1 for r in step_results if r.get("status") == "failed")
-
-    return {
-        "run_id": run_id,
-        "test_definition_id": test_definition_id,
-        "start_time": start_time,
-        "end_time": now_ms,
-        "total_duration": now_ms - start_time,
-        "total_tests": len(step_results),
-        "passed": passed,
-        "failed": failed,
-        "skipped": 0,
-        "status": "passed" if failed == 0 else "failed",
-        "test_cases": step_results,
-        "review": state.get("review"),
-    }
-
-
-async def _create_failure_conversation(
-    db: AsyncSession,
-    run_id: str,
-    error_message: Optional[str]
-) -> None:
-    """Create a failure recovery conversation thread when a test run fails."""
-    from app.models.test_run import TestRun
-    from app.models.test_case import TestCase
-    from app.models.conversation import ConversationThread, ConversationMessage
-
-    # Check if already notified
-    result = await db.execute(
-        select(TestRun).where(TestRun.run_id == run_id)
-    )
-    test_run = result.scalar_one_or_none()
-    if not test_run or test_run.failure_notified:
-        return
-
-    # Load failed test cases
-    tc_result = await db.execute(
-        select(TestCase).where(
-            TestCase.run_id == test_run.id,
-            TestCase.status.in_(["failed", "error"])
-        )
-    )
-    failed_cases = tc_result.scalars().all()
-
-    failed_steps = [
-        {
-            "description": tc.description,
-            "status": tc.status,
-            "error": tc.error_message,
-            "screenshot": tc.screenshot_path,
-        }
-        for tc in failed_cases
-    ]
-
-    # Create conversation thread
-    thread = ConversationThread(
-        test_definition_id=test_run.test_definition_id,
-        thread_type="failure_recovery",
-        status="active",
-        metadata_={"run_id": run_id},
-    )
-    db.add(thread)
-    await db.flush()
-
-    # System message with failure details
-    system_msg = ConversationMessage(
-        thread_id=thread.id,
-        role="system",
-        content=f"Test run {run_id} failed.",
-        metadata_={
-            "error": error_message,
-            "failed_steps": failed_steps,
-            "run_id": run_id,
-        },
-    )
-    db.add(system_msg)
-
-    # Assistant message with recovery suggestions
-    failed_desc = ", ".join(
-        f"Step: {s['description']} (Error: {s['error']})" for s in failed_steps
-    ) if failed_steps else error_message or "Unknown error"
-
-    assistant_msg = ConversationMessage(
-        thread_id=thread.id,
-        role="assistant",
-        content=(
-            f"Test execution failed. Here's what went wrong:\n\n{failed_desc}\n\n"
-            "You can:\n"
-            "1. Ask me to regenerate the failed step(s)\n"
-            "2. Edit the test case parameters\n"
-            "3. Retry with modified parameters"
-        ),
-        metadata_={"failed_steps": failed_steps},
-    )
-    db.add(assistant_msg)
-
-    test_run.failure_notified = True
-    await db.commit()
-    logger.info(f"Created failure recovery conversation thread {thread.id} for run {run_id}")
