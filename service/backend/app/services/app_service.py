@@ -2,7 +2,7 @@
 App Service — orchestration layer for the LLM-APP-style test workspace.
 
 Coordinates planner_agent, ExecutionService, conversation models, and
-Celery tasks to provide the generate → execute → refine/publish workflow.
+Temporal workflows to provide the generate → execute → refine/publish workflow.
 """
 
 import json
@@ -514,10 +514,20 @@ class AppService:
             db=self.db,
         )
 
-        # Dispatch Celery task
-        from app.tasks.test_execution import execute_test
+        # Dispatch Temporal workflow
+        from app.temporal import get_temporal_client
+        from app.workflows.test_execution import TestExecutionWorkflow
 
-        task = execute_test.delay(test_def.id, run_id, app.test_context.get("environment"))
+        client = await get_temporal_client()
+
+        workflow_result = await client.start_workflow(
+            TestExecutionWorkflow.run,
+            test_def.id,
+            run_id,
+            app.test_context.get("environment", {}),
+            id=f"test-execution-{run_id}",
+            task_queue="temporal-worker-task-queue",
+        )
 
         # Track in job_store
         from app.core.job_store import save_job
@@ -531,7 +541,8 @@ class AppService:
             "completed_at": None,
             "results": None,
             "environment": app.test_context.get("environment", {}),
-            "task_ids": [task.id],
+            "workflow_id": workflow_result.id,
+            "run_id": workflow_result.run_id,
             "total_steps": len(plan.get("steps", [])),
             "completed_steps": [],
             "current_step": 0,

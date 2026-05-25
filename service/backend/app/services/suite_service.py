@@ -170,7 +170,8 @@ class SuiteService:
         self, suite_run: SuiteRun, entries: List[SuiteRunEntry]
     ) -> Dict[str, Any]:
         """Execute entries respecting dependencies, conditions, and setup/teardown."""
-        from app.tasks.test_execution import execute_test
+        from app.temporal import get_temporal_client
+        from app.workflows.test_execution import TestExecutionWorkflow
 
         suite = await self._get_suite(suite_run.suite_id)
         fail_fast = suite.fail_strategy == "fail_fast" if suite else False
@@ -178,7 +179,7 @@ class SuiteService:
         # Run setup test if defined
         if suite and suite.setup_test_id:
             await self._dispatch_single(
-                suite_run, suite.setup_test_id, "setup", execute_test
+                suite_run, suite.setup_test_id, "setup"
             )
 
         # Build dependency graph from suite_entries
@@ -204,7 +205,7 @@ class SuiteService:
                     await self.db.commit()
                     continue
 
-                await self._execute_entry(suite_run, entry, execute_test)
+                await self._execute_entry(suite_run, entry)
                 # Refresh to get updated status
                 await self.db.refresh(entry)
                 completed[entry.test_definition_id] = entry.status
@@ -298,21 +299,29 @@ class SuiteService:
         suite_run: SuiteRun,
         test_definition_id: int,
         label: str,
-        execute_test_fn,
     ) -> None:
-        """Dispatch a single setup/teardown test."""
+        """Dispatch a single setup/teardown test using Temporal workflow."""
+        from app.temporal import get_temporal_client
+        from app.workflows.test_execution import TestExecutionWorkflow
+
         now_ms = int(time.time() * 1000)
         test_run_id = f"test-{uuid.uuid4().hex[:12]}"
 
         try:
-            execute_test_fn.delay(
+            client = await get_temporal_client()
+
+            workflow_result = await client.start_workflow(
+                TestExecutionWorkflow.run,
                 test_definition_id,
                 test_run_id,
                 suite_run.environment,
+                id=f"test-execution-{test_run_id}",
+                task_queue="temporal-worker-task-queue",
             )
+
             logger.info(
-                "Dispatched %s test_def=%d as run %s",
-                label, test_definition_id, test_run_id
+                "Dispatched %s test_def=%d as run %s (workflow: %s)",
+                label, test_definition_id, test_run_id, workflow_result.id
             )
         except Exception as exc:
             logger.error("Failed to dispatch %s test_def=%d: %s", label, test_definition_id, exc)
@@ -321,9 +330,11 @@ class SuiteService:
         self,
         suite_run: SuiteRun,
         entry: SuiteRunEntry,
-        execute_test_fn,
     ) -> None:
-        """Execute a single entry and update its status."""
+        """Execute a single entry and update its status using Temporal workflow."""
+        from app.temporal import get_temporal_client
+        from app.workflows.test_execution import TestExecutionWorkflow
+
         now_ms = int(time.time() * 1000)
         entry.status = "running"
         entry.started_at = now_ms
@@ -332,16 +343,22 @@ class SuiteService:
         test_run_id = f"test-{uuid.uuid4().hex[:12]}"
 
         try:
-            execute_test_fn.delay(
+            client = await get_temporal_client()
+
+            workflow_result = await client.start_workflow(
+                TestExecutionWorkflow.run,
                 entry.test_definition_id,
                 test_run_id,
                 suite_run.environment,
+                id=f"test-execution-{test_run_id}",
+                task_queue="temporal-worker-task-queue",
             )
+
             entry.test_run_id = test_run_id
             entry.status = "dispatched"
             logger.info(
-                "Dispatched entry %d (test_def=%d) as run %s",
-                entry.entry_order, entry.test_definition_id, test_run_id
+                "Dispatched entry %d (test_def=%d) as run %s (workflow: %s)",
+                entry.entry_order, entry.test_definition_id, test_run_id, workflow_result.id
             )
         except Exception as exc:
             entry.status = "error"
