@@ -160,12 +160,14 @@ class ScheduleExecutionWorkflow:
     async def run(
         self,
         schedule_id: int,
+        test_definition_id: str,
     ) -> Dict[str, Any]:
         """
         Execute a scheduled test run.
 
         Args:
             schedule_id: Schedule ID to execute
+            test_definition_id: Test definition ID to execute
 
         Returns:
             dict: Execution results with run IDs and test counts
@@ -178,7 +180,10 @@ class ScheduleExecutionWorkflow:
             logger.info(f"Preparing execution for schedule {schedule_id}")
             execute_output: ExecuteScheduledTestOutput = await workflow.execute_activity(
                 execute_scheduled_test,
-                ExecuteScheduledTestInput(schedule_id=schedule_id),
+                ExecuteScheduledTestInput(
+                    schedule_id=schedule_id,
+                    test_definition_id=test_definition_id,
+                ),
                 start_to_close_timeout=DEFAULT_RUN_TIMEOUT,
                 retry_policy=get_default_retry_policy(),
             )
@@ -218,12 +223,13 @@ class ScheduleExecutionWorkflow:
                     from app.workflows.test_execution import TestExecutionWorkflow
 
                     test_result = await workflow.execute_child_workflow(
-                        TestExecutionWorkflow,
-                        args=[
-                            test_def_id,
-                            execute_output.run_id,
-                            environment,
-                        ],
+                        TestExecutionWorkflow.run,
+                        args=[],
+                        kwargs={
+                            "test_definition_id": test_def_id,
+                            "run_id": execute_output.run_id,
+                            "environment": environment,
+                        },
                         execution_timeout=DEFAULT_EXECUTION_TIMEOUT,
                     )
 

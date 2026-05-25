@@ -51,7 +51,7 @@ class TestExecutionWorkflow:
     @workflow.run
     async def run(
         self,
-        test_definition_id: int,
+        test_definition_id: str,
         run_id: str,
         environment: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
@@ -205,7 +205,6 @@ class RetryTestWorkflow:
     @workflow.run
     async def run(
         self,
-        test_definition_id: int,
         original_run_id: str,
         modified_plan: Dict[str, Any],
         environment: Dict[str, Any] = None,
@@ -214,7 +213,6 @@ class RetryTestWorkflow:
         Retry test execution with a modified plan.
 
         Args:
-            test_definition_id: Test definition internal ID
             original_run_id: Original test run ID (for reference)
             modified_plan: Modified test plan with updated steps/parameters
             environment: Optional environment variables
@@ -226,6 +224,11 @@ class RetryTestWorkflow:
 
         environment = environment or {}
         new_run_id = f"retry-{uuid.uuid4().hex[:12]}"
+
+        # Extract test_definition_id from modified_plan
+        test_definition_id = modified_plan.get("test_definition_id")
+        if not test_definition_id:
+            raise ValueError("modified_plan must contain test_definition_id")
 
         logger.info(
             f"RetryTestWorkflow starting for test {test_definition_id}, "

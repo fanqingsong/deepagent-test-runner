@@ -57,6 +57,7 @@ class UpdateScheduleNextRunOutput:
 class ExecuteScheduledTestInput:
     """Input for execute_scheduled_test activity."""
     schedule_id: int
+    test_definition_id: str
 
 
 @dataclass
@@ -190,12 +191,12 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
     1. Loads the schedule from database
     2. Updates last_run_time and calculates next_run_time
     3. Checks execution limits
-    4. Resolves target test definitions
+    4. Uses the provided test_definition_id
     5. Creates test run record
-    6. Queues test execution for each test definition
+    6. Returns execution details for the workflow
 
     Args:
-        input: ExecuteScheduledTestInput with schedule_id
+        input: ExecuteScheduledTestInput with schedule_id and test_definition_id
 
     Returns:
         ExecuteScheduledTestOutput with execution results
@@ -203,9 +204,10 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
     import uuid
 
     schedule_id = input.schedule_id
+    test_definition_id = input.test_definition_id
     run_id = str(uuid.uuid4())
 
-    logger.info(f"Executing scheduled test for schedule_id={schedule_id}, run_id={run_id}")
+    logger.info(f"Executing scheduled test for schedule_id={schedule_id}, test_definition_id={test_definition_id}, run_id={run_id}")
 
     async def _execute(db: AsyncSession) -> ExecuteScheduledTestOutput:
         # Load schedule
@@ -259,30 +261,22 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
                 tests_queued=0
             )
 
-        # Resolve target test definitions
+        # Use the provided test_definition_id directly
+        # Convert to int if it's a string, since the workflow passes it as str
         try:
-            test_definition_ids = await exec_service.resolve_target_tests(schedule, db)
-        except Exception as e:
-            logger.error(f"Failed to resolve target tests for schedule {schedule_id}: {e}")
+            test_def_id_int = int(test_definition_id) if isinstance(test_definition_id, str) else test_definition_id
+            test_definition_ids = [test_def_id_int]
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid test_definition_id {test_definition_id}: {e}")
             return ExecuteScheduledTestOutput(
                 schedule_id=schedule_id,
                 run_id=None,
                 success=False,
-                message=f"Failed to resolve target tests: {str(e)}",
+                message=f"Invalid test_definition_id: {str(e)}",
                 tests_queued=0
             )
 
-        if not test_definition_ids:
-            logger.warning(f"No test definitions found for schedule {schedule_id}")
-            return ExecuteScheduledTestOutput(
-                schedule_id=schedule_id,
-                run_id=None,
-                success=False,
-                message="No test definitions found",
-                tests_queued=0
-            )
-
-        logger.info(f"Executing {len(test_definition_ids)} tests for schedule {schedule_id}")
+        logger.info(f"Executing test {test_definition_id} for schedule {schedule_id}")
 
         # Build environment
         environment = exec_service.build_environment(schedule)
@@ -302,14 +296,14 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
         # The workflow will trigger child workflows or activities for each test.
         # This activity just prepares the execution.
 
-        logger.info(f"Successfully prepared execution of {len(test_definition_ids)} tests for run {run_id}")
+        logger.info(f"Successfully prepared execution of test {test_definition_id} for run {run_id}")
 
         return ExecuteScheduledTestOutput(
             schedule_id=schedule_id,
             run_id=run_id,
             success=True,
-            message=f"Prepared {len(test_definition_ids)} tests for execution",
-            tests_queued=len(test_definition_ids),
+            message=f"Prepared test {test_definition_id} for execution",
+            tests_queued=1,
             test_definition_ids=test_definition_ids,
             environment=environment
         )

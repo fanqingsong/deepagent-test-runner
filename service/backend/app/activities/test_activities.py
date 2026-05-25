@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class PrepareTestInput:
     """Input for prepare_test activity."""
 
-    test_definition_id: int
+    test_definition_id: str
     run_id: str
     environment: Dict[str, Any]
 
@@ -37,7 +37,7 @@ class PrepareTestInput:
 class PrepareTestOutput:
     """Output from prepare_test activity."""
 
-    test_definition_id: int
+    test_definition_id: str
     run_id: str
     url: Optional[str]
     test_goal: Optional[str]
@@ -50,7 +50,7 @@ class BrowserAutomationInput:
     """Input for run_browser_automation activity."""
 
     run_id: str
-    test_definition_id: int
+    test_definition_id: str
     url: Optional[str]
     test_goal: Optional[str]
     test_steps: List[Dict[str, Any]]
@@ -62,7 +62,7 @@ class BrowserAutomationOutput:
     """Output from run_browser_automation activity."""
 
     run_id: str
-    test_definition_id: int
+    test_definition_id: str
     status: str
     test_cases: List[Dict[str, Any]]
     error: Optional[str]
@@ -109,9 +109,15 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
     Returns:
         PrepareTestOutput with all data needed for execution
     """
-    test_definition_id = input.test_definition_id
+    test_definition_id_str = input.test_definition_id
     run_id = input.run_id
     environment = input.environment or {}
+
+    # Convert string test_definition_id to int for database operations
+    try:
+        test_definition_id = int(test_definition_id_str)
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid test_definition_id '{test_definition_id_str}': {e}")
 
     logger.info(f"Preparing test {test_definition_id} for run {run_id}")
 
@@ -188,7 +194,7 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
             mode = "full_pipeline"
 
         return PrepareTestOutput(
-            test_definition_id=test_definition_id,
+            test_definition_id=test_definition_id_str,  # Return string version
             run_id=run_id,
             url=test_url,
             test_goal=test_goal,
@@ -224,12 +230,18 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
     from app.agents.supervisor_graph import build_pipeline_graph
 
     run_id = input.run_id
-    test_definition_id = input.test_definition_id
+    test_definition_id_str = input.test_definition_id
     test_url = input.url
     test_goal = input.test_goal
     test_steps = input.test_steps
     environment = input.environment or {}
     mode = input.mode
+
+    # Convert string test_definition_id to int for database operations
+    try:
+        test_definition_id = int(test_definition_id_str)
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid test_definition_id '{test_definition_id_str}': {e}")
 
     logger.info(f"Starting browser automation for run {run_id} (mode={mode})")
 
@@ -329,7 +341,7 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
 
     return BrowserAutomationOutput(
         run_id=run_id,
-        test_definition_id=test_definition_id,
+        test_definition_id=test_definition_id_str,  # Return string version
         status=result.get("status", "unknown"),
         test_cases=test_cases,
         error=result.get("error"),
