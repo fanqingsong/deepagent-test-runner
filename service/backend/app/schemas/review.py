@@ -23,6 +23,8 @@ class ReviewItemResponse(BaseModel):
     reviewed_by: Optional[str] = None
     reviewed_at: Optional[datetime] = None
     rejection_reason: Optional[str] = None
+    version_id: Optional[int] = None
+    version_number: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

@@ -67,6 +67,29 @@ async def list_users(
     return enriched
 
 
+@router.get("/search", response_model=List[dict])
+async def search_users(
+    q: str = "",
+    limit: int = 10,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search users by username or email. Returns id, username, email."""
+    if not q or len(q) < 1:
+        return []
+
+    pattern = f"%{q}%"
+    stmt = (
+        select(User)
+        .where((User.username.ilike(pattern)) | (User.email.ilike(pattern)))
+        .where(User.is_active == True)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    users = result.scalars().all()
+    return [{"id": u.id, "username": u.username, "email": u.email} for u in users]
+
+
 @router.get("/{user_id}", response_model=UserWithRoles)
 async def get_user(
     user_id: int,

@@ -4,6 +4,7 @@ Workflows for maintenance tasks.
 """
 import logging
 from datetime import timedelta
+from typing import Any, Dict
 from temporalio import workflow
 
 from app.activities import get_default_retry_policy
@@ -16,7 +17,7 @@ from app.activities.maintenance_activities import (
 logger = logging.getLogger(__name__)
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class CleanupTestRunsWorkflow:
     """Workflow for cleaning up old test runs."""
 
@@ -35,7 +36,7 @@ class CleanupTestRunsWorkflow:
         return result
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class CleanupSessionsWorkflow:
     """Workflow for cleaning up expired sessions."""
 
@@ -53,7 +54,7 @@ class CleanupSessionsWorkflow:
         return result
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class CleanupAuditLogsWorkflow:
     """Workflow for cleaning up old audit logs."""
 

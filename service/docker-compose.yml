@@ -46,7 +46,7 @@ services:
     image: temporalio/auto-setup:latest
     container_name: deepagent-tester-temporal
     environment:
-      - DB=postgresql
+      - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=cc_test_user
       - POSTGRES_PWD=${POSTGRES_PASSWORD}
@@ -60,7 +60,7 @@ services:
     networks:
       - test-network
     healthcheck:
-      test: ["CMD", "tctl", "--address", "localhost:7233", "cluster", "health"]
+      test: ["CMD-SHELL", "tctl --address $(hostname -i):7233 cluster health"]
       interval: 10s
       timeout: 5s
       retries: 5

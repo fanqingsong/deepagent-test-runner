@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getTestCasePermissions, addTestCasePermission,
   updateTestCasePermission, removeTestCasePermission,
+  searchUsers,
 } from '../../api';
 import PermissionGate from '../PermissionGate';
 import './test-cases-shared.css';
@@ -19,9 +20,19 @@ export default function TestCasePermissionTab({ testCaseId }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [addUserId, setAddUserId] = useState('');
   const [addPermType, setAddPermType] = useState('view');
   const [adding, setAdding] = useState(false);
+
+  // User search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const searchRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const debounceRef = useRef(null);
 
   const loadPermissions = useCallback(async () => {
     if (!testCaseId) return;
@@ -39,16 +50,65 @@ export default function TestCasePermissionTab({ testCaseId }) {
 
   useEffect(() => { loadPermissions(); }, [loadPermissions]);
 
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        searchRef.current && !searchRef.current.contains(e.target) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setSelectedUser(null);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!value.trim()) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setSearching(true);
+        const users = await searchUsers(value.trim());
+        setSearchResults(users);
+        setHighlightIndex(-1);
+        setShowDropdown(true);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  };
+
+  const handleSelectUser = (user) => {
+    setSelectedUser(user);
+    setSearchQuery(`${user.username} (${user.email})`);
+    setShowDropdown(false);
+  };
+
   const handleAdd = async () => {
-    if (!addUserId.trim()) return;
+    if (!selectedUser) return;
     try {
       setAdding(true);
       setError(null);
       await addTestCasePermission(testCaseId, {
-        userId: parseInt(addUserId),
+        userId: selectedUser.id,
         permissionType: addPermType,
       });
-      setAddUserId('');
+      setSelectedUser(null);
+      setSearchQuery('');
+      setSearchResults([]);
       setAddPermType('view');
       await loadPermissions();
     } catch (e) {
@@ -96,35 +156,85 @@ export default function TestCasePermissionTab({ testCaseId }) {
       <PermissionGate permission="update:app">
         <div className="test-case-section">
           <h3 className="test-case-section-title">Add Collaborator</h3>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              type="number"
-              placeholder="User ID"
-              value={addUserId}
-              onChange={(e) => setAddUserId(e.target.value)}
-              style={{
-                background: '#f4f4f4',
-                border: 'none',
-                borderBottom: '1px solid #8d8d8d',
-                padding: '8px 12px',
-                fontSize: '14px',
-                width: '120px',
-                outline: 'none',
-                fontFamily: 'inherit',
-              }}
-            />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <div style={{ position: 'relative', flex: 1, maxWidth: '280px' }}>
+              <input
+                type="text"
+                placeholder="Search by username or email..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
+                onKeyDown={(e) => {
+                  if (!showDropdown || searchResults.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightIndex((i) => (i + 1) % searchResults.length);
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightIndex((i) => (i - 1 + searchResults.length) % searchResults.length);
+                  } else if (e.key === 'Enter' && highlightIndex >= 0) {
+                    e.preventDefault();
+                    handleSelectUser(searchResults[highlightIndex]);
+                  } else if (e.key === 'Escape') {
+                    setShowDropdown(false);
+                  }
+                }}
+                ref={searchRef}
+                className="test-case-workspace-field-input"
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+              {showDropdown && (
+                <div
+                  ref={dropdownRef}
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: '#fff',
+                    border: '1px solid #e0e0e0',
+                    borderTop: 'none',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 100,
+                  }}
+                >
+                  {searching && (
+                    <div style={{ padding: '8px 12px', color: '#8d8d8d', fontSize: '13px' }}>
+                      Searching...
+                    </div>
+                  )}
+                  {!searching && searchResults.length === 0 && (
+                    <div style={{ padding: '8px 12px', color: '#8d8d8d', fontSize: '13px' }}>
+                      No users found
+                    </div>
+                  )}
+                  {searchResults.map((user, idx) => (
+                    <div
+                      key={user.id}
+                      onClick={() => handleSelectUser(user)}
+                      style={{
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        borderBottom: '1px solid #f4f4f4',
+                        background: idx === highlightIndex ? '#f4f4f4' : 'transparent',
+                      }}
+                      onMouseEnter={() => setHighlightIndex(idx)}
+                      onMouseLeave={() => setHighlightIndex(-1)}
+                    >
+                      <div style={{ fontWeight: 600, color: '#161616' }}>{user.username}</div>
+                      <div style={{ fontSize: '11px', color: '#8d8d8d' }}>{user.email}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <select
               value={addPermType}
               onChange={(e) => setAddPermType(e.target.value)}
-              style={{
-                background: '#f4f4f4',
-                border: 'none',
-                borderBottom: '1px solid #8d8d8d',
-                padding: '8px 12px',
-                fontSize: '14px',
-                outline: 'none',
-                fontFamily: 'inherit',
-              }}
+              className="test-case-workspace-field-input"
+              style={{ width: 'auto' }}
             >
               {PERMISSION_TYPES.map(t => (
                 <option key={t} value={t}>{PERMISSION_LABELS[t]}</option>
@@ -133,11 +243,16 @@ export default function TestCasePermissionTab({ testCaseId }) {
             <button
               className="test-case-workspace-run-btn"
               onClick={handleAdd}
-              disabled={!addUserId.trim() || adding}
+              disabled={!selectedUser || adding}
             >
               {adding ? 'Adding...' : 'Add'}
             </button>
           </div>
+          {selectedUser && (
+            <div style={{ marginTop: '6px', fontSize: '12px', color: '#198038' }}>
+              Selected: {selectedUser.username} (ID: {selectedUser.id})
+            </div>
+          )}
         </div>
       </PermissionGate>
 
@@ -152,7 +267,7 @@ export default function TestCasePermissionTab({ testCaseId }) {
 
         {permissions.length === 0 ? (
           <p style={{ color: '#8d8d8d', fontSize: '13px' }}>
-            No collaborators yet. Add a user by their ID above.
+            No collaborators yet. Search for a user above to add them.
           </p>
         ) : (
           <table className="test-case-workspace-steps-table">

@@ -312,6 +312,11 @@ class AppService:
 
         if existing_steps:
             snapshot_data = {
+                "name": app.name,
+                "url": app.url,
+                "test_goal": app.test_goal,
+                "description": app.description,
+                "test_context": app.test_context or {},
                 "steps": [
                     {
                         "step_number": s.step_number,
@@ -411,6 +416,8 @@ class AppService:
                 "snapshot": v.snapshot,
                 "change_description": desc,
                 "run_status": run_status,
+                "review_status": v.review_status or "draft",
+                "rejection_reason": v.rejection_reason,
                 "created_at": v.created_at.isoformat() if v.created_at else None,
             })
         return out
@@ -457,6 +464,39 @@ class AppService:
             "app_id": app.id,
             "restored_from_version": version.version,
             "steps_count": count,
+        }
+
+    async def submit_version_for_review(self, app_id: int, version_id: int) -> dict:
+        """Submit an existing version for admin review."""
+        from app.models.test_version import TestVersion
+
+        app = await self.get_app(app_id)
+        if not app:
+            raise ValueError(f"App {app_id} not found")
+        if not app.test_definition_id:
+            raise ValueError("App has no test definition")
+
+        ver_stmt = select(TestVersion).where(
+            TestVersion.id == version_id,
+            TestVersion.test_definition_id == app.test_definition_id,
+        )
+        version = (await self.db.execute(ver_stmt)).scalar_one_or_none()
+        if not version:
+            raise ValueError("Version not found")
+
+        if version.review_status not in ("draft", "rejected"):
+            raise ValueError(f"Cannot submit version with status '{version.review_status}'")
+
+        version.review_status = "pending_review"
+        version.rejection_reason = None
+        app.status = "pending_review"
+        await self.db.commit()
+
+        return {
+            "app_id": app.id,
+            "version_id": version.id,
+            "version": version.version,
+            "review_status": "pending_review",
         }
 
     # ------------------------------------------------------------------
@@ -632,7 +672,6 @@ class AppService:
         if test_def:
             test_def.name = app.name
             test_def.description = app.description or app.test_goal
-            # Auto-tag
             auto_tags = ["app-generated", "submitted", f"app-{app.id}"]
             existing_tags = list(test_def.tags or [])
             for t in auto_tags:
@@ -642,10 +681,31 @@ class AppService:
         else:
             test_def = await self._ensure_draft_test_definition(app, app.current_plan or {})
 
-        # Persist steps before submitting
+        # Persist steps (this also creates a version snapshot)
         await self._persist_steps(app, test_def)
 
-        # Submit for admin review instead of directly publishing
+        # Create a full-config version snapshot and submit it for review
+        from app.models.test_version import TestVersion
+        steps = (app.current_plan or {}).get("steps", [])
+        version_snapshot = {
+            "name": app.name,
+            "url": app.url,
+            "test_goal": app.test_goal,
+            "description": app.description,
+            "test_context": app.test_context or {},
+            "steps": steps,
+        }
+        review_version = TestVersion(
+            test_definition_id=test_def.id,
+            version=test_def.version,
+            snapshot=version_snapshot,
+            change_description="Submitted for review",
+            review_status="pending_review",
+            created_by="user",
+        )
+        self.db.add(review_version)
+        test_def.version += 1
+
         test_def.review_status = "pending_review"
         app.status = "pending_review"
         await self.db.commit()
@@ -657,6 +717,8 @@ class AppService:
             "test_id": test_def.test_id,
             "name": test_def.name,
             "status": "pending_review",
+            "version_id": review_version.id,
+            "version": review_version.version,
         }
 
     # ------------------------------------------------------------------

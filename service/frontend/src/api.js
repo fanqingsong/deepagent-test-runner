@@ -439,6 +439,15 @@ export const restoreTestCaseStepVersion = async (testCaseId, versionId) => {
   return response.json();
 };
 
+export const submitVersionForReview = async (testCaseId, versionId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to submit version for review'));
+  return response.json();
+};
+
 export const refineTestCase = async (testCaseId, feedback) => {
   const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/refine`, {
     method: 'POST',
@@ -455,6 +464,13 @@ export const publishTestCase = async (testCaseId) => {
     headers: { 'Content-Type': 'application/json' },
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to publish Test Case'));
+  return response.json();
+};
+
+// User Search
+export const searchUsers = async (query) => {
+  const response = await apiFetch(`${USERS_API}/users/search?q=${encodeURIComponent(query)}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to search users'));
   return response.json();
 };
 
@@ -733,6 +749,25 @@ export const rejectTest = async (testDefId, reason) => {
     body: JSON.stringify({ reason }),
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to reject test'));
+  return response.json();
+};
+
+export const approveVersion = async (versionId) => {
+  const response = await apiFetch(`${TEST_API}/reviews/versions/${versionId}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to approve version'));
+  return response.json();
+};
+
+export const rejectVersion = async (versionId, reason) => {
+  const response = await apiFetch(`${TEST_API}/reviews/versions/${versionId}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to reject version'));
   return response.json();
 };
 

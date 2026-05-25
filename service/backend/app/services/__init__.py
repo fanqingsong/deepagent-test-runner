@@ -1,5 +1,3 @@
-from app.core.celery_app import celery_app
-
 # Lazy initialization - instances created when first accessed
 _schedule_manager = None
 _execution_service = None
@@ -11,8 +9,7 @@ def get_schedule_manager():
     global _schedule_manager
     if _schedule_manager is None:
         from app.services.schedule_manager import ScheduleManager
-        from app.core.celery_app import celery_app
-        _schedule_manager = ScheduleManager(None, celery_app)
+        _schedule_manager = ScheduleManager(None, None)
     return _schedule_manager
 
 

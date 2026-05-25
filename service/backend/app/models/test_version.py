@@ -15,6 +15,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.test_definition import TestDefinition
+    from app.models.user import User
 
 
 class TestVersion(Base):
@@ -23,6 +24,7 @@ class TestVersion(Base):
 
     Stores snapshots of test definitions for version history and rollback.
     The snapshot field contains the complete test definition as JSON.
+    Each version can be independently submitted for review.
     """
 
     __tablename__ = "test_versions"
@@ -42,6 +44,17 @@ class TestVersion(Base):
     snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
     change_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Review workflow
+    review_status: Mapped[str] = mapped_column(
+        String(20), default="draft", nullable=False,
+        comment="draft|pending_review|approved|rejected",
+    )
+    reviewed_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"), nullable=True,
+    )
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # Metadata
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -56,6 +69,9 @@ class TestVersion(Base):
         "TestDefinition",
         back_populates="test_versions"
     )
+    reviewer: Mapped[Optional["User"]] = relationship(
+        "User", foreign_keys=[reviewed_by],
+    )
 
     def __repr__(self) -> str:
-        return f"<TestVersion(id={self.id}, version={self.version}, test_definition_id={self.test_definition_id})>"
+        return f"<TestVersion(id={self.id}, version={self.version}, review_status='{self.review_status}')>"

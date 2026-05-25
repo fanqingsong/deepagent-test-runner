@@ -1,5 +1,5 @@
 """
-Reviews API Endpoints — Admin approval workflow for tests and suites.
+Reviews API Endpoints — Admin approval workflow for tests, suites, and versions.
 """
 
 import logging
@@ -14,6 +14,7 @@ from app.core.permissions import RequirePermission
 from app.core.security import get_current_user
 from app.models.test_definition import TestDefinition
 from app.models.test_suite import TestSuite
+from app.models.test_version import TestVersion
 from app.models.user import User
 from app.schemas.review import (
     PendingReviewListResponse,
@@ -32,26 +33,30 @@ async def list_pending_tests(
     current_user: User = Depends(RequirePermission("review:test")),
 ):
     stmt = (
-        select(TestDefinition)
-        .where(TestDefinition.review_status == "pending_review")
-        .order_by(TestDefinition.updated_at.desc())
+        select(TestVersion, TestDefinition)
+        .join(TestDefinition, TestVersion.test_definition_id == TestDefinition.id)
+        .where(TestVersion.review_status == "pending_review")
+        .order_by(TestVersion.created_at.desc())
     )
     result = await db.execute(stmt)
-    tests = result.scalars().all()
+    rows = result.all()
+
     return [
         ReviewItemResponse(
-            id=t.id,
+            id=v.id,
             type="test",
-            name=t.name,
-            description=t.description,
-            review_status=t.review_status,
-            created_by=str(t.created_by) if t.created_by else None,
-            created_at=t.created_at,
-            reviewed_by=str(t.reviewed_by) if t.reviewed_by else None,
-            reviewed_at=t.reviewed_at,
-            rejection_reason=t.rejection_reason,
+            name=(v.snapshot or {}).get("name", td.name),
+            description=(v.snapshot or {}).get("description", td.description),
+            review_status=v.review_status,
+            created_by=v.created_by,
+            created_at=v.created_at,
+            reviewed_by=str(v.reviewed_by) if v.reviewed_by else None,
+            reviewed_at=v.reviewed_at,
+            rejection_reason=v.rejection_reason,
+            version_id=v.id,
+            version_number=v.version,
         )
-        for t in tests
+        for v, td in rows
     ]
 
 
@@ -92,24 +97,27 @@ async def list_all_pending(
     tests_resp = []
     if current_user.is_admin or current_user.has_permission("review:test"):
         stmt = (
-            select(TestDefinition)
-            .where(TestDefinition.review_status == "pending_review")
-            .order_by(TestDefinition.updated_at.desc())
+            select(TestVersion, TestDefinition)
+            .join(TestDefinition, TestVersion.test_definition_id == TestDefinition.id)
+            .where(TestVersion.review_status == "pending_review")
+            .order_by(TestVersion.created_at.desc())
         )
         result = await db.execute(stmt)
-        for t in result.scalars().all():
+        for v, td in result.all():
             tests_resp.append(
                 ReviewItemResponse(
-                    id=t.id,
+                    id=v.id,
                     type="test",
-                    name=t.name,
-                    description=t.description,
-                    review_status=t.review_status,
-                    created_by=str(t.created_by) if t.created_by else None,
-                    created_at=t.created_at,
-                    reviewed_by=str(t.reviewed_by) if t.reviewed_by else None,
-                    reviewed_at=t.reviewed_at,
-                    rejection_reason=t.rejection_reason,
+                    name=(v.snapshot or {}).get("name", td.name),
+                    description=(v.snapshot or {}).get("description", td.description),
+                    review_status=v.review_status,
+                    created_by=v.created_by,
+                    created_at=v.created_at,
+                    reviewed_by=str(v.reviewed_by) if v.reviewed_by else None,
+                    reviewed_at=v.reviewed_at,
+                    rejection_reason=v.rejection_reason,
+                    version_id=v.id,
+                    version_number=v.version,
                 )
             )
 
@@ -138,6 +146,89 @@ async def list_all_pending(
             )
 
     return PendingReviewListResponse(tests=tests_resp, suites=suites_resp)
+
+
+@router.post("/versions/{version_id}/approve")
+async def approve_version(
+    version_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RequirePermission("review:test")),
+):
+    stmt = select(TestVersion).where(TestVersion.id == version_id)
+    result = await db.execute(stmt)
+    version = result.scalar_one_or_none()
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    if version.review_status != "pending_review":
+        raise HTTPException(status_code=400, detail="Version is not pending review")
+
+    version.review_status = "approved"
+    version.reviewed_by = current_user.id
+    version.reviewed_at = datetime.utcnow()
+    version.rejection_reason = None
+
+    td_stmt = select(TestDefinition).where(TestDefinition.id == version.test_definition_id)
+    td_result = await db.execute(td_stmt)
+    test_def = td_result.scalar_one_or_none()
+    if test_def:
+        test_def.review_status = "approved"
+        test_def.reviewed_by = current_user.id
+        test_def.reviewed_at = datetime.utcnow()
+        test_def.is_draft = False
+        test_def.plan_generation_status = "approved"
+
+    from app.models.app import App
+    app_stmt = select(App).where(App.test_definition_id == version.test_definition_id)
+    app_result = await db.execute(app_stmt)
+    app = app_result.scalar_one_or_none()
+    if app:
+        app.status = "published"
+
+    await db.commit()
+
+    return {
+        "status": "approved",
+        "version_id": version.id,
+        "version": version.version,
+        "reviewed_by": current_user.id,
+    }
+
+
+@router.post("/versions/{version_id}/reject")
+async def reject_version(
+    version_id: int,
+    data: ReviewActionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RequirePermission("review:test")),
+):
+    stmt = select(TestVersion).where(TestVersion.id == version_id)
+    result = await db.execute(stmt)
+    version = result.scalar_one_or_none()
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    if version.review_status != "pending_review":
+        raise HTTPException(status_code=400, detail="Version is not pending review")
+
+    version.review_status = "rejected"
+    version.reviewed_by = current_user.id
+    version.reviewed_at = datetime.utcnow()
+    version.rejection_reason = data.reason
+
+    from app.models.app import App
+    app_stmt = select(App).where(App.test_definition_id == version.test_definition_id)
+    app_result = await db.execute(app_stmt)
+    app = app_result.scalar_one_or_none()
+    if app:
+        app.status = "passed"
+
+    await db.commit()
+
+    return {
+        "status": "rejected",
+        "version_id": version.id,
+        "version": version.version,
+        "rejection_reason": data.reason,
+    }
 
 
 @router.post("/tests/{test_def_id}/approve")

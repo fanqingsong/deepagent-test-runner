@@ -258,6 +258,21 @@ async def restore_step_version(
     return result
 
 
+@router.post("/{app_id}/step-versions/{version_id}/submit")
+async def submit_version_for_review(
+    app_id: int,
+    version_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RequirePermission("update:app")),
+):
+    svc = AppService(db)
+    try:
+        result = await svc.submit_version_for_review(app_id, version_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
 @router.get("/{app_id}/run-progress")
 async def get_run_progress(
     app_id: int,

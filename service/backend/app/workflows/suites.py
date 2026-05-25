@@ -14,7 +14,7 @@ from app.workflows.test_execution import TestExecutionWorkflow
 logger = logging.getLogger(__name__)
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class SuiteExecutionWorkflow:
     """
     Workflow for executing a test suite (multiple tests).

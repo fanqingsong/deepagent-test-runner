@@ -1,4 +1,7 @@
-from celery import shared_task
+try:
+    from celery import shared_task
+except ImportError:
+    shared_task = None
 from pydantic import BaseModel, EmailStr
 from typing import Dict, Any
 import smtplib
@@ -55,14 +58,6 @@ async def send_email_async(to_email: str, subject: str, template_name: str, cont
     )
 
 
-@shared_task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_backoff_max=700,
-    retry_kwargs={'max_retries': 3},
-    retry_jitter=True,
-)
 def send_email_task(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
     """Celery task wrapper for email sending."""
     try:

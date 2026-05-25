@@ -8,20 +8,21 @@ execute synchronously and can be retried on failure.
 
 from datetime import timedelta
 from temporalio import activity
+from temporalio.common import RetryPolicy
 
 # Activity retry policies
-def get_default_retry_policy() -> activity.RetryPolicy:
+def get_default_retry_policy() -> RetryPolicy:
     """Default retry policy for most activities."""
-    return activity.RetryPolicy(
+    return RetryPolicy(
         initial_interval=timedelta(seconds=1),
         backoff_coefficient=2.0,
         maximum_interval=timedelta(minutes=1),
         maximum_attempts=3,
     )
 
-def get_long_running_retry_policy() -> activity.RetryPolicy:
+def get_long_running_retry_policy() -> RetryPolicy:
     """Retry policy for long-running activities like browser automation."""
-    return activity.RetryPolicy(
+    return RetryPolicy(
         initial_interval=timedelta(seconds=5),
         backoff_coefficient=2.0,
         maximum_interval=timedelta(minutes=2),

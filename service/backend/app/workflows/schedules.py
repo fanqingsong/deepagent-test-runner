@@ -32,7 +32,7 @@ from app.workflows import DEFAULT_EXECUTION_TIMEOUT, DEFAULT_RUN_TIMEOUT
 logger = logging.getLogger(__name__)
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class ScheduleSyncWorkflow:
     """
     Workflow for synchronizing database schedules to Temporal cron schedules.
@@ -141,7 +141,7 @@ class ScheduleSyncWorkflow:
             }
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class ScheduleExecutionWorkflow:
     """
     Workflow for executing a scheduled test run.

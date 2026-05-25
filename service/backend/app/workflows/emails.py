@@ -13,7 +13,7 @@ from app.activities.email_activities import send_email
 logger = logging.getLogger(__name__)
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class EmailWorkflow:
     """
     Workflow for sending emails.

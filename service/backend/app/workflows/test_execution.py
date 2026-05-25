@@ -34,7 +34,7 @@ from app.workflows import DEFAULT_EXECUTION_TIMEOUT, DEFAULT_RUN_TIMEOUT
 logger = logging.getLogger(__name__)
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class TestExecutionWorkflow:
     """
     Workflow for executing a single test definition.
@@ -193,7 +193,7 @@ class TestExecutionWorkflow:
             }
 
 
-@workflow.defn
+@workflow.defn(sandboxed=False)
 class RetryTestWorkflow:
     """
     Workflow for retrying a test execution with modified parameters.

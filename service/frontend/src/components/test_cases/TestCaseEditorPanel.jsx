@@ -385,13 +385,6 @@ export default function TestCaseEditorPanel({ testCaseId, onToggleAuxPanel, auxP
           <span className={`studio-editor-status-badge status-${testCase?.status}`}>
             {STATUS_LABELS[testCase?.status] || testCase?.status}
           </span>
-          <PermissionGate permission="update:app">
-            {canPublish && (
-              <button className="studio-editor-publish-btn" onClick={handlePublish} disabled={publishing}>
-                {publishing ? 'Submitting...' : 'Submit for Review'}
-              </button>
-            )}
-          </PermissionGate>
           {testCase?.status === 'pending_review' && (
             <span className="studio-editor-published-tag" style={{ background: '#f1c21b', color: '#1c1c1c' }}>Pending Admin Review</span>
           )}
@@ -488,6 +481,7 @@ export default function TestCaseEditorPanel({ testCaseId, onToggleAuxPanel, auxP
         )}
         {activeTab === 'versions' && (
           <TestCaseVersionTab
+            testCaseId={testCaseId}
             stepVersions={stepVersions}
             viewingVersionId={viewingVersionId}
             viewedSteps={viewedSteps}
@@ -502,6 +496,7 @@ export default function TestCaseEditorPanel({ testCaseId, onToggleAuxPanel, auxP
             onViewVersion={handleViewVersion}
             onRestoreVersion={handleRestoreVersion}
             onBackToCurrent={handleBackToCurrent}
+            onVersionSubmitted={loadTestCase}
           />
         )}
         {activeTab === 'permissions' && (

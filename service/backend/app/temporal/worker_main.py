@@ -53,7 +53,7 @@ async def run_worker():
 
     # Connect to Temporal server
     client = await Client.connect(
-        target=settings.host_url,
+        target_host=settings.host_url,
         namespace=settings.namespace
     )
 
