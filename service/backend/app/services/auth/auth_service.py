@@ -9,6 +9,7 @@ import logging
 from app.models.auth import EmailToken
 from app.models.user import User
 from app.models.role import Role, user_roles
+from sqlalchemy import insert
 from app.core.auth_security import hash_password, hash_email_token, generate_secure_token, verify_password
 from app.utils.password import validate_password_strength
 from app.utils.email import is_valid_email_format, normalize_email, send_email
@@ -85,12 +86,14 @@ class AuthService:
             db.add(user)
             await db.flush()
 
-            # Assign default tester role
+            # Assign default tester role via association table (avoids lazy-load in async)
             tester_role = (await db.execute(
                 select(Role).where(Role.name == "tester")
             )).scalar_one_or_none()
             if tester_role:
-                user.roles.append(tester_role)
+                await db.execute(
+                    insert(user_roles).values(user_id=user.id, role_id=tester_role.id)
+                )
 
             # Generate email verification token
             verification_token = generate_secure_token()
@@ -106,7 +109,6 @@ class AuthService:
 
             db.add(email_token)
             await db.commit()
-            await db.refresh(user, ["roles"])
 
             # Send verification email directly (non-blocking)
             verification_url = (

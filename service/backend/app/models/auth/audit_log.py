@@ -18,7 +18,7 @@ class AuditLog(Base):
     event_type = Column(String(100), nullable=False, index=True)  # login, logout, mfa_enabled, password_changed, etc.
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
-    event_metadata = Column(JSON, nullable=True)  # Additional event context
+    event_metadata = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     auto_delete_at = Column(DateTime, nullable=False, index=True)
 

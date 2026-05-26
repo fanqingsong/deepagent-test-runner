@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { SuspendIcon, ReactivateIcon } from '../Icons';
 import './UserManagement.css';
 
 function UserManagement() {
@@ -174,9 +175,23 @@ function UserManagement() {
                   <td>
                     <div className="action-buttons">
                       {user.status === 'active' ? (
-                        <button className="btn-suspend" onClick={() => handleSuspend(user.id, user.email)}>Suspend</button>
+                        <button
+                          className="btn-icon btn-suspend"
+                          onClick={() => handleSuspend(user.id, user.email)}
+                          title="Suspend"
+                          aria-label={`Suspend ${user.email}`}
+                        >
+                          <SuspendIcon size={16} />
+                        </button>
                       ) : (
-                        <button className="btn-reactivate" onClick={() => handleReactivate(user.id, user.email)}>Reactivate</button>
+                        <button
+                          className="btn-icon btn-reactivate"
+                          onClick={() => handleReactivate(user.id, user.email)}
+                          title="Reactivate"
+                          aria-label={`Reactivate ${user.email}`}
+                        >
+                          <ReactivateIcon size={16} />
+                        </button>
                       )}
                     </div>
                   </td>

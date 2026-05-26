@@ -272,7 +272,10 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Studio}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8085}
-      # Observability Settings
+      # Temporal Configuration
+      TEMPORAL_HOST_URL: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: unified-backend-task-queue
       PROMETHEUS_ENABLED: "true"
       LOKI_ENABLED: "true"
       JAEGER_ENABLED: "false"

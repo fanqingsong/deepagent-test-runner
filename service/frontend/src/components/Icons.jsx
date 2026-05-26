@@ -147,3 +147,18 @@ export const TrashIcon = ({ size = 20 }) => (
     <path d="M12 2h8v2h-8z"/>
   </svg>
 );
+
+export const SuspendIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2zm0 26a12 12 0 1 1 12-12 12 12 0 0 1-12 12z"/>
+    <rect x="15" y="8" width="2" height="12"/>
+    <rect x="15" y="22" width="2" height="2"/>
+  </svg>
+);
+
+export const ReactivateIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 4A12 12 0 0 0 4 16h2A10 10 0 1 1 8.1 9L6 6.9V12h2V8.5A12 12 0 1 0 16 4z"/>
+    <path d="M15 11v7h6v-2h-4v-5h-2z"/>
+  </svg>
+);

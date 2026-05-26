@@ -51,6 +51,12 @@ def upgrade() -> None:
     op.drop_constraint('email_tokens_user_id_fkey', 'email_tokens', type_='foreignkey')
     op.drop_constraint('audit_logs_user_id_fkey', 'audit_logs', type_='foreignkey')
 
+    # Clean orphan records referencing users that no longer exist
+    op.execute("DELETE FROM email_tokens WHERE user_id NOT IN (SELECT id FROM users)")
+    op.execute("DELETE FROM mfa_secrets WHERE user_id NOT IN (SELECT id FROM users)")
+    op.execute("DELETE FROM user_sessions WHERE user_id NOT IN (SELECT id FROM users)")
+    op.execute("UPDATE audit_logs SET user_id = NULL WHERE user_id NOT IN (SELECT id FROM users)")
+
     # Create new foreign keys pointing to users table
     op.create_foreign_key('user_sessions_user_id_fkey', 'user_sessions', 'users', ['user_id'], ['id'], ondelete='CASCADE')
     op.create_foreign_key('mfa_secrets_user_id_fkey', 'mfa_secrets', 'users', ['user_id'], ['id'], ondelete='CASCADE')
@@ -71,11 +77,8 @@ def upgrade() -> None:
     """)
 
     # Drop old column and rename new one
-    # Note: schedules.created_by was a string column, not a foreign key, so no constraint to drop
-    try:
-        op.drop_constraint('schedules_created_by_fkey', 'schedules', type_='foreignkey')
-    except Exception:
-        pass  # Constraint doesn't exist, which is expected
+    # Drop default constraint on created_by first
+    op.execute("ALTER TABLE schedules ALTER COLUMN created_by DROP DEFAULT")
     op.drop_column('schedules', 'created_by')
     op.alter_column('schedules', 'created_by_new', new_column_name='created_by')
 

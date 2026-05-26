@@ -175,7 +175,9 @@
 
 .btn-suspend,
 .btn-reactivate {
-  padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.875rem;
   font-weight: 400;
   font-family: inherit;
@@ -184,10 +186,17 @@
   transition: all 0.15s ease;
 }
 
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid;
+}
+
 .btn-suspend {
-  color: #161616;
+  color: #da1e28;
   background-color: #fff;
-  border: 1px solid #da1e28;
+  border-color: #da1e28;
 }
 
 .btn-suspend:hover {
@@ -196,13 +205,14 @@
 }
 
 .btn-reactivate {
-  color: #fff;
-  background-color: #24a148;
-  border: 1px solid #24a148;
+  color: #24a148;
+  background-color: #fff;
+  border-color: #24a148;
 }
 
 .btn-reactivate:hover {
-  background-color: #198e44;
+  background-color: #24a148;
+  color: #fff;
 }
 
 @media (max-width: 672px) {

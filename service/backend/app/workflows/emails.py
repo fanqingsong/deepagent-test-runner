@@ -4,7 +4,7 @@ Workflow for sending emails.
 """
 import logging
 from datetime import timedelta
-from typing import List, Dict, Any
+from typing import Dict, Any
 from temporalio import workflow
 
 from app.activities import get_default_retry_policy
@@ -16,37 +16,25 @@ logger = logging.getLogger(__name__)
 @workflow.defn(sandboxed=False)
 class EmailWorkflow:
     """
-    Workflow for sending emails.
+    Workflow for sending emails via Temporal.
     """
 
     @workflow.run
-    async def run(
-        self,
-        to_addresses: List[str],
-        subject: str,
-        body: str,
-        html_body: str = None
-    ) -> Dict[str, Any]:
+    async def run(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Send an email.
 
         Args:
-            to_addresses: List of recipient email addresses
-            subject: Email subject
-            body: Plain text body
-            html_body: Optional HTML body
+            email_data: Dict with keys: to_email, subject, template_name, context
 
         Returns:
             Dict with send status
         """
-        logger.info(f"Sending email to {len(to_addresses)} recipients")
+        logger.info(f"Sending email to {email_data.get('to_email')}")
 
         result = await workflow.execute_activity(
             send_email,
-            to_addresses,
-            subject,
-            body,
-            html_body,
+            email_data,
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=get_default_retry_policy()
         )

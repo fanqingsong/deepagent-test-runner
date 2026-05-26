@@ -20,7 +20,7 @@ async def get_temporal_client() -> Client:
     if _client is None:
         try:
             _client = await Client.connect(
-                target=settings.host_url,
+                settings.host_url,
                 namespace=settings.namespace
             )
         except Exception as e:
