@@ -7,8 +7,8 @@ from sqlalchemy import select
 from typing import Tuple, Optional
 import logging
 
-from app.models.auth import UserAccount
-from app.tasks.email_tasks import send_email_async
+from app.models.user import User
+from app.utils.email import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class AdminService:
             Tuple of (success, error_message)
         """
         # Get user to suspend
-        query = select(UserAccount).where(UserAccount.id == user_id)
+        query = select(User).where(User.id == user_id)
         result = await db.execute(query)
         user = result.scalar_one_or_none()
 
@@ -55,7 +55,7 @@ class AdminService:
             user.suspend(reason)
 
             # Send suspension email
-            await send_email_async(
+            await send_email(
                 to_email=user.email,
                 subject="Account Suspended",
                 template_name="account_suspended",
@@ -90,7 +90,7 @@ class AdminService:
             Tuple of (success, error_message)
         """
         # Get user to reactivate
-        query = select(UserAccount).where(UserAccount.id == user_id)
+        query = select(User).where(User.id == user_id)
         result = await db.execute(query)
         user = result.scalar_one_or_none()
 
@@ -105,7 +105,7 @@ class AdminService:
             user.reactivate()
 
             # Send reactivation email (reuse suspension template with positive message)
-            await send_email_async(
+            await send_email(
                 to_email=user.email,
                 subject="Account Reactivated",
                 template_name="account_suspended",
@@ -125,7 +125,7 @@ class AdminService:
     @staticmethod
     async def check_suspension_during_login(
         db: AsyncSession,
-        user: UserAccount
+        user: User
     ) -> Tuple[bool, Optional[str]]:
         """
         Check if user account is suspended during login.

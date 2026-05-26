@@ -1,9 +1,13 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from typing import TYPE_CHECKING
 from app.core.database import Base
 import pyotp
 import secrets
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class MFASecret(Base):
@@ -12,14 +16,14 @@ class MFASecret(Base):
     __tablename__ = "mfa_secrets"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     secret_hash = Column(String(255), nullable=False)
     is_enabled = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     enabled_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship("UserAccount", back_populates="mfa_secret")
+    user = relationship("User", back_populates="mfa_secret")
     recovery_codes = relationship("RecoveryCode", back_populates="mfa_secret", cascade="all, delete-orphan")
 
     def enable_mfa(self):

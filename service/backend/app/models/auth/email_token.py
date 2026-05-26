@@ -1,7 +1,11 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from typing import TYPE_CHECKING
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class EmailToken(Base):
@@ -10,7 +14,7 @@ class EmailToken(Base):
     __tablename__ = "email_tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     token_hash = Column(String(255), nullable=False, unique=True, index=True)
     token_type = Column(String(50), nullable=False)  # verification, password_reset
     expires_at = Column(DateTime, nullable=False, index=True)
@@ -18,7 +22,7 @@ class EmailToken(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    user = relationship("UserAccount", back_populates="email_tokens")
+    user = relationship("User", back_populates="email_tokens")
 
     def is_expired(self) -> bool:
         """Check if token is expired"""

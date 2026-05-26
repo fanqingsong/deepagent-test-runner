@@ -5,13 +5,16 @@ Represents a test execution schedule with cron-based timing.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String, func, ARRAY
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ARRAY, Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sqlalchemy.dialects.postgresql import JSONB
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Schedule(Base):
@@ -66,7 +69,17 @@ class Schedule(Base):
         server_default=func.now(),
         onupdate=datetime.utcnow
     )
-    created_by: Mapped[str] = mapped_column(String(100), default="system", nullable=False)
+    created_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True  # Allow NULL for system-created schedules
+    )
+
+    # Relationships
+    creator: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[created_by],
+        backref="schedules"
+    )
 
     def __repr__(self) -> str:
         return f"<Schedule(id={self.id}, name='{self.name}', type='{self.schedule_type}', active={self.is_active})>"

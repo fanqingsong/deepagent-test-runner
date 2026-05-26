@@ -7,7 +7,8 @@ import qrcode
 from io import BytesIO
 import base64
 
-from app.models.auth import UserAccount, MFASecret, RecoveryCode
+from app.models.auth import MFASecret, RecoveryCode
+from app.models.user import User
 from app.core.auth_security import generate_secure_token
 
 logger = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ class MFAService:
             await db.commit()
 
             # Get user email for provisioning URI
-            user_query = select(UserAccount).where(UserAccount.id == user_id)
+            user_query = select(User).where(User.id == user_id)
             user_result = await db.execute(user_query)
             user = user_result.scalar_one()
 
@@ -292,14 +293,14 @@ class MFAService:
 
         try:
             # Verify password first
-            user_query = select(UserAccount).where(UserAccount.id == user_id)
+            user_query = select(User).where(User.id == user_id)
             user_result = await db.execute(user_query)
             user = user_result.scalar_one_or_none()
 
             if not user:
                 return False, "User not found."
 
-            if not verify_password(password, user.password_hash):
+            if not verify_password(password, user.hashed_password):
                 return False, "Invalid password."
 
             # Get MFA secret

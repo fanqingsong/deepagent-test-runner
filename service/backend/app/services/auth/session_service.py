@@ -6,7 +6,8 @@ from typing import Optional, Tuple
 import secrets
 import logging
 
-from app.models.auth import UserAccount, UserSession
+from app.models.auth import UserSession
+from app.models.user import User
 from app.core.auth_security import verify_password, create_access_token, create_refresh_token, hash_password
 from app.core.auth_rate_limit import check_rate_limit
 from app.core.config import settings
@@ -21,7 +22,7 @@ class SessionService:
     @staticmethod
     async def create_user_session(
         db: AsyncSession,
-        user: UserAccount,
+        user: User,
         ip_address: str,
         user_agent: str,
         remember_me: bool = False

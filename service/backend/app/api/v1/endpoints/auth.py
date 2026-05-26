@@ -17,7 +17,7 @@ from app.services.auth.admin_service import AdminService
 from app.schemas.auth_user import User as AuthUser
 from app.core.security import get_current_user
 from app.core.rate_limit_decorator import rate_limit
-from app.models.auth.user_account import UserAccount
+from app.models.user import User
 from app.schemas.user import UserProfileUpdate
 
 router = APIRouter()
@@ -252,7 +252,7 @@ async def refresh_token(
 
     # Verify user still exists and is active
     result = await db.execute(
-        select(UserAccount).where(UserAccount.email == email)
+        select(User).where(User.email == email)
     )
     user = result.scalar_one_or_none()
 

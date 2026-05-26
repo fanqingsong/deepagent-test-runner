@@ -159,34 +159,6 @@ async def get_current_user(
     )
     user = result.scalar_one_or_none()
 
-    # Fallback: auto-create User from user_accounts if not found in users table
-    if user is None:
-        email = payload.get("email", "")
-        if email:
-            result = await db.execute(
-                select(User)
-                .options(selectinload(User.roles).selectinload(Role.permissions))
-                .where(User.email == email)
-            )
-            user = result.scalar_one_or_none()
-            if user is None:
-                user = User(
-                    username=email.split("@")[0],
-                    email=email,
-                    hashed_password="",
-                    is_active=True,
-                    is_admin=False,
-                )
-                db.add(user)
-                await db.commit()
-                await db.refresh(user)
-                result = await db.execute(
-                    select(User)
-                    .options(selectinload(User.roles).selectinload(Role.permissions))
-                    .where(User.id == user.id)
-                )
-                user = result.scalar_one_or_none()
-
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -284,34 +256,6 @@ async def get_current_user_ws(
         .where(User.id == int(user_id))
     )
     user = result.scalar_one_or_none()
-
-    # Fallback: auto-create User from user_accounts if not found in users table
-    if user is None:
-        email = payload.get("email", "")
-        if email:
-            result = await db.execute(
-                select(User)
-                .options(selectinload(User.roles).selectinload(Role.permissions))
-                .where(User.email == email)
-            )
-            user = result.scalar_one_or_none()
-            if user is None:
-                user = User(
-                    username=email.split("@")[0],
-                    email=email,
-                    hashed_password="",
-                    is_active=True,
-                    is_admin=False,
-                )
-                db.add(user)
-                await db.commit()
-                await db.refresh(user)
-                result = await db.execute(
-                    select(User)
-                    .options(selectinload(User.roles).selectinload(Role.permissions))
-                    .where(User.id == user.id)
-                )
-                user = result.scalar_one_or_none()
 
     if user is None:
         raise HTTPException(

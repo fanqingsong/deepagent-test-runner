@@ -1,7 +1,11 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from typing import TYPE_CHECKING
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class UserSession(Base):
@@ -10,7 +14,7 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     session_token = Column(String(255), nullable=False, unique=True, index=True)
     device_fingerprint = Column(String(255), nullable=True)
     user_agent = Column(String(500), nullable=True)
@@ -21,7 +25,7 @@ class UserSession(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    user = relationship("UserAccount", back_populates="sessions")
+    user = relationship("User", back_populates="sessions")
 
     def is_expired(self) -> bool:
         """Check if session is expired"""

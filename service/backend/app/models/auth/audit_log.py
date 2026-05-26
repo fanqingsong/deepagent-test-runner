@@ -1,7 +1,11 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class AuditLog(Base):
@@ -10,7 +14,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("user_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     event_type = Column(String(100), nullable=False, index=True)  # login, logout, mfa_enabled, password_changed, etc.
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
@@ -19,7 +23,7 @@ class AuditLog(Base):
     auto_delete_at = Column(DateTime, nullable=False, index=True)
 
     # Relationships
-    user = relationship("UserAccount", back_populates="audit_logs")
+    user = relationship("User", back_populates="audit_logs")
 
     @staticmethod
     def calculate_auto_delete_at(retention_days: int = 30) -> datetime:

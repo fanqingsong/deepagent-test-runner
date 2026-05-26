@@ -6,13 +6,12 @@ from typing import Optional, Tuple
 import secrets
 import logging
 
-from app.models.auth import UserAccount, EmailToken
+from app.models.auth import EmailToken
 from app.models.user import User
 from app.models.role import Role, user_roles
 from app.core.auth_security import hash_password, hash_email_token, generate_secure_token, verify_password
 from app.utils.password import validate_password_strength
-from app.utils.email import is_valid_email_format, normalize_email
-from app.tasks.email_tasks import send_email_async
+from app.utils.email import is_valid_email_format, normalize_email, send_email
 from app.core.auth_rate_limit import check_rate_limit
 from app.core.config import settings
 
@@ -34,7 +33,7 @@ class AuthService:
         Returns:
             True if email exists, False otherwise
         """
-        query = select(UserAccount).where(UserAccount.email == normalize_email(email))
+        query = select(User).where(User.email == normalize_email(email))
         result = await db.execute(query)
         return result.first() is not None
 
@@ -43,7 +42,7 @@ class AuthService:
         db: AsyncSession,
         email: str,
         password: str
-    ) -> Tuple[bool, Optional[str], Optional[UserAccount]]:
+    ) -> Tuple[bool, Optional[str], Optional[User]]:
         """
         Register a new user account.
 
@@ -72,37 +71,26 @@ class AuthService:
             return False, "Email already registered", None
 
         try:
-            # Create new user
-            user = UserAccount(
+            # Create new user with all fields
+            user = User(
+                username=normalized_email.split('@')[0],  # Optional username derived from email
                 email=normalized_email,
-                password_hash=hash_password(password),
+                hashed_password=hash_password(password),
                 is_verified=False,
-                status="active"
+                status="active",
+                is_active=True,
+                is_admin=False,
             )
 
             db.add(user)
             await db.flush()
 
-            # Sync to legacy users table and assign default tester role
-            await db.execute(
-                User.__table__.insert().values(
-                    username=normalized_email.split('@')[0],
-                    email=normalized_email,
-                    hashed_password=user.password_hash,
-                    is_active=True,
-                    is_admin=False,
-                )
-            )
-            legacy_user = (await db.execute(
-                select(User).where(User.email == normalized_email)
-            )).scalar_one()
+            # Assign default tester role
             tester_role = (await db.execute(
                 select(Role).where(Role.name == "tester")
             )).scalar_one_or_none()
             if tester_role:
-                await db.execute(
-                    user_roles.insert().values(user_id=legacy_user.id, role_id=tester_role.id)
-                )
+                user.roles.append(tester_role)
 
             # Generate email verification token
             verification_token = generate_secure_token()
@@ -118,14 +106,14 @@ class AuthService:
 
             db.add(email_token)
             await db.commit()
-            await db.refresh(user)
+            await db.refresh(user, ["roles"])
 
             # Send verification email directly (non-blocking)
             verification_url = (
                 f"{settings.FRONTEND_BASE_URL.rstrip('/')}/auth/verify-email"
                 f"?token={verification_token}"
             )
-            await send_email_async(
+            await send_email(
                 to_email=normalized_email,
                 subject="Verify Your Email Address",
                 template_name="verification",
@@ -148,7 +136,7 @@ class AuthService:
     async def verify_email(
         db: AsyncSession,
         token: str
-    ) -> Tuple[bool, Optional[str], Optional[UserAccount]]:
+    ) -> Tuple[bool, Optional[str], Optional[User]]:
         """
         Verify user email with token.
 
@@ -179,7 +167,7 @@ class AuthService:
 
         try:
             # Get user and mark as verified
-            user_query = select(UserAccount).where(UserAccount.id == email_token.user_id)
+            user_query = select(User).where(User.id == email_token.user_id)
             user_result = await db.execute(user_query)
             user = user_result.scalar_one()
 
@@ -204,7 +192,7 @@ class AuthService:
         email: str,
         password: str,
         ip_address: str
-    ) -> Tuple[bool, Optional[str], Optional[UserAccount]]:
+    ) -> Tuple[bool, Optional[str], Optional[User]]:
         """
         Authenticate user with email and password.
 
@@ -231,9 +219,9 @@ class AuthService:
             return False, f"Too many login attempts. Try again in {retry_after} seconds.", None
 
         # Find user by email
-        query = select(UserAccount).where(
-            UserAccount.email == normalized_email,
-            UserAccount.status == "active"
+        query = select(User).where(
+            User.email == normalized_email,
+            User.status == "active"
         )
         result = await db.execute(query)
         user = result.scalar_one_or_none()
@@ -247,7 +235,7 @@ class AuthService:
             return False, "Account is temporarily locked due to failed login attempts. Try again later.", None
 
         # Verify password
-        if not verify_password(password, user.password_hash):
+        if not verify_password(password, user.hashed_password):
             # Increment failed login attempts
             user.failed_login_attempts += 1
 
@@ -330,8 +318,6 @@ class AuthService:
         Returns:
             Tuple of (success, error_message, reset_token)
         """
-        from app.tasks.email_tasks import send_email_async
-
         # Normalize email
         normalized_email = normalize_email(email)
 
@@ -340,9 +326,9 @@ class AuthService:
             return False, "Invalid email format", None
 
         # Find user by email
-        query = select(UserAccount).where(
-            UserAccount.email == normalized_email,
-            UserAccount.status == "active"
+        query = select(User).where(
+            User.email == normalized_email,
+            User.status == "active"
         )
         result = await db.execute(query)
         user = result.scalar_one_or_none()
@@ -370,7 +356,7 @@ class AuthService:
 
             # Send reset email directly (non-blocking)
             reset_url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/auth/reset-password?token={reset_token}"
-            await send_email_async(
+            await send_email(
                 to_email=user.email,
                 subject="Reset Your Password",
                 template_name="password_reset",
@@ -389,7 +375,7 @@ class AuthService:
     async def verify_password_reset_token(
         db: AsyncSession,
         token: str
-    ) -> Tuple[bool, Optional[str], Optional[UserAccount]]:
+    ) -> Tuple[bool, Optional[str], Optional[User]]:
         """
         Verify password reset token.
 
@@ -420,7 +406,7 @@ class AuthService:
             return False, "Reset token has expired", None
 
         # Get user
-        user_query = select(UserAccount).where(UserAccount.id == email_token.user_id)
+        user_query = select(User).where(User.id == email_token.user_id)
         user_result = await db.execute(user_query)
         user = user_result.scalar_one_or_none()
 
@@ -459,7 +445,7 @@ class AuthService:
 
         try:
             # Hash new password
-            user.password_hash = hash_password(new_password)
+            user.hashed_password = hash_password(new_password)
 
             # Mark token as used
             hashed_token = hash_email_token(token)
@@ -507,7 +493,7 @@ class AuthService:
             Tuple of (success, error_message)
         """
         # Get user
-        query = select(UserAccount).where(UserAccount.id == user_id)
+        query = select(User).where(User.id == user_id)
         result = await db.execute(query)
         user = result.scalar_one_or_none()
 
@@ -515,7 +501,7 @@ class AuthService:
             return False, "User not found"
 
         # Verify current password
-        if not verify_password(current_password, user.password_hash):
+        if not verify_password(current_password, user.hashed_password):
             return False, "Current password is incorrect"
 
         # Validate new password strength
@@ -524,12 +510,12 @@ class AuthService:
             return False, validation_error
 
         # Check if new password is same as current
-        if verify_password(new_password, user.password_hash):
+        if verify_password(new_password, user.hashed_password):
             return False, "New password must be different from current password"
 
         try:
             # Update password
-            user.password_hash = hash_password(new_password)
+            user.hashed_password = hash_password(new_password)
 
             # Invalidate all other sessions for security
             from app.services.auth.session_service import SessionService

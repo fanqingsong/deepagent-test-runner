@@ -224,6 +224,7 @@ async def delete_user(
 
     Requires admin privileges.
     Cannot delete yourself.
+    Cascade deletes all related records (sessions, MFA, tokens, roles).
     """
     if user_id == current_user.id:
         raise HTTPException(
@@ -231,7 +232,11 @@ async def delete_user(
             detail="Cannot delete yourself",
         )
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.roles).selectinload(Role.permissions))
+        .where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
 
     if not user:
@@ -240,6 +245,7 @@ async def delete_user(
             detail="User not found",
         )
 
+    # Delete the User record (this will cascade to all related tables via FK constraints)
     await db.delete(user)
     await db.commit()
 
