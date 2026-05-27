@@ -271,7 +271,7 @@ async def chat_simple(
     current_user: User = Depends(RequirePermission("create:conversation")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Simple chat endpoint without conversation management (stateless)."""
+    """Simple chat endpoint with persistent conversation memory per user."""
     from app.core.database import async_session_maker
     from app.agent_tools.tool_context import set_current_user_id
 
@@ -284,19 +284,22 @@ async def chat_simple(
         # Use timeout to prevent hanging
         import asyncio
 
-        # Set timeout to 60 seconds
+        # Use user-specific thread_id for persistent conversation memory
+        thread_id = f"user_{current_user.id}"
+
+        # Set timeout to 180 seconds (3 minutes)
         result = await asyncio.wait_for(
             chat_agent.chat(
                 message=data.content,
-                thread_id=str(uuid.uuid4()),
+                thread_id=thread_id,
                 user_id=current_user.id,
                 current_user=current_user,
                 db=db,
             ),
-            timeout=60.0
+            timeout=180.0
         )
     except asyncio.TimeoutError:
-        logger.error("Chat request timed out after 60 seconds")
+        logger.error("Chat request timed out after 180 seconds")
         raise HTTPException(status_code=504, detail="Chat request timed out. Please try again.")
     except Exception as e:
         logger.error(f"Error processing message: {e}")

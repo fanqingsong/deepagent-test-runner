@@ -6,99 +6,158 @@ and executing actions with proper permission checks.
 """
 
 import logging
-from typing import Any, Dict, Optional
+import re
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, messages_from_dict
 from langgraph.checkpoint.memory import MemorySaver
 from deepagents import create_deep_agent
 
-from app.agent_tools.chat_tools import (
-    query_test_cases,
-    query_test_suites,
-    query_users,
-    query_roles,
-    set_user_role,
-    remove_user_role,
-    approve_test,
-    reject_test,
-    approve_suite,
-    reject_suite,
-    get_system_stats,
-)
 from app.core.agent_config import get_llm
 from app.agent_tools.tool_context import set_current_user_id, clear_current_user_id
+from app.agents.subagents import (
+    get_test_query_subagent,
+    get_user_admin_subagent,
+    get_test_reviewer_subagent,
+    get_analytics_subagent,
+)
 
 logger = logging.getLogger(__name__)
+
+
+class ConversationMemory:
+    """Short-term memory for chat conversations."""
+
+    def __init__(self, max_messages: int = 20):
+        """Initialize conversation memory.
+
+        Args:
+            max_messages: Maximum number of messages to keep in memory
+        """
+        self.max_messages = max_messages
+        self.user_profile: Dict[str, Any] = {}
+        self.key_facts: List[str] = []
+        self.last_summary: Optional[str] = None
+        self.message_count = 0
+
+    def add_fact(self, fact: str):
+        """Add a key fact to memory."""
+        if fact and fact not in self.key_facts:
+            self.key_facts.append(fact)
+            logger.info(f"[MEMORY] Added fact: {fact[:50]}...")
+
+    def update_profile(self, key: str, value: Any):
+        """Update user profile information."""
+        self.user_profile[key] = value
+        logger.info(f"[MEMORY] Updated profile: {key} = {value}")
+
+    def extract_info(self, text: str):
+        """Extract key information from user message."""
+        text_lower = text.lower()
+
+        # Extract name (patterns like "I am X", "My name is X", "Call me X")
+        name_patterns = [
+            r"(?:i am|i'm|my name is|call me)\s+([a-zA-Z]+)",
+            r"(?:我是|叫我)\s*([a-zA-Z一-龥]+)",
+        ]
+        for pattern in name_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                name = match.group(1).strip()
+                if name and len(name) > 1 and len(name) < 50:
+                    self.update_profile("name", name)
+                    self.add_fact(f"User's name is {name}")
+
+        # Extract preferences
+        if any(word in text_lower for word in ["prefer", "like", "want", "need"]):
+            self.add_fact(f"User preference: {text[:100]}")
+
+        # Extract project/work context
+        if any(word in text_lower for word in ["project", "working on", "testing"]):
+            self.add_fact(f"Work context: {text[:100]}")
+
+    def get_memory_context(self) -> str:
+        """Get memory context for system prompt."""
+        context_parts = []
+
+        if self.user_profile:
+            context_parts.append("**User Profile:**")
+            for key, value in self.user_profile.items():
+                context_parts.append(f"- {key}: {value}")
+
+        if self.key_facts:
+            context_parts.append("**Key Facts from Conversation:**")
+            context_parts.extend([f"- {fact}" for fact in self.key_facts[-5:]])
+
+        return "\n".join(context_parts) if context_parts else ""
 
 
 class ChatAgent:
     """Conversational AI assistant for the E2E testing platform."""
 
     def __init__(self):
-        """Initialize the chat agent using deepagents framework with subagents."""
+        """Initialize the chat agent using deepagents framework with compiled subagents."""
         self.checkpointer = MemorySaver()
 
         # Get LLM configuration from settings
         llm = get_llm(temperature=0.7, max_tokens=4096)
 
-        # Create deep agent with specialized subagents
+        # Per-user memory storage (keyed by user_id)
+        self.user_memories: Dict[int, ConversationMemory] = {}
+
+        # Create deep agent with specialized compiled subagents
         self.agent = create_deep_agent(
             model=llm,
             checkpointer=self.checkpointer,
             system_prompt=self._get_system_prompt(),
             subagents=[
-                {
-                    "name": "test-query",
-                    "description": "Query test cases and test suites. Use this when the user asks about existing tests, wants to search for test cases, or needs information about test suites.",
-                    "system_prompt": "You are a test query specialist. Search and retrieve test information accurately. When returning results, format them clearly with key details like test name, status, and any relevant metadata.",
-                    "tools": [query_test_cases, query_test_suites],
-                },
-                {
-                    "name": "user-admin",
-                    "description": "Manage users and their roles. Use this for user-related operations like viewing users, checking roles, assigning roles, or removing roles.",
-                    "system_prompt": "You handle user management operations. Always verify permissions before making changes. Explain clearly what changes will be made before executing them. When viewing users, present their information in an organized way.",
-                    "tools": [query_users, query_roles, set_user_role, remove_user_role],
-                },
-                {
-                    "name": "test-reviewer",
-                    "description": "Approve or reject test cases and test suites for publication. Use this when the user wants to review, approve, or reject tests.",
-                    "system_prompt": "You review test content before publication. Ensure quality standards are met. When approving or rejecting, explain your decision clearly. Always check that the user has the necessary permissions before proceeding.",
-                    "tools": [approve_test, reject_test, approve_suite, reject_suite],
-                },
-                {
-                    "name": "analytics",
-                    "description": "Provide system statistics and analytics reports. Use this when the user asks about system stats, metrics, or overall platform health.",
-                    "system_prompt": "You provide accurate system statistics and metrics. Present data in a clear, organized manner. Highlight key insights and trends when relevant.",
-                    "tools": [get_system_stats],
-                },
+                get_test_query_subagent(llm),
+                get_user_admin_subagent(llm),
+                get_test_reviewer_subagent(llm),
+                get_analytics_subagent(llm),
             ],
+            debug=True,
         )
 
-        logger.info("Chat agent initialized with deepagents framework and 4 subagents")
+        logger.info("Chat agent initialized with deepagents framework and 4 compiled subagents")
 
-    def _get_system_prompt(self) -> str:
+    def _get_memory(self, user_id: int) -> ConversationMemory:
+        """Get or create conversation memory for a user."""
+        if user_id not in self.user_memories:
+            self.user_memories[user_id] = ConversationMemory()
+        return self.user_memories[user_id]
+
+    def _get_system_prompt(self, memory_context: str = "") -> str:
         """Get the system prompt for the chat agent."""
-        return """You are an AI assistant for the E2E testing platform. You coordinate specialized subagents to help users with various tasks.
+        base_prompt = """You are an AI assistant for the E2E testing platform. You coordinate specialized subagents to help users with various tasks.
 
 **Your Role:**
-You are the main coordinator that routes user requests to appropriate specialized subagents. You have access to these subagents:
-- **test-query**: For searching and viewing test cases and test suites
-- **user-admin**: For managing users and their roles
-- **test-reviewer**: For approving or rejecting tests and suites
-- **analytics**: For system statistics and metrics
+You are the main coordinator that routes user requests to appropriate specialized subagents using the `task` tool.
 
 **How to Work:**
-1. Analyze the user's request to determine which subagent(s) to use
-2. Delegate the task to the appropriate subagent using the `task` tool
-3. When multiple subagents are needed, coordinate them sequentially
-4. Always provide clear, human-readable summaries of what the subagents found or did
+1. Analyze the user's request and delegate to the appropriate subagent
+2. When multiple subagents are needed, coordinate them sequentially
+3. Synthesize the subagent results into a helpful, human-readable response
 
-**Important Guidelines:**
-- After delegating to a subagent, synthesize the results into a helpful response for the user
+**Memory & Context:**
+Remember important information the user shares (name, preferences, project details). Use this context to provide personalized responses.
+
+**Response Guidelines:**
 - Don't just repeat the subagent output - explain it in context
-- For actions requiring permissions, make sure the subagent explains what will happen first
+- For actions requiring permissions, ensure the subagent explains what will happen first
 - When a user lacks permission, explain the requirement clearly
-- Be concise but thorough in your responses"""
+- Be concise but thorough"""
+
+        if memory_context:
+            return f"""{base_prompt}
+
+**Conversation Context:**
+{memory_context}
+
+Use this context to provide personalized and contextual responses."""
+
+        return base_prompt
 
     async def chat(
         self,
@@ -123,8 +182,20 @@ You are the main coordinator that routes user requests to appropriate specialize
         try:
             print(f"[CHAT DEBUG] Starting chat with message: {message[:100]}...")
 
+            # Get or create memory for this user
+            memory = self._get_memory(user_id)
+
+            # Extract information from user message
+            memory.extract_info(message)
+            memory.message_count += 1
+
             # Set the user context for tools
             set_current_user_id(user_id)
+
+            # Get memory context and update system prompt if needed
+            memory_context = memory.get_memory_context()
+            if memory_context:
+                print(f"[CHAT DEBUG] Using memory context with {len(memory.user_profile)} profile fields and {len(memory.key_facts)} facts")
 
             # Prepare the input for the agent
             agent_input = {
@@ -138,7 +209,7 @@ You are the main coordinator that routes user requests to appropriate specialize
                 }
             }
 
-            print(f"[CHAT DEBUG] Invoking Agent with thread_id: {thread_id}")
+            print(f"[CHAT DEBUG] Invoking Agent with user_id={user_id}, thread_id={thread_id}")
 
             # Invoke the deep agent
             result = await self.agent.ainvoke(agent_input, config=config)
@@ -150,11 +221,12 @@ You are the main coordinator that routes user requests to appropriate specialize
             response_content = None
             tool_result_content = None
 
-            # Debug: Log all messages
+            # Debug: Log all messages with full details
             print(f"[CHAT DEBUG] Total messages: {len(messages)}")
             for i, msg in enumerate(messages):
                 msg_type = getattr(msg, "type", "") or type(msg).__name__
-                content_preview = getattr(msg, "content", "")[:50]
+                content = getattr(msg, "content", "")
+                content_preview = content[:50] if content else ""
                 print(f"[CHAT DEBUG] Message {i}: type={msg_type}, content={content_preview}...")
 
             if messages:
@@ -176,11 +248,16 @@ You are the main coordinator that routes user requests to appropriate specialize
 
                     # Skip messages without meaningful content
                     content_stripped = content.strip() if content else ""
-                    if not content_stripped or content_stripped == "..." or len(content_stripped) < 10:
-                        print(f"[CHAT DEBUG] Skipping message with no meaningful content: '{content_stripped[:50]}'")
+                    if not content_stripped:
+                        print(f"[CHAT DEBUG] Skipping empty message")
                         continue
 
-                    # Found the response
+                    # Skip human messages (don't return user's own message as response)
+                    if msg_type == "human":
+                        print(f"[CHAT DEBUG] Skipping human message in response search")
+                        continue
+
+                    # Found the response (accept any non-empty AI content)
                     response_content = content
                     print(f"[CHAT DEBUG] Found response in {msg_type} message, length: {len(content)}")
                     break
