@@ -18,6 +18,7 @@ from app.models.conversation import ConversationThread, ConversationMessage
 from app.models.chat import ChatConversation, ChatMessage
 from app.models.app import App
 from app.models.run_config import RunConfig
+from app.models.llm_usage import LlmUsage
 
 __all__ = [
     "Role",
@@ -39,4 +40,5 @@ __all__ = [
     "ChatMessage",
     "App",
     "RunConfig",
+    "LlmUsage",
 ]

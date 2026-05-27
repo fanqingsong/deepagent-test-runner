@@ -643,3 +643,57 @@
     width: 100%;
   }
 }
+
+/* LLM Usage Stats */
+.llm-usage-stats {
+  border-top: 3px solid #0f62fe;
+}
+
+.llm-agent-breakdown {
+  grid-column: span 2;
+}
+
+.llm-agent-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.llm-agent-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.llm-agent-name {
+  width: 60px;
+  text-transform: capitalize;
+  color: #525252;
+  flex-shrink: 0;
+}
+
+.llm-agent-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.llm-agent-bar-fill {
+  height: 100%;
+  background: #0f62fe;
+  border-radius: 3px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.llm-agent-value {
+  width: 60px;
+  text-align: right;
+  color: #161616;
+  font-weight: 600;
+  flex-shrink: 0;
+}

@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDashboard, useSuiteTimeline, useSuiteRunEntries } from '../hooks/useDashboard';
+import { useLlmUsage } from '../hooks/useLlmUsage';
 import RefreshIndicator from './RefreshIndicator';
 import './DashboardView.css';
 
@@ -58,6 +59,50 @@ function StatsCards({ summary }) {
           <div className="stat-card-sub">{c.sub}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// --- LLM Usage Cards ---
+function LlmUsageCards({ summary, byAgent }) {
+  const totalTokens = summary.total_tokens || 0;
+  const callCount = summary.call_count || 0;
+  const avgLatency = summary.avg_duration_ms || 0;
+
+  const cards = [
+    { label: 'Total Tokens', value: totalTokens.toLocaleString(), sub: 'Across all agents', className: 'blue' },
+    { label: 'LLM Calls', value: callCount.toLocaleString(), sub: 'In selected period', className: '' },
+    { label: 'Avg Latency', value: formatDuration(avgLatency), sub: 'Per LLM call', className: '' },
+  ];
+
+  return (
+    <div className="dashboard-stats llm-usage-stats">
+      {cards.map((c) => (
+        <div className="stat-card" key={c.label}>
+          <div className="stat-card-label">{c.label}</div>
+          <div className={`stat-card-value ${c.className}`}>{c.value}</div>
+          <div className="stat-card-sub">{c.sub}</div>
+        </div>
+      ))}
+      {byAgent.length > 0 && (
+        <div className="stat-card llm-agent-breakdown">
+          <div className="stat-card-label">By Agent</div>
+          <div className="llm-agent-bars">
+            {byAgent.map((a) => (
+              <div key={a.agent_type} className="llm-agent-bar-row">
+                <span className="llm-agent-name">{a.agent_type}</span>
+                <div className="llm-agent-bar-track">
+                  <div
+                    className="llm-agent-bar-fill"
+                    style={{ width: `${Math.min(100, (a.total_tokens / totalTokens) * 100)}%` }}
+                  />
+                </div>
+                <span className="llm-agent-value">{(a.total_tokens || 0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -305,6 +350,9 @@ function DashboardView() {
   const { summary = {}, suites = [] } = dashboardData;
   const selectedSuite = suites.find((s) => s.id === selectedSuiteId);
 
+  const days = parseInt(timeRange);
+  const { summary: llmSummary = {}, byAgent: llmByAgent = [] } = useLlmUsage(days);
+
   useEffect(() => {
     if (!selectedSuiteId && suites.length > 0) {
       setSelectedSuiteId(suites[0].id);
@@ -360,6 +408,8 @@ function DashboardView() {
       </div>
 
       <StatsCards summary={summary} />
+
+      <LlmUsageCards summary={llmSummary} byAgent={llmByAgent} />
 
       <div className="dashboard-content">
         <SuiteListPanel

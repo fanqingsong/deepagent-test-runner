@@ -10,6 +10,8 @@ from typing import Optional
 
 from langchain_openai import ChatOpenAI
 
+from app.core.llm_usage_callback import _usage_callback
+
 
 def get_llm(
     model_name: Optional[str] = None,
@@ -29,4 +31,5 @@ def get_llm(
         temperature=temperature,
         max_tokens=max_tokens,
         timeout=timeout,
+        callbacks=[_usage_callback],
     )

@@ -22,6 +22,7 @@ from app.agent_tools.playwright_tools import (
     set_screenshot_dir,
 )
 from app.core.agent_config import get_llm
+from app.core.llm_context import llm_usage_context
 
 logger = logging.getLogger(__name__)
 
@@ -137,13 +138,14 @@ async def _execute_single_step(
     agent = create_react_agent(llm, tools=PLAYWRIGHT_TOOLS)
 
     try:
-        result = await agent.ainvoke(
-            {"messages": [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=prompt)]},
-            config={
-                "configurable": {"thread_id": f"step-{uuid4()}"},
-                "recursion_limit": 50,
-            },
-        )
+        async with llm_usage_context("executor", test_run_id=run_id):
+            result = await agent.ainvoke(
+                {"messages": [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=prompt)]},
+                config={
+                    "configurable": {"thread_id": f"step-{uuid4()}"},
+                    "recursion_limit": 50,
+                },
+            )
         parsed = _parse_single_result(result.get("messages", []))
         status_val = parsed.get("status", "passed")
         error_val = _clean(parsed.get("error"))

@@ -15,6 +15,7 @@ from langgraph.prebuilt import create_react_agent
 
 from app.agent_tools.test_tools import save_test_plan
 from app.core.agent_config import get_llm
+from app.core.llm_context import llm_usage_context
 
 logger = logging.getLogger(__name__)
 
@@ -139,15 +140,16 @@ Output the plan as JSON."""
 
     logger.info("Planner agent: generating plan for goal: %s", goal[:100])
 
-    result = await agent.ainvoke(
-        {
-            "messages": [
-                SystemMessage(content=SYSTEM_PROMPT),
-                HumanMessage(content=prompt),
-            ]
-        },
-        config={"configurable": {"thread_id": f"plan-{plan_id}"}},
-    )
+    async with llm_usage_context("planner"):
+        result = await agent.ainvoke(
+            {
+                "messages": [
+                    SystemMessage(content=SYSTEM_PROMPT),
+                    HumanMessage(content=prompt),
+                ]
+            },
+            config={"configurable": {"thread_id": f"plan-{plan_id}"}},
+        )
 
     messages = result.get("messages", [])
     final_text = ""
@@ -232,15 +234,16 @@ Please produce the complete refined plan as JSON."""
         user_feedback[:100],
     )
 
-    result = await agent.ainvoke(
-        {
-            "messages": [
-                SystemMessage(content=REFINEMENT_SYSTEM_PROMPT),
-                HumanMessage(content=prompt),
-            ]
-        },
-        config={"configurable": {"thread_id": f"refine-{plan_id}"}},
-    )
+    async with llm_usage_context("planner"):
+        result = await agent.ainvoke(
+            {
+                "messages": [
+                    SystemMessage(content=REFINEMENT_SYSTEM_PROMPT),
+                    HumanMessage(content=prompt),
+                ]
+            },
+            config={"configurable": {"thread_id": f"refine-{plan_id}"}},
+        )
 
     messages = result.get("messages", [])
     final_text = ""

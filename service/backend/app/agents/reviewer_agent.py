@@ -15,6 +15,7 @@ from langgraph.prebuilt import create_react_agent
 
 from app.agent_tools.test_tools import get_test_results
 from app.core.agent_config import get_llm
+from app.core.llm_context import llm_usage_context
 
 logger = logging.getLogger(__name__)
 
@@ -102,15 +103,16 @@ Use the get_test_results tool to fetch the data, then generate a comprehensive r
 
     logger.info("Reviewer agent: reviewing run %s", run_id)
 
-    result = await agent.ainvoke(
-        {
-            "messages": [
-                SystemMessage(content=SYSTEM_PROMPT),
-                HumanMessage(content=prompt),
-            ]
-        },
-        config={"configurable": {"thread_id": f"review-{uuid4()}"}},
-    )
+    async with llm_usage_context("reviewer", test_run_id=run_id):
+        result = await agent.ainvoke(
+            {
+                "messages": [
+                    SystemMessage(content=SYSTEM_PROMPT),
+                    HumanMessage(content=prompt),
+                ]
+            },
+            config={"configurable": {"thread_id": f"review-{uuid4()}"}},
+        )
 
     messages = result.get("messages", [])
     final_text = ""

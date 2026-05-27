@@ -916,3 +916,25 @@ export const compressConversation = async (conversationId) => {
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to compress conversation'));
   return response.json();
 };
+
+// --- LLM Usage API ---
+
+const LLM_USAGE_API = `${BASE_URL}/api/v1/llm-usage`;
+
+export const getLlmUsageSummary = async (days = 30) => {
+  const response = await apiFetch(`${LLM_USAGE_API}/summary?days=${days}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load LLM usage summary'));
+  return response.json();
+};
+
+export const getLlmUsageByAgent = async (days = 30) => {
+  const response = await apiFetch(`${LLM_USAGE_API}/by-agent?days=${days}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load LLM usage by agent'));
+  return response.json();
+};
+
+export const getLlmUsageByDay = async (days = 30) => {
+  const response = await apiFetch(`${LLM_USAGE_API}/by-day?days=${days}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load LLM usage by day'));
+  return response.json();
+};

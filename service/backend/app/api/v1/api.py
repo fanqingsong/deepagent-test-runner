@@ -14,6 +14,7 @@ from app.api.v1.endpoints import (
     autonomous_planning,
     chat,
     conversations,
+    llm_usage,
     reviews,
     run_configs,
     schedules,
@@ -127,4 +128,10 @@ api_router.include_router(
     chat_ws.router,
     prefix="/chat",
     tags=["chat-websocket"]
+)
+
+api_router.include_router(
+    llm_usage.router,
+    prefix="/llm-usage",
+    tags=["llm-usage"]
 )
