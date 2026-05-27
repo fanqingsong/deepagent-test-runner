@@ -107,6 +107,8 @@ services:
       # Mount screenshots directory for test execution artifacts
       - ./screenshots:/app/screenshots
     depends_on:
+      prestart:
+        condition: service_completed_successfully
       temporal:
         condition: service_healthy
       postgres:
@@ -216,6 +218,25 @@ services:
   #     - test-network
   #   restart: unless-stopped
 
+  prestart:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: deepagent-tester-prestart
+    command: bash scripts/prestart.sh
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+    volumes:
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-network
+    restart: "no"
+
   nginx:
     image: nginx:alpine
     container_name: deepagent-tester-nginx
@@ -299,8 +320,10 @@ services:
       - ./backend/alembic.ini:/app/alembic.ini
       # Mount screenshots directory for static file serving
       - ./screenshots:/app/screenshots
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"]
+    command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"]
     depends_on:
+      prestart:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
