@@ -37,5 +37,6 @@ Detailed guidance is organized in `.claude/rules/`:
 - **Hot-reload**: `backend/app/` and `frontend/src/` auto-refresh
 - **Design System**: Read DESIGN.md before UI changes (IBM Carbon-inspired)
 - **LLM**: GLM via OpenAI-compatible API (`app/core/agent_config.py`)
+- **Token Monitoring**: Per-call LLM token usage tracked via LangChain callback (`app/core/llm_usage_callback.py`), persisted to `llm_usage` table, analytics at `/api/v1/llm-usage/`
 - **Timestamps**: PostgreSQL naive datetime, use `datetime.utcnow()`
 - **Feedback**: All save/submit/delete ops must show success/failure messages

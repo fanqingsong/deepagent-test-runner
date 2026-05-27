@@ -8,6 +8,7 @@
 - `test_cases`: Individual test step results (linked to test_runs)
 - `schedules`: Cron-based test scheduling configurations
 - `test_suites`: Collections of test definitions
+- `llm_usage`: Per-call LLM token usage tracking (agent_type, model_name, tokens, duration_ms)
 
 ## Important Relationships
 

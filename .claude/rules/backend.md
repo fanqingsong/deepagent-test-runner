@@ -26,6 +26,9 @@ All AI features use GLM via OpenAI-compatible API (`ChatOpenAI` from `langchain_
 
 - Config: `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` env vars
 - Factory: `app/core/agent_config.py` → `get_llm()`
+- Token monitoring: `app/core/llm_usage_callback.py` captures per-call usage via LangChain callback
+- Context propagation: `app/core/llm_context.py` uses `contextvars` for agent_type/user_id/test_run_id
+- Analytics API: `/api/v1/llm-usage/` (summary, by-agent, by-day, per-test-run)
 
 ## Service Interactions
 
