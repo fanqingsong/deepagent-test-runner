@@ -276,6 +276,7 @@ services:
       TEMPORAL_HOST_URL: temporal:7233
       TEMPORAL_NAMESPACE: default
       TEMPORAL_TASK_QUEUE: unified-backend-task-queue
+      # Observability Settings
       PROMETHEUS_ENABLED: "true"
       LOKI_ENABLED: "true"
       JAEGER_ENABLED: "false"

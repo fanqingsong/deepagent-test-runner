@@ -12,6 +12,8 @@ from temporalio.worker import Worker
 from temporalio.client import Client
 
 from app.temporal.settings import settings
+from app.temporal.database import close_worker_engine, get_worker_session_maker
+from app.core.worker_db import set_temporal_session_maker
 from app.activities.test_activities import (
     prepare_test,
     run_browser_automation,
@@ -50,6 +52,11 @@ logger = logging.getLogger(__name__)
 async def run_worker():
     """Run the Temporal worker."""
     logger.info(f"Connecting to Temporal server at {settings.host_url}")
+
+    # Set up database session maker for Temporal activities
+    session_maker = get_worker_session_maker()
+    set_temporal_session_maker(session_maker)
+    logger.info("Database session maker configured for Temporal worker")
 
     # Connect to Temporal server
     client = await Client.connect(
@@ -113,6 +120,10 @@ async def run_worker():
     except Exception as e:
         logger.error(f"Worker error: {e}")
         raise
+    finally:
+        # Clean up database connections
+        await close_worker_engine()
+        logger.info("Database connections closed")
 
 
 if __name__ == "__main__":

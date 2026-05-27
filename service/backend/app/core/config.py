@@ -93,6 +93,10 @@ class Settings(BaseSettings):
         default="Test Cases",
         description="Display name for sent emails"
     )
+    EMAIL_BACKEND: str = Field(
+        default="temporal",
+        description="Email backend: temporal, celery, or sync"
+    )
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")

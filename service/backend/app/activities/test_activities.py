@@ -16,12 +16,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.activities import get_default_retry_policy, get_long_running_retry_policy
 from app.agents.executor_agent import interpret_and_execute_batch
 from app.core.worker_db import run_with_session
+from app.temporal.database import get_worker_session
 from app.models.test_definition import TestDefinition
 from app.models.test_step import TestStep
 from app.services.execution_service import ExecutionService
 from temporalio import activity
 
 logger = logging.getLogger(__name__)
+
+
+async def get_db_session():
+    """Get a database session for Temporal activities."""
+    # For Temporal activities, use the worker session
+    async for session in get_worker_session():
+        yield session
 
 
 # Input/Output Models for Activities

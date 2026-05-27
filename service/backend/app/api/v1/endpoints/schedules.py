@@ -52,7 +52,7 @@ async def sync_schedules(
         result = await client.start_workflow(
             ScheduleSyncWorkflow.run,
             id=f"schedule-sync-manual-{datetime.utcnow().timestamp()}",
-            task_queue="temporal-worker-task-queue",
+            task_queue="unified-backend-task-queue",
         )
 
         logger.info("ScheduleSyncWorkflow started: %s", result)
@@ -190,7 +190,7 @@ async def trigger_schedule_execution(
             ScheduleExecutionWorkflow.run,
             args=[schedule_id, test_definition_id],
             id=f"schedule-execution-{schedule_id}-{datetime.utcnow().timestamp()}",
-            task_queue="temporal-worker-task-queue",
+            task_queue="unified-backend-task-queue",
         )
 
         logger.info("ScheduleExecutionWorkflow started: %s", workflow_result)

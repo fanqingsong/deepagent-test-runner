@@ -312,11 +312,9 @@ class SuiteService:
 
             workflow_result = await client.start_workflow(
                 TestExecutionWorkflow.run,
-                test_definition_id,
-                test_run_id,
-                suite_run.environment,
+                args=[str(test_definition_id), test_run_id, suite_run.environment],
                 id=f"test-execution-{test_run_id}",
-                task_queue="temporal-worker-task-queue",
+                task_queue="unified-backend-task-queue",
             )
 
             logger.info(
@@ -347,11 +345,9 @@ class SuiteService:
 
             workflow_result = await client.start_workflow(
                 TestExecutionWorkflow.run,
-                entry.test_definition_id,
-                test_run_id,
-                suite_run.environment,
+                args=[str(entry.test_definition_id), test_run_id, suite_run.environment],
                 id=f"test-execution-{test_run_id}",
-                task_queue="temporal-worker-task-queue",
+                task_queue="unified-backend-task-queue",
             )
 
             entry.test_run_id = test_run_id

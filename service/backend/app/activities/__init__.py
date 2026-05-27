@@ -43,6 +43,8 @@ from app.activities.schedule_activities import (
     execute_scheduled_test,
 )
 
+from app.activities.email_activities import send_email
+
 __all__ = [
     "get_default_retry_policy",
     "get_long_running_retry_policy",
@@ -53,4 +55,5 @@ __all__ = [
     "get_active_schedules",
     "update_schedule_next_run",
     "execute_scheduled_test",
+    "send_email",
 ]

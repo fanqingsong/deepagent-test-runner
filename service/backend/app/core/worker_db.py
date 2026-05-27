@@ -1,8 +1,8 @@
 """
-Async database helpers for Celery workers.
+Async database helpers for Celery workers and Temporal workers.
 
-Each Celery task runs in its own event loop. To avoid asyncpg connections
-being bound to a stale loop, we create a temporary engine per task invocation.
+- Celery tasks run in their own event loops, so we create a temporary engine per task.
+- Temporal workers run in a persistent event loop, so they use a global engine.
 """
 
 from __future__ import annotations
@@ -19,14 +19,33 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-# Module-level session maker — set by run_async before each task invocation.
+# Module-level session maker — set by run_async before each task invocation
+# (for Celery tasks) or by Temporal worker initialization.
 _active_session_maker: async_sessionmaker | None = None
+
+# Flag to indicate if we're running in Temporal mode
+_temporal_mode = False
 
 
 def _get_session_maker() -> async_sessionmaker:
     if _active_session_maker is None:
-        raise RuntimeError("No active session maker. Call run_async() first.")
+        raise RuntimeError("No active session maker. Call run_async() first (for Celery) or set_temporal_session_maker() (for Temporal).")
     return _active_session_maker
+
+
+def set_temporal_session_maker(session_maker: async_sessionmaker) -> None:
+    """Set the global session maker for Temporal workers.
+
+    This should be called once when the Temporal worker starts up.
+    """
+    global _active_session_maker, _temporal_mode
+    _active_session_maker = session_maker
+    _temporal_mode = True
+
+
+def is_temporal_mode() -> bool:
+    """Check if we're running in Temporal mode."""
+    return _temporal_mode
 
 
 async def run_with_session(coro: Callable[[AsyncSession], Awaitable[T]]) -> T:
@@ -42,8 +61,9 @@ def run_async(coro: Callable[[], Awaitable[T]]) -> T:
     Creates a fresh event loop AND a temporary engine per call, so asyncpg
     connections are never shared across different event loops.
     """
-    global _active_session_maker
+    global _active_session_maker, _temporal_mode
 
+    _temporal_mode = False  # We're in Celery mode
     loop = asyncio.new_event_loop()
     tmp_engine = create_async_engine(
         settings.DATABASE_URL,

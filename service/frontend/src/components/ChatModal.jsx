@@ -21,7 +21,7 @@ const STORAGE_KEYS = {
   SHOW_TOOL_CALLS: 'chat-show-tool-calls'
 };
 
-const DEFAULT_WIDTH = 400;
+const DEFAULT_WIDTH = 800;
 const MIN_WIDTH = 320;
 const MAX_WIDTH = 800;
 
@@ -184,31 +184,18 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
         // Use REST API for stateless chat
         const response = await sendSimpleChatMessage(content);
 
-        // Extract tool results from messages
-        let toolResults = '';
-        if (response.messages && Array.isArray(response.messages)) {
-          const toolMessages = response.messages.filter(
-            (msg) => msg.type === 'tool' || msg.__class__ === 'ToolMessage'
-          );
-          toolResults = toolMessages
-            .map((msg) => msg.content || '')
-            .filter(Boolean)
-            .join('\n\n');
-        }
-
-        // Combine assistant response with tool results
-        const combinedContent = toolResults
-          ? `${response.response}\n\n${toolResults}`
-          : response.response;
+        // The response already includes formatted tool results
+        // No need to extract and combine them separately
+        const finalContent = response.response || 'No response from assistant.';
 
         // Add user message
         setLocalMessages((prev) => [...prev, { role: 'user', content }]);
-        // Add assistant response
+        // Add assistant response (tool_calls are only for UI display of what tools were used)
         setLocalMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
-            content: combinedContent,
+            content: finalContent,
             tool_calls: response.tool_calls,
           },
         ]);
@@ -246,151 +233,156 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     <div className={`chat-modal-overlay ${isOpen ? 'visible' : 'hidden'}`} onClick={onClose}>
       <div
         ref={containerRef}
-        className={`chat-modal-container ${isOpen ? 'visible' : ''} ${isMaximized ? 'maximized' : ''}`}
+        className={`chat-modal-container ${isOpen ? 'visible' : ''} ${isMaximized ? 'maximized' : ''} ${showConversationList ? 'show-sidebar' : ''}`}
         style={{ width: isMaximized ? '100vw' : `${width}px` }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Resize Handle */}
-        <div
-          ref={resizeHandleRef}
-          className={`chat-resize-handle ${isResizing ? 'active' : ''}`}
-          onMouseDown={handleMouseDown}
-          style={{ display: isMaximized ? 'none' : 'block' }}
+        {/* Conversation List Sidebar */}
+        <ConversationList
+          isOpen={showConversationList}
+          onClose={() => setShowConversationList(false)}
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
         />
-        {/* Header */}
-        <div className="chat-modal-header">
-          <div className="chat-modal-title">
-            <h3>{t('chatTitle')}</h3>
-            {localThreadId && isConnected && <span className="connection-indicator connected" />}
-          </div>
-          <div className="chat-modal-actions">
-            <button
-              className="chat-modal-action-btn"
-              onClick={toggleConversationList}
-              title="Conversations"
-            >
-              <ChatListIcon size={16} />
-            </button>
-            <button
-              className="chat-modal-action-btn"
-              onClick={handleCompressConversation}
-              title="Compress Conversation"
-            >
-              <CompressIcon size={16} />
-            </button>
-            <button
-              className="chat-modal-action-btn"
-              onClick={toggleToolCalls}
-              title={showToolCalls ? 'Hide Tool Calls' : 'Show Tool Calls'}
-              style={{ color: showToolCalls ? '#0f62fe' : '#525252' }}
-            >
-              <ToolIcon size={16} />
-            </button>
-            <button
-              className="chat-modal-action-btn"
-              onClick={toggleMaximize}
-              title={isMaximized ? 'Restore' : 'Maximize'}
-            >
-              {isMaximized ? <RestoreIcon size={16} /> : <MaximizeIcon size={16} />}
-            </button>
-            <button
-              className="chat-modal-action-btn"
-              onClick={handleClearConversation}
-              title={t('clearButton')}
-            >
-              {t('clearButton')}
-            </button>
-            <button className="chat-modal-close-btn" onClick={onClose} aria-label="Close chat">
-              <CloseIcon size={20} />
-            </button>
-          </div>
-        </div>
 
-        {/* Messages */}
-        <div className="chat-modal-messages">
-          {messages.length === 0 && (
-            <div className="chat-welcome-message">
-              <p>👋 {t('chatWelcome')}</p>
-              <p>{t('chatWelcomeHelp')}</p>
-              <ul>
-                <li>{t('chatHelpQuery')}</li>
-                <li>{t('chatHelpUsers')}</li>
-                <li>{t('chatHelpRoles')}</li>
-                <li>{t('chatHelpApprove')}</li>
-              </ul>
+        {/* Main Chat Area */}
+        <div className="chat-modal-main">
+          {/* Resize Handle */}
+          <div
+            ref={resizeHandleRef}
+            className={`chat-resize-handle ${isResizing ? 'active' : ''}`}
+            onMouseDown={handleMouseDown}
+            style={{ display: isMaximized ? 'none' : 'block' }}
+          />
+          {/* Header */}
+          <div className="chat-modal-header">
+            <div className="chat-modal-title">
+              <h3>{t('chatTitle')}</h3>
+              {localThreadId && isConnected && <span className="connection-indicator connected" />}
             </div>
-          )}
+            <div className="chat-modal-actions">
+              <button
+                className={`chat-modal-action-btn ${showConversationList ? 'active' : ''}`}
+                onClick={toggleConversationList}
+                title="Conversations"
+              >
+                <ChatListIcon size={16} />
+              </button>
+              <button
+                className="chat-modal-action-btn"
+                onClick={handleCompressConversation}
+                title="Compress Conversation"
+              >
+                <CompressIcon size={16} />
+              </button>
+              <button
+                className="chat-modal-action-btn"
+                onClick={toggleToolCalls}
+                title={showToolCalls ? 'Hide Tool Calls' : 'Show Tool Calls'}
+                style={{ color: showToolCalls ? '#0f62fe' : '#525252' }}
+              >
+                <ToolIcon size={16} />
+              </button>
+              <button
+                className="chat-modal-action-btn"
+                onClick={toggleMaximize}
+                title={isMaximized ? 'Restore' : 'Maximize'}
+              >
+                {isMaximized ? <RestoreIcon size={16} /> : <MaximizeIcon size={16} />}
+              </button>
+              <button
+                className="chat-modal-action-btn"
+                onClick={handleClearConversation}
+                title={t('clearButton')}
+              >
+                {t('clearButton')}
+              </button>
+              <button className="chat-modal-close-btn" onClick={onClose} aria-label="Close chat">
+                <CloseIcon size={20} />
+              </button>
+            </div>
+          </div>
 
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`chat-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
-            >
-              <div className="message-content">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+          {/* Messages */}
+          <div className="chat-modal-messages">
+            {messages.length === 0 && (
+              <div className="chat-welcome-message">
+                <p>👋 {t('chatWelcome')}</p>
+                <p>{t('chatWelcomeHelp')}</p>
+                <ul>
+                  <li>{t('chatHelpQuery')}</li>
+                  <li>{t('chatHelpUsers')}</li>
+                  <li>{t('chatHelpRoles')}</li>
+                  <li>{t('chatHelpApprove')}</li>
+                </ul>
               </div>
+            )}
 
-              {message.tool_calls && message.tool_calls.length > 0 && showToolCalls && (
-                <div className="message-tool-calls">
-                  {message.tool_calls.map((toolCall, toolIndex) => (
-                    <div key={toolIndex} className="tool-call-card">
-                      <div className="tool-call-icon">⚙️</div>
-                      <div className="tool-call-details">
-                        <div className="tool-call-name">{toolCall.name || 'tool'}</div>
-                        <div className="tool-call-args">
-                          {JSON.stringify(toolCall.args || {}, null, 2)}
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`chat-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
+              >
+                <div className="message-content">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                </div>
+
+                {message.tool_calls && message.tool_calls.length > 0 && showToolCalls && (
+                  <div className="message-tool-calls">
+                    {message.tool_calls
+                      .filter(tc => tc.args && Object.keys(tc.args).length > 0)
+                      .map((toolCall, toolIndex) => (
+                      <div key={toolIndex} className="tool-call-card">
+                        <div className="tool-call-icon">⚙️</div>
+                        <div className="tool-call-details">
+                          <div className="tool-call-name">{toolCall.name || 'tool'}</div>
+                          <div className="tool-call-args">
+                            {JSON.stringify(toolCall.args || {}, null, 2)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {(isThinking || isStreaming) && (
-            <div className="chat-message assistant-message">
-              <div className="message-content thinking">
-                <span className="thinking-dots">
-                  <span>.</span>
-                  <span>.</span>
-                  <span>.</span>
-                </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            ))}
 
-          <div ref={messagesEndRef} />
-        </div>
+            {(isThinking || isStreaming) && (
+              <div className="chat-message assistant-message">
+                <div className="message-content thinking">
+                  <span className="thinking-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </div>
+              </div>
+            )}
 
-        {/* Input */}
-        <div className="chat-modal-input-area">
-          <textarea
-            className="chat-input"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={t('inputPlaceholder')}
-            rows={1}
-            disabled={isThinking}
-          />
-          <button
-            className="chat-send-btn"
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isThinking}
-          >
-            {t('sendButton')}
-          </button>
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="chat-modal-input-area">
+            <textarea
+              className="chat-input"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={t('inputPlaceholder')}
+              rows={1}
+              disabled={isThinking}
+            />
+            <button
+              className="chat-send-btn"
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isThinking}
+            >
+              {t('sendButton')}
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Conversation List Sidebar */}
-      <ConversationList
-        isOpen={showConversationList}
-        onClose={() => setShowConversationList(false)}
-        activeConversationId={activeConversationId}
-        onSelectConversation={handleSelectConversation}
-      />
     </div>
   );
 }

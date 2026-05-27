@@ -562,11 +562,9 @@ class AppService:
 
         workflow_result = await client.start_workflow(
             TestExecutionWorkflow.run,
-            test_def.id,
-            run_id,
-            app.test_context.get("environment", {}),
+            args=[str(test_def.id), run_id, app.test_context.get("environment", {})],
             id=f"test-execution-{run_id}",
-            task_queue="temporal-worker-task-queue",
+            task_queue="unified-backend-task-queue",
         )
 
         # Track in job_store

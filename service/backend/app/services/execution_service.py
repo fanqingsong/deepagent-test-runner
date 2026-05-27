@@ -347,7 +347,15 @@ class ExecutionService:
             raise ValueError(f"Test run {run_id} not found")
 
         # Update result fields
-        test_run.test_definition_id = results.get('test_definition_id')
+        test_definition_id = results.get('test_definition_id')
+        # Convert string test_definition_id to int if needed
+        if test_definition_id and isinstance(test_definition_id, str):
+            try:
+                test_definition_id = int(test_definition_id)
+            except (ValueError, TypeError):
+                pass  # Keep as is if conversion fails
+
+        test_run.test_definition_id = test_definition_id
         test_run.status = results.get('status', 'unknown')
         test_run.total_tests = results.get('total_tests', 0)
         test_run.passed = results.get('passed', 0)
@@ -376,14 +384,21 @@ class ExecutionService:
 
         test_cases_data = results.get('test_cases', [])
         if test_cases_data:
-            test_definition_id = results.get('test_definition_id')
+            # Convert test_definition_id to int for database operations
+            test_def_id = results.get('test_definition_id')
+            if test_def_id and isinstance(test_def_id, str):
+                try:
+                    test_def_id = int(test_def_id)
+                except (ValueError, TypeError):
+                    pass  # Keep as is if conversion fails
+
             start_time = int(results.get('start_time', 0))
             end_time = int(results.get('end_time', 0))
             test_case_rows = [
                 TestCase(
                     run_id=test_run.id,
-                    test_definition_id=test_definition_id,
-                    test_id=f"{test_definition_id}_step_{idx + 1}",
+                    test_definition_id=test_def_id,
+                    test_id=f"{test_def_id}_step_{idx + 1}",
                     description=case_data.get('description', f"Step {idx + 1}"),
                     status=case_data.get('status', 'unknown'),
                     duration=int(case_data.get('duration', 0)),

@@ -236,6 +236,9 @@ async def interpret_and_execute_batch(
         # Push incremental progress to Redis for streaming display
         try:
             from app.core.job_store import update_job
+            import redis.asyncio as aioredis
+            from app.core.config import settings
+
             progress_steps = [
                 {k: r[k] for k in (
                     "step_number", "description", "status", "error", "duration",
@@ -250,8 +253,24 @@ async def interpret_and_execute_batch(
                 "browser_url": context.get("url", ""),
                 "browser_title": context.get("title", ""),
             })
-        except Exception:
-            pass
+
+            # Publish to browser stream WebSocket channel
+            screenshot_path = result.get("screenshot_path")
+            if screenshot_path:
+                redis_client = aioredis.from_url(settings.REDIS_URL)
+                channel_name = f"browser_stream:{run_id}"
+                frame_data = {
+                    "type": "frame",
+                    "path": screenshot_path,
+                    "url": context.get("url", ""),
+                    "title": context.get("title", ""),
+                    "timestamp": int(datetime.now(timezone.utc).timestamp() * 1000),
+                }
+                import json
+                await redis_client.publish(channel_name, json.dumps(frame_data))
+                await redis_client.close()
+        except Exception as e:
+            logger.warning("Failed to publish browser stream frame: %s", e)
 
     logger.info(
         "Executor agent: completed %d steps, %d passed",

@@ -95,67 +95,62 @@ export function ConversationList({
   if (!isOpen) return null;
 
   return (
-    <div className="conversation-list-overlay" onClick={onClose}>
-      <div
-        className="conversation-list-container"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="conversation-list-header">
-          <h3>Conversations</h3>
-          <button
-            className="conversation-list-close-btn"
-            onClick={onClose}
-            aria-label="Close conversation list"
-          >
-            <CloseIcon size={20} />
-          </button>
-        </div>
+    <div className={`conversation-list-sidebar ${isOpen ? 'visible' : ''}`}>
+      {/* Header */}
+      <div className="conversation-list-header">
+        <h3>Conversations</h3>
+        <button
+          className="conversation-list-close-btn"
+          onClick={onClose}
+          aria-label="Close conversation list"
+        >
+          <CloseIcon size={20} />
+        </button>
+      </div>
 
-        {/* New Conversation Button */}
-        <div className="conversation-list-actions">
-          <button
-            className="conversation-new-btn"
-            onClick={handleCreateConversation}
-          >
-            <AddIcon size={16} />
-            New Chat
-          </button>
-        </div>
+      {/* New Conversation Button */}
+      <div className="conversation-list-actions">
+        <button
+          className="conversation-new-btn"
+          onClick={handleCreateConversation}
+        >
+          <AddIcon size={16} />
+          New Chat
+        </button>
+      </div>
 
-        {/* Conversations */}
-        <div className="conversation-list-items">
-          {isLoading && <div className="conversation-loading">Loading...</div>}
-          {error && <div className="conversation-error">{error}</div>}
-          {!isLoading && !error && conversations.length === 0 && (
-            <div className="conversation-empty">No conversations yet</div>
-          )}
-          {conversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              className={`conversation-item ${
-                conversation.id === activeConversationId ? 'active' : ''
-              }`}
-              onClick={() => handleSelectConversation(conversation.id)}
-            >
-              <div className="conversation-item-content">
-                <div className="conversation-item-title">
-                  {conversation.title || 'New Conversation'}
-                </div>
-                <div className="conversation-item-time">
-                  {formatDate(conversation.updated_at || conversation.created_at)}
-                </div>
+      {/* Conversations */}
+      <div className="conversation-list-items">
+        {isLoading && <div className="conversation-loading">Loading...</div>}
+        {error && <div className="conversation-error">{error}</div>}
+        {!isLoading && !error && conversations.length === 0 && (
+          <div className="conversation-empty">No conversations yet</div>
+        )}
+        {conversations.map((conversation) => (
+          <div
+            key={conversation.id}
+            className={`conversation-item ${
+              conversation.id === activeConversationId ? 'active' : ''
+            }`}
+            onClick={() => handleSelectConversation(conversation.id)}
+          >
+            <div className="conversation-item-content">
+              <div className="conversation-item-title">
+                {conversation.title || 'New Conversation'}
               </div>
-              <button
-                className="conversation-delete-btn"
-                onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                aria-label="Delete conversation"
-              >
-                <TrashIcon size={16} />
-              </button>
+              <div className="conversation-item-time">
+                {formatDate(conversation.updated_at || conversation.created_at)}
+              </div>
             </div>
-          ))}
-        </div>
+            <button
+              className="conversation-delete-btn"
+              onClick={(e) => handleDeleteConversation(conversation.id, e)}
+              aria-label="Delete conversation"
+            >
+              <TrashIcon size={16} />
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

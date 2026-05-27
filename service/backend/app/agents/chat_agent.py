@@ -9,7 +9,6 @@ import logging
 from typing import Any, Dict, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
 from deepagents import create_deep_agent
 
@@ -36,68 +35,70 @@ class ChatAgent:
     """Conversational AI assistant for the E2E testing platform."""
 
     def __init__(self):
-        """Initialize the chat agent using deepagents framework."""
+        """Initialize the chat agent using deepagents framework with subagents."""
         self.checkpointer = MemorySaver()
-        self.tools = self._get_tools()
 
         # Get LLM configuration from settings
-        llm = get_llm(temperature=0.7, max_tokens=2048)
+        llm = get_llm(temperature=0.7, max_tokens=4096)
 
-        # Create deep agent with built-in middleware
+        # Create deep agent with specialized subagents
         self.agent = create_deep_agent(
             model=llm,
-            tools=self.tools,
             checkpointer=self.checkpointer,
-            system_prompt=self._get_system_prompt()
+            system_prompt=self._get_system_prompt(),
+            subagents=[
+                {
+                    "name": "test-query",
+                    "description": "Query test cases and test suites. Use this when the user asks about existing tests, wants to search for test cases, or needs information about test suites.",
+                    "system_prompt": "You are a test query specialist. Search and retrieve test information accurately. When returning results, format them clearly with key details like test name, status, and any relevant metadata.",
+                    "tools": [query_test_cases, query_test_suites],
+                },
+                {
+                    "name": "user-admin",
+                    "description": "Manage users and their roles. Use this for user-related operations like viewing users, checking roles, assigning roles, or removing roles.",
+                    "system_prompt": "You handle user management operations. Always verify permissions before making changes. Explain clearly what changes will be made before executing them. When viewing users, present their information in an organized way.",
+                    "tools": [query_users, query_roles, set_user_role, remove_user_role],
+                },
+                {
+                    "name": "test-reviewer",
+                    "description": "Approve or reject test cases and test suites for publication. Use this when the user wants to review, approve, or reject tests.",
+                    "system_prompt": "You review test content before publication. Ensure quality standards are met. When approving or rejecting, explain your decision clearly. Always check that the user has the necessary permissions before proceeding.",
+                    "tools": [approve_test, reject_test, approve_suite, reject_suite],
+                },
+                {
+                    "name": "analytics",
+                    "description": "Provide system statistics and analytics reports. Use this when the user asks about system stats, metrics, or overall platform health.",
+                    "system_prompt": "You provide accurate system statistics and metrics. Present data in a clear, organized manner. Highlight key insights and trends when relevant.",
+                    "tools": [get_system_stats],
+                },
+            ],
         )
 
-        logger.info("Chat agent initialized with deepagents framework")
-
-    def _get_tools(self) -> list[BaseTool]:
-        """Get available tools for the chat agent."""
-        return [
-            query_test_cases,
-            query_test_suites,
-            query_users,
-            query_roles,
-            set_user_role,
-            remove_user_role,
-            approve_test,
-            reject_test,
-            approve_suite,
-            reject_suite,
-            get_system_stats,
-        ]
+        logger.info("Chat agent initialized with deepagents framework and 4 subagents")
 
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the chat agent."""
-        return """You are an AI assistant for the E2E testing platform. You help users:
+        return """You are an AI assistant for the E2E testing platform. You coordinate specialized subagents to help users with various tasks.
 
-• Query test cases, test suites, execution results
-• View users and roles
-• Execute actions with proper approval (setting roles, approving tests)
+**Your Role:**
+You are the main coordinator that routes user requests to appropriate specialized subagents. You have access to these subagents:
+- **test-query**: For searching and viewing test cases and test suites
+- **user-admin**: For managing users and their roles
+- **test-reviewer**: For approving or rejecting tests and suites
+- **analytics**: For system statistics and metrics
 
-Be concise and helpful. For actions requiring permissions:
-1. Explain what you will do
-2. Request user confirmation
-3. Execute only after approval
+**How to Work:**
+1. Analyze the user's request to determine which subagent(s) to use
+2. Delegate the task to the appropriate subagent using the `task` tool
+3. When multiple subagents are needed, coordinate them sequentially
+4. Always provide clear, human-readable summaries of what the subagents found or did
 
-For queries, provide clear, formatted answers with key information.
-
-Available tools:
-- query_test_cases: Search and view test cases
-- query_test_suites: Search and view test suites
-- query_users: View users and their roles
-- query_roles: View available roles
-- set_user_role: Assign a role to a user (requires update:user permission)
-- remove_user_role: Remove a role from a user (requires update:user permission)
-- approve_test: Approve a test case (requires review:test permission)
-- reject_test: Reject a test case (requires review:test permission)
-- approve_suite: Approve a test suite (requires review:suite permission)
-- reject_suite: Reject a test suite (requires review:suite permission)
-- get_system_stats: Get system statistics
-
-When a user lacks permission for an action, explain the requirement clearly."""
+**Important Guidelines:**
+- After delegating to a subagent, synthesize the results into a helpful response for the user
+- Don't just repeat the subagent output - explain it in context
+- For actions requiring permissions, make sure the subagent explains what will happen first
+- When a user lacks permission, explain the requirement clearly
+- Be concise but thorough in your responses"""
 
     async def chat(
         self,
@@ -144,26 +145,73 @@ When a user lacks permission for an action, explain the requirement clearly."""
 
             print(f"[CHAT DEBUG] Agent invocation completed")
 
-            # Extract the last message content
+            # Extract the last AI message content (not ToolMessage)
             messages = result.get("messages", [])
+            response_content = None
+            tool_result_content = None
+
+            # Debug: Log all messages
+            print(f"[CHAT DEBUG] Total messages: {len(messages)}")
+            for i, msg in enumerate(messages):
+                msg_type = getattr(msg, "type", "") or type(msg).__name__
+                content_preview = getattr(msg, "content", "")[:50]
+                print(f"[CHAT DEBUG] Message {i}: type={msg_type}, content={content_preview}...")
+
             if messages:
-                last_message = messages[-1]
-                response_content = getattr(last_message, "content", "")
-            else:
+                # First, try to find the last AIMessage with meaningful content
+                for msg in reversed(messages):
+                    msg_type = getattr(msg, "type", "") or type(msg).__name__
+                    content = getattr(msg, "content", "")
+
+                    # Skip ToolMessages but save their content as fallback
+                    if msg_type == "tool":
+                        content_stripped = content.strip() if content else ""
+                        print(f"[CHAT DEBUG] ToolMessage content: '{content_stripped[:100]}', len={len(content_stripped)}")
+                        if content and content_stripped and content_stripped != "...":
+                            tool_result_content = content
+                            print(f"[CHAT DEBUG] Saved tool result as fallback, length: {len(content)}")
+                        else:
+                            print(f"[CHAT DEBUG] Tool result not saved (empty or dots only)")
+                        continue
+
+                    # Skip messages without meaningful content
+                    content_stripped = content.strip() if content else ""
+                    if not content_stripped or content_stripped == "..." or len(content_stripped) < 10:
+                        print(f"[CHAT DEBUG] Skipping message with no meaningful content: '{content_stripped[:50]}'")
+                        continue
+
+                    # Found the response
+                    response_content = content
+                    print(f"[CHAT DEBUG] Found response in {msg_type} message, length: {len(content)}")
+                    break
+
+                # If no AI response found but we have tool results, use them
+                if not response_content and tool_result_content:
+                    print(f"[CHAT DEBUG] No AI response found, using tool result as fallback")
+                    response_content = tool_result_content
+
+            if not response_content:
+                print(f"[CHAT DEBUG] No response found, using fallback")
                 response_content = "I've processed your request."
 
-            # Check for tool calls in the result
+            # Only extract tool calls that have actual args (not empty)
+            # Tool results are already included in the response content
             tool_calls = []
             for msg in messages:
                 tc = getattr(msg, "tool_calls", None)
                 if tc:
-                    tool_calls.extend(tc if isinstance(tc, list) else [tc])
+                    for call in (tc if isinstance(tc, list) else [tc]):
+                        # Only include tool calls with actual arguments
+                        args = getattr(call, "args", None)
+                        if args and len(args) > 0:
+                            tool_calls.append(call)
 
-            print(f"[CHAT DEBUG] Response: {response_content[:100] if response_content else 'None'}...")
-            print(f"[CHAT DEBUG] Tool calls: {len(tool_calls)}")
+            print(f"[CHAT DEBUG] Final response length: {len(response_content)}")
+            print(f"[CHAT DEBUG] Response preview: {response_content[:500]}")
+            print(f"[CHAT DEBUG] Tool calls with args: {len(tool_calls)}")
 
             return {
-                "response": response_content or "I've processed your request.",
+                "response": response_content,
                 "tool_calls": tool_calls,
                 "messages": messages,
             }
