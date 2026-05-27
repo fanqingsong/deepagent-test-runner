@@ -148,6 +148,12 @@ export const TrashIcon = ({ size = 20 }) => (
   </svg>
 );
 
+export const EditIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 26l2 2 4-4-2-2-4 4zm6-6l2 2L24 8l-2-2L8 20zM22 4l6 6-18 18H4v-6L22 4z"/>
+  </svg>
+);
+
 export const SuspendIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2zm0 26a12 12 0 1 1 12-12 12 12 0 0 1-12 12z"/>

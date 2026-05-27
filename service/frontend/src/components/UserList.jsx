@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useUsers } from '../hooks/useUsers';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRoles, assignUserRole, removeUserRole } from '../api';
+import { EditIcon, TrashIcon, SuspendIcon, ReactivateIcon } from './Icons';
 import './UserList.css';
 
 const UserList = ({ onEditUser }) => {
@@ -124,15 +125,15 @@ const UserList = ({ onEditUser }) => {
                         onClick={() => onEditUser(user)}
                         title="Edit"
                       >
-                        Edit
+                        <EditIcon size={16} />
                       </button>
                       <button
                         type="button"
-                        className="action-btn toggle-btn"
+                        className={`action-btn ${user.is_active ? 'deactivate-btn' : 'activate-btn'}`}
                         onClick={() => handleToggleActive(user.id, user.is_active)}
                         title={user.is_active ? 'Deactivate' : 'Activate'}
                       >
-                        {user.is_active ? 'Deactivate' : 'Activate'}
+                        {user.is_active ? <SuspendIcon size={16} /> : <ReactivateIcon size={16} />}
                       </button>
                       <button
                         type="button"
@@ -141,7 +142,7 @@ const UserList = ({ onEditUser }) => {
                         disabled={isDeleting}
                         title="Delete"
                       >
-                        Delete
+                        <TrashIcon size={16} />
                       </button>
                     </div>
                   </td>

@@ -49,7 +49,6 @@ export function ConversationList({
       const newConversation = await createChatConversation('New Chat');
       setConversations(prev => [newConversation, ...prev]);
       onSelectConversation(newConversation.id);
-      onClose();
     } catch (err) {
       setError(err.message);
     }
@@ -72,7 +71,6 @@ export function ConversationList({
 
   const handleSelectConversation = (conversationId) => {
     onSelectConversation(conversationId);
-    onClose();
   };
 
   const formatDate = (timestamp) => {

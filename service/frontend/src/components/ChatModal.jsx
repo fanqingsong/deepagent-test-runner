@@ -225,6 +225,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     clearMessages();
     setLocalMessages([]);
     setLocalThreadId(null);
+    setShowConversationList(true);
   };
 
   if (!isOpen) return null;

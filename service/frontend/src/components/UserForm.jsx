@@ -112,77 +112,91 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="username" className="form-label required">
-            Username
-          </label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            required
-            minLength={3}
-            maxLength={100}
-            className="form-input"
-            disabled={isEdit}
-            placeholder="Enter username (at least 3 characters)"
-          />
-        </div>
+        {/* Account Information */}
+        <div className="user-form-section">
+          <h3 className="user-form-section-title">Account Information</h3>
 
-        <div className="form-group">
-          <label htmlFor="email" className="form-label required">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="form-input"
-            placeholder="Enter email address"
-          />
-        </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="username" className="form-label required">
+                Username
+              </label>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                minLength={3}
+                maxLength={100}
+                className="form-input"
+                disabled={isEdit}
+                placeholder="e.g. johndoe"
+              />
+            </div>
 
-        {!isEdit && (
-          <div className="form-group">
-            <label htmlFor="password" className="form-label required">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              minLength={8}
-              maxLength={100}
-              className="form-input"
-              placeholder="Enter password (at least 8 characters)"
-            />
+            <div className="form-group">
+              <label htmlFor="email" className="form-label required">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="form-input"
+                placeholder="e.g. john@example.com"
+              />
+            </div>
           </div>
-        )}
 
-        <div className="form-group">
-          <label className="form-label form-label-checkbox">
+          {!isEdit && (
+            <div className="form-group" style={{ marginTop: 'var(--cds-spacing-lg)' }}>
+              <label htmlFor="password" className="form-label required">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={8}
+                maxLength={100}
+                className="form-input"
+                placeholder="At least 8 characters"
+              />
+            </div>
+          )}
+
+          <label className="form-toggle" style={{ marginTop: 'var(--cds-spacing-lg)' }}>
             <input
               type="checkbox"
               name="is_active"
               checked={formData.is_active}
               onChange={handleChange}
-              className="form-checkbox"
             />
-            <span>Active Status</span>
+            <span className={`form-toggle-track ${formData.is_active ? 'active' : ''}`} />
+            <div>
+              <div className="form-toggle-label">
+                {formData.is_active ? 'Active' : 'Inactive'}
+              </div>
+              <div className="form-toggle-helper">
+                {formData.is_active
+                  ? 'User can log in and use the system'
+                  : 'User account is disabled'}
+              </div>
+            </div>
           </label>
         </div>
 
-        {/* Role assignment section */}
-        <div className="form-group">
-          <label className="form-label">Role Assignment</label>
+        {/* Role Assignment */}
+        <div className="user-form-section">
+          <h3 className="user-form-section-title">Role Assignment</h3>
           {availableRoles.length === 0 ? (
             <span style={{ color: 'var(--cds-text-placeholder)', fontSize: 'var(--cds-body-short-02)' }}>
               No available roles
@@ -195,7 +209,6 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
                     type="checkbox"
                     checked={selectedRoleIds.includes(role.id)}
                     onChange={() => handleToggleRole(role.id)}
-                    className="form-checkbox"
                   />
                   <span className="user-form-role-name">{role.name}</span>
                   {role.is_system && (
@@ -207,20 +220,7 @@ const UserForm = ({ user = null, onSuccess, onCancel }) => {
           )}
         </div>
 
-        {/* Show existing role badges when editing */}
-        {isEdit && user?.roles && user.roles.length > 0 && (
-          <div className="form-group">
-            <label className="form-label">Current Roles</label>
-            <div className="user-form-current-roles">
-              {user.roles.map((role) => (
-                <span key={role.id} className="user-form-role-badge">
-                  {role.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
+        {/* Actions */}
         <div className="form-actions">
           <button type="submit" className="submit-button" disabled={loading}>
             {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}

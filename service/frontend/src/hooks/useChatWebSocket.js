@@ -13,13 +13,18 @@ import { getChatWebSocketURL } from '../api';
  * @returns {Object} - Connection state and methods
  */
 export function useChatWebSocket(threadId, options = {}) {
-  const { onMessage, onConnected, onDisconnected, onError } = options;
+  // Use refs for callbacks to avoid re-render loops
+  const callbacksRef = useRef(options);
+  callbacksRef.current = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
+  const threadIdRef = useRef(threadId);
+  threadIdRef.current = threadId;
+  const pendingRef = useRef([]);
   const MAX_RECONNECT_ATTEMPTS = 5;
 
   const connect = useCallback(() => {
@@ -27,19 +32,25 @@ export function useChatWebSocket(threadId, options = {}) {
       return;
     }
 
-    // Don't connect if no threadId provided
-    if (!threadId) {
+    const currentThreadId = threadIdRef.current;
+    if (!currentThreadId) {
       return;
     }
 
     try {
-      const wsUrl = getChatWebSocketURL(threadId);
+      const wsUrl = getChatWebSocketURL(currentThreadId);
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
-        onConnected?.();
+        callbacksRef.current.onConnected?.();
+
+        // Flush any messages queued while connecting
+        const pending = pendingRef.current.splice(0);
+        for (const msg of pending) {
+          ws.send(msg);
+        }
       };
 
       ws.onmessage = (event) => {
@@ -48,17 +59,14 @@ export function useChatWebSocket(threadId, options = {}) {
 
           switch (data.type) {
             case 'connected':
-              // Connection established
               break;
 
             case 'user_message':
-              // User message confirmation
               break;
 
             case 'assistant_message':
-              // AI response
               setIsStreaming(true);
-              onMessage?.({
+              callbacksRef.current.onMessage?.({
                 role: 'assistant',
                 content: data.content,
                 tool_calls: data.tool_calls,
@@ -68,11 +76,11 @@ export function useChatWebSocket(threadId, options = {}) {
               break;
 
             case 'error':
-              onError?.(data.content);
+              callbacksRef.current.onError?.(data.content);
               break;
 
             default:
-              onMessage?.(data);
+              callbacksRef.current.onMessage?.(data);
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -82,9 +90,8 @@ export function useChatWebSocket(threadId, options = {}) {
       ws.onclose = () => {
         setIsConnected(false);
         setIsStreaming(false);
-        onDisconnected?.();
+        callbacksRef.current.onDisconnected?.();
 
-        // Attempt to reconnect
         if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptsRef.current += 1;
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
@@ -96,15 +103,15 @@ export function useChatWebSocket(threadId, options = {}) {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        onError?.('WebSocket connection error');
+        callbacksRef.current.onError?.('WebSocket connection error');
       };
 
       wsRef.current = ws;
     } catch (error) {
       console.error('Error creating WebSocket:', error);
-      onError?.('Failed to create WebSocket connection');
+      callbacksRef.current.onError?.('Failed to create WebSocket connection');
     }
-  }, [threadId, onConnected, onMessage, onDisconnected, onError]);
+  }, []); // No dependencies — uses refs for everything
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -121,20 +128,32 @@ export function useChatWebSocket(threadId, options = {}) {
   }, []);
 
   const sendMessage = useCallback((content) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ content }));
+    const msg = JSON.stringify({ content });
+    const ws = wsRef.current;
+
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(msg);
       return true;
     }
+
+    // Queue for when connection opens (CONNECTING state)
+    if (ws?.readyState === WebSocket.CONNECTING) {
+      pendingRef.current.push(msg);
+      return true;
+    }
+
     return false;
   }, []);
 
+  // Only connect/disconnect when threadId changes
   useEffect(() => {
-    connect();
-
+    if (threadId) {
+      connect();
+    }
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [threadId, connect, disconnect]);
 
   return {
     isConnected,
