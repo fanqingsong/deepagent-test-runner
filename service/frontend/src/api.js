@@ -54,19 +54,33 @@ export async function parseApiError(response, fallback) {
 }
 
 async function apiFetch(url, options = {}) {
-  const response = await fetch(url, {
-    mode: 'cors',
-    ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...(options.headers || {}),
-    },
-  });
-  if (response.status === 401) {
-    window.location.hash = 'login';
-    throw new Error('Session expired, please log in again');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+  try {
+    const response = await fetch(url, {
+      mode: 'cors',
+      signal: controller.signal,
+      ...options,
+      headers: {
+        ...getAuthHeaders(),
+        ...(options.headers || {}),
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (response.status === 401) {
+      window.location.hash = 'login';
+      throw new Error('Session expired, please log in again');
+    }
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - server took too long to respond');
+    }
+    throw error;
   }
-  return response;
 }
 
 

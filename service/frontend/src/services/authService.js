@@ -17,6 +17,30 @@ const USER_KEY = 'user_info';
 class AuthService {
   constructor() {
     this.authCallbacks = new Set();
+    this.fetchTimeout = 10000; // 10 second timeout for all fetch calls
+  }
+
+  /**
+   * Fetch with timeout
+   */
+  async fetchWithTimeout(url, options = {}, timeout = this.fetchTimeout) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -128,7 +152,7 @@ class AuthService {
    * Local user registration
    */
   async register(email, password) {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -148,7 +172,7 @@ class AuthService {
    * Local password login
    */
   async loginLocal(email, password) {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -176,7 +200,7 @@ class AuthService {
     try {
       const token = this.getAccessToken();
       if (token) {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
+        await this.fetchWithTimeout(`${API_BASE_URL}/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -199,7 +223,7 @@ class AuthService {
       throw new Error('No token found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -233,7 +257,7 @@ class AuthService {
       headers['X-Session-Token'] = sessionToken;
     }
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({ refresh_token: refreshTokenValue }),

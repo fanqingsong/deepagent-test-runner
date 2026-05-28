@@ -271,7 +271,12 @@ async def chat_simple(
     current_user: User = Depends(RequirePermission("create:conversation")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Simple chat endpoint with persistent conversation memory per user."""
+    """Simple chat endpoint with persistent conversation memory.
+
+    - By default, maintains conversation history per user using user-based thread_id
+    - Set new_conversation=true to start a fresh conversation
+    - Provide session_id to continue a specific conversation
+    """
     from app.core.database import async_session_maker
     from app.agent_tools.tool_context import set_current_user_id
 
@@ -283,11 +288,24 @@ async def chat_simple(
 
         # Use timeout to prevent hanging
         import asyncio
+        import uuid
 
-        # Use user-specific thread_id for persistent conversation memory
-        thread_id = f"user_{current_user.id}"
+        # Determine thread_id based on request parameters
+        if data.new_conversation:
+            # Start a completely new conversation
+            thread_id = f"session_{uuid.uuid4().hex}"
+            logger.info(f"Starting new conversation: thread_id={thread_id}, user_id={current_user.id}")
+        elif data.session_id:
+            # Continue a specific conversation
+            thread_id = f"session_{data.session_id}"
+            logger.info(f"Continuing conversation: thread_id={thread_id}, user_id={current_user.id}")
+        else:
+            # Use user-based thread_id for persistent conversation history
+            thread_id = f"user_{current_user.id}"
+            logger.info(f"Using user thread_id: thread_id={thread_id}, user_id={current_user.id}")
 
-        # Set timeout to 180 seconds (3 minutes)
+        # Set timeout to 300 seconds (5 minutes) for search-intensive queries
+        # Search requests with Tavily API and LLM summarization may take longer
         result = await asyncio.wait_for(
             chat_agent.chat(
                 message=data.content,
@@ -296,11 +314,14 @@ async def chat_simple(
                 current_user=current_user,
                 db=db,
             ),
-            timeout=180.0
+            timeout=300.0
         )
     except asyncio.TimeoutError:
-        logger.error("Chat request timed out after 180 seconds")
-        raise HTTPException(status_code=504, detail="Chat request timed out. Please try again.")
+        logger.error("Chat request timed out after 300 seconds")
+        raise HTTPException(
+            status_code=504,
+            detail="Chat request timed out. Search queries may take up to 5 minutes. Please try again or use a simpler query."
+        )
     except Exception as e:
         logger.error(f"Error processing message: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing message: {str(e)}")

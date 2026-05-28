@@ -11,8 +11,7 @@ from typing import Any
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.config import get_config
-from langgraph.store.postgres.aio import AsyncPostgresStore
-from psycopg_pool import AsyncConnectionPool
+from langgraph.store.memory import InMemoryStore
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 
@@ -25,12 +24,10 @@ from app.agents.subagents import (
     get_user_admin_subagent,
     get_test_reviewer_subagent,
     get_analytics_subagent,
+    get_search_subagent,
 )
 
 logger = logging.getLogger(__name__)
-
-# Convert asyncpg URL to psycopg format: postgresql+asyncpg:// -> postgresql://
-_DB_URL = settings.DATABASE_URL.replace("+asyncpg", "")
 
 
 class ChatAgent:
@@ -39,8 +36,7 @@ class ChatAgent:
     def __init__(self):
         """Initialize the chat agent using deepagents framework with compiled subagents."""
         self.checkpointer = MemorySaver()
-        self._pool: AsyncConnectionPool | None = None
-        self._store: AsyncPostgresStore | None = None
+        self._store: InMemoryStore | None = None
         self._ready = False
 
         llm = get_llm(temperature=0.7, max_tokens=8192)
@@ -63,6 +59,7 @@ class ChatAgent:
                 get_user_admin_subagent(llm),
                 get_test_reviewer_subagent(llm),
                 get_analytics_subagent(llm),
+                get_search_subagent(llm),
             ],
             debug=True,
         )
@@ -70,55 +67,15 @@ class ChatAgent:
         logger.info("Chat agent initialized (store will be set up on first chat)")
 
     async def _ensure_store(self):
-        """Lazily initialize the PostgreSQL-backed store."""
+        """Lazily initialize the in-memory store."""
         if self._ready:
             return
 
-        self._pool = AsyncConnectionPool(conninfo=_DB_URL, min_size=1, max_size=5)
-        await self._pool.open()
-
-        # Pre-create store tables with autocommit (needed for CREATE INDEX CONCURRENTLY)
-        async with self._pool.connection() as conn:
-            await conn.set_autocommit(True)
-            async with conn.cursor() as cur:
-                await cur.execute("""
-                    CREATE TABLE IF NOT EXISTS store (
-                        prefix text NOT NULL,
-                        key text NOT NULL,
-                        value jsonb NOT NULL,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (prefix, key)
-                    );
-                """)
-                await cur.execute("""
-                    CREATE INDEX CONCURRENTLY IF NOT EXISTS store_prefix_idx
-                    ON store USING btree (prefix text_pattern_ops);
-                """)
-                await cur.execute("""
-                    ALTER TABLE store
-                    ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE,
-                    ADD COLUMN IF NOT EXISTS ttl_minutes INT;
-                """)
-                await cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_store_expires_at
-                    ON store (expires_at) WHERE expires_at IS NOT NULL;
-                """)
-                await cur.execute("""
-                    CREATE TABLE IF NOT EXISTS store_migrations (v INTEGER PRIMARY KEY);
-                """)
-                await cur.execute("""
-                    INSERT INTO store_migrations (v) VALUES (3) ON CONFLICT DO NOTHING;
-                """)
-
-        self._store = AsyncPostgresStore(self._pool)
-        await self._store.setup()
-
-        # Wire store into the agent
+        self._store = InMemoryStore()
         self.agent.store = self._store
         self._ready = True
 
-        logger.info("PostgresStore initialized — memory persists across restarts")
+        logger.info("InMemoryStore initialized — memory persists during runtime")
 
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the chat agent."""

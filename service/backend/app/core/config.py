@@ -203,6 +203,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
     LOG_FORMAT: str = Field(default="json", description="Log format (json or text)")
 
+    # Tavily Search API
+    TAVILY_API_KEY: str = Field(
+        default="",
+        description="Tavily search API key for web search functionality"
+    )
+
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
         """Reject default/weak secrets when not in debug mode."""

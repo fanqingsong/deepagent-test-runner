@@ -48,6 +48,14 @@ class ChatMessageCreate(BaseModel):
     """Request to send a message."""
 
     content: str = Field(..., min_length=1, max_length=4096)
+    new_conversation: Optional[bool] = Field(
+        default=False,
+        description="Start a new conversation. If true, a new session ID will be generated."
+    )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Optional session ID to continue a specific conversation. If not provided, uses user-based session."
+    )
 
 
 class ChatResponse(BaseModel):
