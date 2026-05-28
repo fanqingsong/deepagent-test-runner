@@ -5,8 +5,14 @@
 Working directory: `service/`
 
 ```bash
+# Start/stop environments (preferred)
+./start-dev.sh                # Start dev environment with hot-reload
+./stop-dev.sh                 # Stop dev environment
+./start-prod.sh               # Start prod environment
+./stop-prod.sh                # Stop prod environment
+
+# Direct docker compose (fallback)
 cd service
-docker compose up -d          # Start all services with hot-reload
 docker compose ps             # Check service status
 docker compose logs -f [service]  # View logs
 docker compose restart [service]  # Restart specific service

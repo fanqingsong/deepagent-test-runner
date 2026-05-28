@@ -67,31 +67,6 @@
   font-size: 12px;
 }
 
-.studio-editor-aux-toggle {
-  background: none;
-  border: 1px solid #e0e0e0;
-  border-radius: 0;
-  padding: 0 12px;
-  height: 32px;
-  font-size: 13px;
-  cursor: pointer;
-  color: #525252;
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.studio-editor-aux-toggle:hover {
-  background: #f4f4f4;
-}
-
-.studio-editor-aux-toggle--active {
-  background: #edf5ff;
-  border-color: #0f62fe;
-  color: #0f62fe;
-}
-
 /* Tabs */
 .studio-editor-tabs {
   display: flex;

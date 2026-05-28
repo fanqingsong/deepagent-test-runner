@@ -162,6 +162,12 @@ export const SuspendIcon = ({ size = 20 }) => (
   </svg>
 );
 
+export const WebSearchIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M9 2a7 7 0 014.9 12l3.55 3.55-1.4 1.4L12.5 15.4A7 7 0 119 2zm0 2a5 5 0 100 10A5 5 0 009 4z"/>
+  </svg>
+);
+
 export const ReactivateIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M16 4A12 12 0 0 0 4 16h2A10 10 0 1 1 8.1 9L6 6.9V12h2V8.5A12 12 0 1 0 16 4z"/>

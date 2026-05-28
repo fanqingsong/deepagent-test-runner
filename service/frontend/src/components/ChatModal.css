@@ -284,6 +284,39 @@
   padding: 16px;
   border-top: 1px solid #e0e0e0;
   background-color: #f4f4f4;
+  align-items: flex-end;
+}
+
+/* Web Search Toggle */
+.chat-search-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
+  padding: 0 12px;
+  background: none;
+  border: 1px solid #e0e0e0;
+  color: #525252;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chat-search-toggle-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.chat-search-toggle-btn.active {
+  border-color: #0f62fe;
+  color: #0f62fe;
+  background-color: #edf5ff;
+}
+
+.chat-search-toggle-label {
+  font-weight: 400;
 }
 
 .chat-input {

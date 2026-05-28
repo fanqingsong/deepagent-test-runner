@@ -5,7 +5,9 @@ AI-powered E2E testing framework using GLM LLM + LangGraph + Playwright for brow
 ## Quick Start
 
 ```bash
-cd service && docker compose up -d    # Start all services
+./start-dev.sh     # Start dev environment
+./start-prod.sh    # Start prod environment
+# Stop with corresponding stop scripts
 ```
 
 ## Architecture

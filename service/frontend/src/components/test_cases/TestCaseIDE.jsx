@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import PermissionGate from '../PermissionGate';
 import TestCaseListPanel from './TestCaseListPanel';
 import TestCaseEditorPanel from './TestCaseEditorPanel';
-import TestCaseAuxPanel from './TestCaseAuxPanel';
 import './TestCaseIDE.css';
 
 export default function TestCasesIDE() {
@@ -14,8 +13,6 @@ export default function TestCasesIDE() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedTestCaseId, setSelectedTestCaseId] = useState(null);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
-
   // Initialize selected test case from hash
   useEffect(() => {
     const hash = window.location.hash.slice(1);
@@ -109,19 +106,8 @@ export default function TestCasesIDE() {
       <div className="test-cases-ide-main">
         <TestCaseEditorPanel
           testCaseId={selectedTestCaseId}
-          onToggleAuxPanel={() => setRightPanelOpen(prev => !prev)}
-          auxPanelOpen={rightPanelOpen}
           onTestCaseChanged={loadTestCases}
         />
-      </div>
-
-      <div className={`test-cases-ide-aux ${rightPanelOpen ? '' : 'test-cases-ide-aux--collapsed'}`}>
-        {rightPanelOpen && (
-          <TestCaseAuxPanel
-            testCaseId={selectedTestCaseId}
-            onClose={() => setRightPanelOpen(false)}
-          />
-        )}
       </div>
     </div>
   );

@@ -7,7 +7,8 @@ import {
   RestoreIcon,
   ToolIcon,
   ChatListIcon,
-  CompressIcon
+  CompressIcon,
+  WebSearchIcon
 } from './Icons';
 import { useChatMessages } from '../hooks/useChatWebSocket';
 import { sendSimpleChatMessage, compressConversation } from '../api';
@@ -18,7 +19,8 @@ import './ChatModal.css';
 const STORAGE_KEYS = {
   WIDTH: 'chat-modal-width',
   MAXIMIZED: 'chat-modal-maximized',
-  SHOW_TOOL_CALLS: 'chat-show-tool-calls'
+  SHOW_TOOL_CALLS: 'chat-show-tool-calls',
+  ENABLE_SEARCH: 'chat-enable-search'
 };
 
 const DEFAULT_WIDTH = 800;
@@ -59,6 +61,11 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     return localStorage.getItem(STORAGE_KEYS.SHOW_TOOL_CALLS) !== 'false';
   });
 
+  // Web search toggle state
+  const [enableSearch, setEnableSearch] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.ENABLE_SEARCH) === 'true';
+  });
+
   // Conversation list state
   const [showConversationList, setShowConversationList] = useState(false);
   const [conversations, setConversations] = useState([]);
@@ -95,6 +102,10 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SHOW_TOOL_CALLS, showToolCalls.toString());
   }, [showToolCalls]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.ENABLE_SEARCH, enableSearch.toString());
+  }, [enableSearch]);
 
   // Resize handlers
   const handleMouseDown = useCallback((e) => {
@@ -176,13 +187,13 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     try {
       if (localThreadId) {
         // Use WebSocket
-        const success = sendUserMessage(content);
+        const success = sendUserMessage(content, enableSearch);
         if (!success) {
           throw new Error('Failed to send message via WebSocket');
         }
       } else {
         // Use REST API for stateless chat
-        const response = await sendSimpleChatMessage(content);
+        const response = await sendSimpleChatMessage(content, enableSearch);
 
         // The response already includes formatted tool results
         // No need to extract and combine them separately
@@ -365,6 +376,14 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
 
           {/* Input */}
           <div className="chat-modal-input-area">
+            <button
+              className={`chat-search-toggle-btn ${enableSearch ? 'active' : ''}`}
+              onClick={() => setEnableSearch(prev => !prev)}
+              title={t('webSearchToggle')}
+            >
+              <WebSearchIcon size={16} />
+              <span className="chat-search-toggle-label">{t('webSearchToggle')}</span>
+            </button>
             <textarea
               className="chat-input"
               value={inputValue}

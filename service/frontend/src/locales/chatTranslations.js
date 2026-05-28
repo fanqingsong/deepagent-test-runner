@@ -18,6 +18,7 @@ export const chatTranslations = {
     connected: 'Connected',
     disconnected: 'Disconnected',
     errorPrefix: 'Sorry, I encountered an error',
+    webSearchToggle: 'Web Search',
   },
   zh: {
     chatTitle: '智能助手',
@@ -34,6 +35,7 @@ export const chatTranslations = {
     connected: '已连接',
     disconnected: '未连接',
     errorPrefix: '抱歉，我遇到了错误',
+    webSearchToggle: '联网搜索',
   },
 };
 

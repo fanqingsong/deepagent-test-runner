@@ -55,21 +55,37 @@ export async function parseApiError(response, fallback) {
 
 async function apiFetch(url, options = {}) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  const { timeout: timeoutMs = 15000, ...fetchOptions } = options;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
       mode: 'cors',
       signal: controller.signal,
-      ...options,
+      ...fetchOptions,
       headers: {
         ...getAuthHeaders(),
-        ...(options.headers || {}),
+        ...(fetchOptions.headers || {}),
       },
     });
     clearTimeout(timeoutId);
 
     if (response.status === 401) {
+      // Try refreshing the token once before redirecting to login
+      try {
+        await authService.refreshToken();
+        const retryResponse = await fetch(url, {
+          mode: 'cors',
+          ...fetchOptions,
+          headers: {
+            ...getAuthHeaders(),
+            ...(fetchOptions.headers || {}),
+          },
+        });
+        if (retryResponse.status !== 401) return retryResponse;
+      } catch {
+        // refresh failed, fall through to redirect
+      }
       window.location.hash = 'login';
       throw new Error('Session expired, please log in again');
     }
@@ -905,11 +921,12 @@ export const sendChatMessage = async (conversationId, content) => {
   return response.json();
 };
 
-export const sendSimpleChatMessage = async (content) => {
+export const sendSimpleChatMessage = async (content, enableSearch = false) => {
   const response = await apiFetch(`${CHAT_API}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, enable_search: enableSearch }),
+    timeout: 300000, // 5 minutes — LLM responses can be slow
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to send message'));
   return response.json();

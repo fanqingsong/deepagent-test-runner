@@ -39,7 +39,7 @@ const TABS = [
   { key: 'permissions', label: 'Permissions' },
 ];
 
-export default function TestCaseEditorPanel({ testCaseId, onToggleAuxPanel, auxPanelOpen, onTestCaseChanged }) {
+export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
   const [testCase, setTestCase] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -391,12 +391,6 @@ export default function TestCaseEditorPanel({ testCaseId, onToggleAuxPanel, auxP
           {testCase?.status === 'published' && (
             <span className="studio-editor-published-tag">Published</span>
           )}
-          <button
-            className={`studio-editor-aux-toggle ${auxPanelOpen ? 'studio-editor-aux-toggle--active' : ''}`}
-            onClick={onToggleAuxPanel}
-          >
-            AI
-          </button>
         </div>
       </div>
 

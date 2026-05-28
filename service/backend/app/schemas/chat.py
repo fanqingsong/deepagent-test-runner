@@ -48,6 +48,10 @@ class ChatMessageCreate(BaseModel):
     """Request to send a message."""
 
     content: str = Field(..., min_length=1, max_length=4096)
+    enable_search: Optional[bool] = Field(
+        default=False,
+        description="Enable web search subagent for this message."
+    )
     new_conversation: Optional[bool] = Field(
         default=False,
         description="Start a new conversation. If true, a new session ID will be generated."

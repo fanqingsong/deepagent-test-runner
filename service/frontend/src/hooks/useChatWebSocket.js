@@ -127,8 +127,8 @@ export function useChatWebSocket(threadId, options = {}) {
     setIsStreaming(false);
   }, []);
 
-  const sendMessage = useCallback((content) => {
-    const msg = JSON.stringify({ content });
+  const sendMessage = useCallback((content, enableSearch = false) => {
+    const msg = JSON.stringify({ content, enable_search: enableSearch });
     const ws = wsRef.current;
 
     if (ws?.readyState === WebSocket.OPEN) {
@@ -182,8 +182,8 @@ export function useChatMessages(threadId) {
   );
 
   const sendUserMessage = useCallback(
-    (content) => {
-      const success = sendMessage(content);
+    (content, enableSearch = false) => {
+      const success = sendMessage(content, enableSearch);
       if (success) {
         setMessages((prev) => [...prev, { role: 'user', content }]);
       }

@@ -22,21 +22,3 @@
   flex-direction: column;
   min-width: 0;
 }
-
-.test-cases-ide-aux {
-  width: 360px;
-  min-width: 0;
-  background: #fff;
-  border-left: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: width 200ms ease, min-width 200ms ease;
-}
-
-.test-cases-ide-aux--collapsed {
-  width: 0;
-  min-width: 0;
-  border-left: none;
-  overflow: hidden;
-}

@@ -91,11 +91,11 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 if [ -n "${SERVICE_NAME}" ]; then
-    echo -e "${GREEN}启动服务: ${SERVICE_NAME}${NC}"
-    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d "${SERVICE_NAME}"
+    echo -e "${GREEN}构建并启动服务: ${SERVICE_NAME}${NC}"
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build "${SERVICE_NAME}"
 else
-    echo -e "${GREEN}启动所有服务...${NC}"
-    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+    echo -e "${GREEN}构建并启动所有服务...${NC}"
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 fi
 
 # 等待服务健康

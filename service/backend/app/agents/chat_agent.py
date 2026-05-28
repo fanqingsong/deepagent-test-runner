@@ -105,17 +105,23 @@ Use your memory filesystem (/memories/) to persist important information across 
         user_id: int,
         current_user: Any = None,
         db: Any = None,
+        enable_search: bool = False,
     ) -> dict[str, Any]:
         """Send a message and get a response."""
         try:
             await self._ensure_store()
 
-            logger.info("Starting chat: user_id=%s, thread_id=%s", user_id, thread_id)
+            logger.info("Starting chat: user_id=%s, thread_id=%s, enable_search=%s", user_id, thread_id, enable_search)
 
             set_current_user_id(user_id)
 
+            if not enable_search:
+                content = f"{message}\n\n[System note: The search subagent is currently disabled. Do NOT route to the 'search' subagent for any reason.]"
+            else:
+                content = message
+
             agent_input = {
-                "messages": [{"role": "user", "content": message}],
+                "messages": [{"role": "user", "content": content}],
             }
 
             config = {
