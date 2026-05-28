@@ -316,8 +316,8 @@ async def chat_simple(
             thread_id = f"user_{current_user.id}"
             logger.info(f"Using user thread_id: thread_id={thread_id}, user_id={current_user.id}")
 
-        # Set timeout to 300 seconds (5 minutes) for search-intensive queries
-        # Search requests with Tavily API and LLM summarization may take longer
+        # Deep thinking mode needs longer timeout due to multi-step planning/subagent calls
+        chat_timeout = 600.0 if data.enable_deep_thinking else 300.0
         result = await asyncio.wait_for(
             chat_agent.chat(
                 message=data.content,
@@ -328,13 +328,13 @@ async def chat_simple(
                 enable_search=data.enable_search or False,
                 enable_deep_thinking=data.enable_deep_thinking or False,
             ),
-            timeout=300.0
+            timeout=chat_timeout
         )
     except asyncio.TimeoutError:
-        logger.error("Chat request timed out after 300 seconds")
+        logger.error(f"Chat request timed out after {chat_timeout:.0f} seconds")
         raise HTTPException(
             status_code=504,
-            detail="Chat request timed out. Search queries may take up to 5 minutes. Please try again or use a simpler query."
+            detail="Chat request timed out. Please try again or use a simpler query."
         )
     except Exception as e:
         logger.error(f"Error processing message: {e}")
