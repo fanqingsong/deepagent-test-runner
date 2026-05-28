@@ -124,17 +124,28 @@ Use your memory filesystem (/memories/) to persist important information across 
         current_user: Any = None,
         db: Any = None,
         enable_search: bool = False,
+        enable_deep_thinking: bool = False,
     ) -> dict[str, Any]:
         """Send a message and get a response."""
         try:
             await self._ensure_store()
 
-            logger.info("Starting chat: user_id=%s, thread_id=%s, enable_search=%s", user_id, thread_id, enable_search)
+            logger.info("Starting chat: user_id=%s, thread_id=%s, enable_search=%s, enable_deep_thinking=%s", user_id, thread_id, enable_search, enable_deep_thinking)
 
             set_current_user_id(user_id)
 
+            system_notes = []
             if not enable_search:
-                content = f"{message}\n\n[System note: The search subagent is currently disabled. Do NOT route to the 'search' subagent for any reason.]"
+                system_notes.append("The search subagent is currently disabled. Do NOT route to the 'search' subagent for any reason.")
+            if enable_deep_thinking:
+                system_notes.append(
+                    "Deep thinking mode is enabled. Use write_todos to create a structured task plan before acting. "
+                    "Break complex questions into focused subtasks. Execute each subtask via the appropriate subagent. "
+                    "After receiving results, assess what you've learned and plan next steps before continuing. "
+                    "Synthesize all findings into a comprehensive, well-structured response."
+                )
+            if system_notes:
+                content = f"{message}\n\n[System note: {' '.join(system_notes)}]"
             else:
                 content = message
 

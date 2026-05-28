@@ -56,6 +56,7 @@ async def chat_websocket(
             data = await websocket.receive_json()
             content = data.get("content", "").strip()
             enable_search = data.get("enable_search", False)
+            enable_deep_thinking = data.get("enable_deep_thinking", False)
             if not content:
                 continue
 
@@ -84,6 +85,7 @@ async def chat_websocket(
                     user_id=user.id,
                     current_user=user,
                     enable_search=enable_search,
+                    enable_deep_thinking=enable_deep_thinking,
                 )
 
                 response_content = agent_result.get("response", "")

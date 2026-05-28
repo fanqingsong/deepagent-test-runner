@@ -237,6 +237,7 @@ async def send_message(
             current_user=current_user,
             db=db,
             enable_search=data.enable_search or False,
+            enable_deep_thinking=data.enable_deep_thinking or False,
         )
     except Exception as e:
         logger.error(f"Error processing message: {e}")
@@ -325,6 +326,7 @@ async def chat_simple(
                 current_user=current_user,
                 db=db,
                 enable_search=data.enable_search or False,
+                enable_deep_thinking=data.enable_deep_thinking or False,
             ),
             timeout=300.0
         )

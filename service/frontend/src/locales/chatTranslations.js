@@ -19,6 +19,7 @@ export const chatTranslations = {
     disconnected: 'Disconnected',
     errorPrefix: 'Sorry, I encountered an error',
     webSearchToggle: 'Web Search',
+    deepThinkingToggle: 'Deep Thinking',
   },
   zh: {
     chatTitle: '智能助手',
@@ -36,6 +37,7 @@ export const chatTranslations = {
     disconnected: '未连接',
     errorPrefix: '抱歉，我遇到了错误',
     webSearchToggle: '联网搜索',
+    deepThinkingToggle: '深度思考',
   },
 };
 

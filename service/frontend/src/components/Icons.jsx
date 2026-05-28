@@ -174,3 +174,11 @@ export const ReactivateIcon = ({ size = 20 }) => (
     <path d="M15 11v7h6v-2h-4v-5h-2z"/>
   </svg>
 );
+
+export const DeepThinkingIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2a8 8 0 015.66 13.66l-1.42-1.42A6 6 0 1110 4a6 6 0 014.24 10.24l1.42 1.42A8 8 0 1110 2z"/>
+    <path d="M10 6a4 4 0 013.54 5.86l-1.42-1.42A2 2 0 1010 12a2 2 0 001.76-1.06l1.42 1.42A4 4 0 1110 6z"/>
+    <circle cx="10" cy="10" r="1"/>
+  </svg>
+);

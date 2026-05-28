@@ -52,6 +52,10 @@ class ChatMessageCreate(BaseModel):
         default=False,
         description="Enable web search subagent for this message."
     )
+    enable_deep_thinking: Optional[bool] = Field(
+        default=False,
+        description="Enable deep thinking mode with task planning via write_todos."
+    )
     new_conversation: Optional[bool] = Field(
         default=False,
         description="Start a new conversation. If true, a new session ID will be generated."

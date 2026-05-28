@@ -921,11 +921,11 @@ export const sendChatMessage = async (conversationId, content) => {
   return response.json();
 };
 
-export const sendSimpleChatMessage = async (content, enableSearch = false) => {
+export const sendSimpleChatMessage = async (content, enableSearch = false, deepThinking = false) => {
   const response = await apiFetch(`${CHAT_API}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, enable_search: enableSearch }),
+    body: JSON.stringify({ content, enable_search: enableSearch, enable_deep_thinking: deepThinking }),
     timeout: 300000, // 5 minutes — LLM responses can be slow
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to send message'));

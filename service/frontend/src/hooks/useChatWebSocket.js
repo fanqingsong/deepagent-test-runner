@@ -131,8 +131,8 @@ export function useChatWebSocket(threadId, options = {}) {
     setIsStreaming(false);
   }, []);
 
-  const sendMessage = useCallback((content, enableSearch = false) => {
-    const msg = JSON.stringify({ content, enable_search: enableSearch });
+  const sendMessage = useCallback((content, enableSearch = false, deepThinking = false) => {
+    const msg = JSON.stringify({ content, enable_search: enableSearch, enable_deep_thinking: deepThinking });
     const ws = wsRef.current;
 
     if (ws?.readyState === WebSocket.OPEN) {
@@ -191,8 +191,8 @@ export function useChatMessages(threadId, { onTitleUpdated } = {}) {
   }, []);
 
   const sendUserMessage = useCallback(
-    (content, enableSearch = false) => {
-      const success = sendMessage(content, enableSearch);
+    (content, enableSearch = false, deepThinking = false) => {
+      const success = sendMessage(content, enableSearch, deepThinking);
       if (success) {
         setMessages((prev) => [...prev, { role: 'user', content }]);
       }

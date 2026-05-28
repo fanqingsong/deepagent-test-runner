@@ -8,7 +8,8 @@ import {
   ToolIcon,
   ChatListIcon,
   CompressIcon,
-  WebSearchIcon
+  WebSearchIcon,
+  DeepThinkingIcon
 } from './Icons';
 import { useChatMessages } from '../hooks/useChatWebSocket';
 import { sendSimpleChatMessage, compressConversation, getChatMessages } from '../api';
@@ -20,7 +21,8 @@ const STORAGE_KEYS = {
   WIDTH: 'chat-modal-width',
   MAXIMIZED: 'chat-modal-maximized',
   SHOW_TOOL_CALLS: 'chat-show-tool-calls',
-  ENABLE_SEARCH: 'chat-enable-search'
+  ENABLE_SEARCH: 'chat-enable-search',
+  DEEP_THINKING: 'chat-deep-thinking'
 };
 
 const DEFAULT_WIDTH = 800;
@@ -64,6 +66,11 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   // Web search toggle state
   const [enableSearch, setEnableSearch] = useState(() => {
     return localStorage.getItem(STORAGE_KEYS.ENABLE_SEARCH) === 'true';
+  });
+
+  // Deep thinking toggle state
+  const [deepThinking, setDeepThinking] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.DEEP_THINKING) === 'true';
   });
 
   // Conversation list state
@@ -114,6 +121,10 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ENABLE_SEARCH, enableSearch.toString());
   }, [enableSearch]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DEEP_THINKING, deepThinking.toString());
+  }, [deepThinking]);
 
   // Resize handlers
   const handleMouseDown = useCallback((e) => {
@@ -209,13 +220,13 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     try {
       if (localThreadId) {
         // Use WebSocket
-        const success = sendUserMessage(content, enableSearch);
+        const success = sendUserMessage(content, enableSearch, deepThinking);
         if (!success) {
           throw new Error('Failed to send message via WebSocket');
         }
       } else {
         // Use REST API for stateless chat
-        const response = await sendSimpleChatMessage(content, enableSearch);
+        const response = await sendSimpleChatMessage(content, enableSearch, deepThinking);
 
         // The response already includes formatted tool results
         // No need to extract and combine them separately
@@ -406,6 +417,14 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
             >
               <WebSearchIcon size={16} />
               <span className="chat-search-toggle-label">{t('webSearchToggle')}</span>
+            </button>
+            <button
+              className={`chat-search-toggle-btn ${deepThinking ? 'active' : ''}`}
+              onClick={() => setDeepThinking(prev => !prev)}
+              title={t('deepThinkingToggle')}
+            >
+              <DeepThinkingIcon size={16} />
+              <span className="chat-search-toggle-label">{t('deepThinkingToggle')}</span>
             </button>
             <textarea
               className="chat-input"
