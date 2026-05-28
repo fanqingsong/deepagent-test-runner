@@ -257,12 +257,22 @@ async def send_message(
     # Update conversation timestamp
     conversation.updated_at = datetime.utcnow()
 
+    # Auto-rename conversation on first message
+    new_title = None
+    if conversation.title in ("New Chat", "New Conversation"):
+        try:
+            new_title = await chat_agent.generate_title(data.content)
+            conversation.title = new_title
+        except Exception:
+            logger.debug("Title generation failed, keeping default")
+
     await db.commit()
 
     return ChatResponse(
         response=result["response"],
         tool_calls=result.get("tool_calls", []),
         messages=convert_messages_to_dicts(result.get("messages", [])),
+        conversation_title=new_title,
     )
 
 

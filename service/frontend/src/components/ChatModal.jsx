@@ -11,7 +11,7 @@ import {
   WebSearchIcon
 } from './Icons';
 import { useChatMessages } from '../hooks/useChatWebSocket';
-import { sendSimpleChatMessage, compressConversation } from '../api';
+import { sendSimpleChatMessage, compressConversation, getChatMessages } from '../api';
 import { useChatTranslations } from '../locales/chatTranslations';
 import { ConversationList } from './ConversationList';
 import './ChatModal.css';
@@ -74,9 +74,17 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   // Local state for messages when using REST API
   const [localMessages, setLocalMessages] = useState([]);
 
+  // Conversation list refresh key — bump to trigger ConversationList reload
+  const [conversationRefreshKey, setConversationRefreshKey] = useState(0);
+
   // Use WebSocket if threadId is provided, otherwise use local state
-  const { messages: wsMessages, isConnected, isStreaming, sendUserMessage, clearMessages } = useChatMessages(
-    localThreadId || ''
+  const { messages: wsMessages, isConnected, isStreaming, sendUserMessage, clearMessages, setInitialMessages } = useChatMessages(
+    localThreadId || '',
+    {
+      onTitleUpdated: () => {
+        setConversationRefreshKey((k) => k + 1);
+      },
+    }
   );
 
   // Use WebSocket messages if threadId exists, otherwise use local messages
@@ -152,12 +160,26 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     setShowConversationList(prev => !prev);
   }, []);
 
-  const handleSelectConversation = useCallback((conversationId) => {
+  const handleSelectConversation = useCallback(async (conversationId) => {
     setActiveConversationId(conversationId);
     setLocalThreadId(conversationId);
-    // Reset messages when switching conversations
     setLocalMessages([]);
-  }, []);
+    setInitialMessages([]);
+    // Load existing messages for the selected conversation
+    if (conversationId) {
+      try {
+        const msgs = await getChatMessages(conversationId);
+        const formatted = msgs.map((m) => ({
+          role: m.role,
+          content: m.content,
+          tool_calls: m.tool_calls,
+        }));
+        setInitialMessages(formatted);
+      } catch (err) {
+        console.error('Failed to load conversation messages:', err);
+      }
+    }
+  }, [setInitialMessages]);
 
   const handleCompressConversation = async () => {
     if (!activeConversationId) {
@@ -255,6 +277,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
           onClose={() => setShowConversationList(false)}
           activeConversationId={activeConversationId}
           onSelectConversation={handleSelectConversation}
+          refreshKey={conversationRefreshKey}
         />
 
         {/* Main Chat Area */}

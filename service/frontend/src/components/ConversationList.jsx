@@ -20,23 +20,24 @@ export function ConversationList({
   isOpen,
   onClose,
   activeConversationId,
-  onSelectConversation
+  onSelectConversation,
+  refreshKey = 0,
 }) {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load conversations on mount
+  // Load conversations on mount and when refreshKey changes
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [refreshKey]);
 
   const loadConversations = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await listChatConversations();
-      setConversations(data.conversations || []);
+      setConversations(Array.isArray(data) ? data : (data.conversations || []));
     } catch (err) {
       setError(err.message);
     } finally {

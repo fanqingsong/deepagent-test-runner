@@ -77,6 +77,24 @@ class ChatAgent:
 
         logger.info("InMemoryStore initialized — memory persists during runtime")
 
+    async def generate_title(self, message: str) -> str:
+        """Generate a short conversation title from the user's first message."""
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        llm = get_llm(temperature=0.3, max_tokens=50)
+        messages = [
+            SystemMessage(content=(
+                "Generate a very short conversation title (max 20 characters) "
+                "summarizing the user's intent. "
+                "Output ONLY the title text, nothing else. "
+                "Use the same language as the user's message."
+            )),
+            HumanMessage(content=message),
+        ]
+        result = await llm.ainvoke(messages)
+        title = result.content.strip().strip('"').strip("'")
+        return title[:50] if len(title) > 50 else title
+
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the chat agent."""
         return """You are an AI assistant for the E2E testing platform. You coordinate specialized subagents to help users with various tasks.

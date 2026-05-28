@@ -88,6 +88,14 @@ async def chat_websocket(
 
                 response_content = agent_result.get("response", "")
 
+                # Check if this is the first message and title needs updating
+                new_title = None
+                if conversation.title in ("New Chat", "New Conversation"):
+                    try:
+                        new_title = await chat_agent.generate_title(content)
+                    except Exception:
+                        logger.debug("Title generation failed, keeping default")
+
                 # Save messages to DB
                 async with async_session_maker() as db:
                     db.add(ChatMessage(
@@ -102,7 +110,19 @@ async def chat_websocket(
                         tool_calls=agent_result.get("tool_calls"),
                     ))
                     conversation.updated_at = datetime.utcnow()
+                    if new_title:
+                        db_conversation = await db.merge(conversation)
+                        db_conversation.title = new_title
                     await db.commit()
+
+                # Send title update to client
+                if new_title:
+                    conversation.title = new_title
+                    await websocket.send_json({
+                        "type": "title_updated",
+                        "title": new_title,
+                        "conversation_id": conversation_id,
+                    })
 
                 await websocket.send_json({
                     "type": "assistant_message",

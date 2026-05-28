@@ -79,6 +79,10 @@ export function useChatWebSocket(threadId, options = {}) {
               callbacksRef.current.onError?.(data.content);
               break;
 
+            case 'title_updated':
+              callbacksRef.current.onTitleUpdated?.(data);
+              break;
+
             default:
               callbacksRef.current.onMessage?.(data);
           }
@@ -170,7 +174,7 @@ export function useChatWebSocket(threadId, options = {}) {
  * @param {string} threadId - The conversation thread ID
  * @returns {Object} - Messages and chat methods
  */
-export function useChatMessages(threadId) {
+export function useChatMessages(threadId, { onTitleUpdated } = {}) {
   const [messages, setMessages] = useState([]);
   const { isConnected, isStreaming, sendMessage, connect, disconnect } = useChatWebSocket(
     threadId,
@@ -178,8 +182,13 @@ export function useChatMessages(threadId) {
       onMessage: (data) => {
         setMessages((prev) => [...prev, data]);
       },
+      onTitleUpdated,
     }
   );
+
+  const setInitialMessages = useCallback((initialMsgs) => {
+    setMessages(initialMsgs);
+  }, []);
 
   const sendUserMessage = useCallback(
     (content, enableSearch = false) => {
@@ -202,6 +211,7 @@ export function useChatMessages(threadId) {
     isStreaming,
     sendUserMessage,
     clearMessages,
+    setInitialMessages,
     connect,
     disconnect,
   };

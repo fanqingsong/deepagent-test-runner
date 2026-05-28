@@ -16,7 +16,7 @@ class ChatMessageResponse(BaseModel):
     id: int
     role: str  # "user" | "assistant" | "tool"
     content: str
-    tool_calls: Optional[Dict[str, Any]] = None
+    tool_calls: Optional[Any] = None
     created_at: datetime
 
     class Config:
@@ -68,3 +68,4 @@ class ChatResponse(BaseModel):
     response: str
     tool_calls: List[Dict[str, Any]] = []
     messages: List[Dict[str, Any]] = []
+    conversation_title: Optional[str] = None
