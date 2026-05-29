@@ -5,7 +5,7 @@ Test Reviewer Subagent — Specialized for test approval and review workflows.
 from deepagents import CompiledSubAgent
 from langchain.agents import create_agent
 
-from app.agent_tools.chat_tools import (
+from app.agents.deepagent.chat_tools import (
     approve_test,
     reject_test,
     approve_suite,

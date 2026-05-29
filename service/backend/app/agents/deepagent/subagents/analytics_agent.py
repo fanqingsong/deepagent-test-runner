@@ -5,7 +5,7 @@ Analytics Subagent — Specialized for system statistics and metrics.
 from deepagents import CompiledSubAgent
 from langchain.agents import create_agent
 
-from app.agent_tools.chat_tools import get_system_stats
+from app.agents.deepagent.chat_tools import get_system_stats
 
 
 def create_analytics_graph(llm):

@@ -5,7 +5,7 @@ User Admin Subagent — Specialized for user and role management.
 from deepagents import CompiledSubAgent
 from langchain.agents import create_agent
 
-from app.agent_tools.chat_tools import (
+from app.agents.deepagent.chat_tools import (
     query_users,
     query_roles,
     set_user_role,

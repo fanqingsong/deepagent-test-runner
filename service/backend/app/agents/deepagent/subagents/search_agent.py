@@ -8,7 +8,7 @@ and source attribution.
 from deepagents import CompiledSubAgent
 from langchain.agents import create_agent
 
-from app.agent_tools.search_tools import web_search, search_with_summary
+from app.agents.deepagent.search_tools import web_search, search_with_summary
 
 
 def create_search_graph(llm):

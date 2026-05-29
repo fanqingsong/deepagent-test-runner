@@ -5,7 +5,7 @@ Test Query Subagent — Specialized for searching and retrieving test informatio
 from deepagents import CompiledSubAgent
 from langchain.agents import create_agent
 
-from app.agent_tools.chat_tools import query_test_cases, query_test_suites
+from app.agents.deepagent.chat_tools import query_test_cases, query_test_suites
 
 
 def create_test_query_graph(llm):

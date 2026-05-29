@@ -101,7 +101,7 @@ async def query_test_cases(
         Formatted list of test cases with key details
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -164,7 +164,7 @@ async def query_test_suites(
         Formatted list of test suites with key details
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -225,7 +225,7 @@ async def query_users(
         Formatted list of users with their roles
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -281,7 +281,7 @@ async def query_roles(
         Formatted list of roles with their permissions
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -339,7 +339,7 @@ async def set_user_role(
         Success message or error description
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     current_user_id = get_current_user_id()
     if not current_user_id:
@@ -408,7 +408,7 @@ async def remove_user_role(
         Success message or error description
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     current_user_id = get_current_user_id()
     if not current_user_id:
@@ -465,7 +465,7 @@ async def approve_test(
         Success message or error description
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -523,7 +523,7 @@ async def reject_test(
         Success message or error description
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -577,7 +577,7 @@ async def approve_suite(
         Success message or error description
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -635,7 +635,7 @@ async def reject_suite(
         Success message or error description
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:
@@ -685,7 +685,7 @@ async def get_system_stats(
         Formatted system statistics
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import get_current_user_id
+    from app.agents.deepagent.tool_context import get_current_user_id
 
     user_id = get_current_user_id()
     if not user_id:

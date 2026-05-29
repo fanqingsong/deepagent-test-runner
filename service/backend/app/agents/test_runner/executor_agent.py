@@ -16,7 +16,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
 from playwright.async_api import Page
 
-from app.agent_tools.playwright_tools import (
+from app.agents.test_runner.playwright_tools import (
     PLAYWRIGHT_TOOLS,
     set_page,
     set_screenshot_dir,

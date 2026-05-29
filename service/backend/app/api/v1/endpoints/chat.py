@@ -201,7 +201,7 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     """Send a message and get AI response."""
-    from app.agent_tools.tool_context import set_current_user_id, clear_current_user_id
+    from app.agents.deepagent.tool_context import set_current_user_id, clear_current_user_id
 
     # Verify ownership
     conv_stmt = select(ChatConversation).where(
@@ -290,7 +290,7 @@ async def chat_simple(
     - Provide session_id to continue a specific conversation
     """
     from app.core.database import async_session_maker
-    from app.agent_tools.tool_context import set_current_user_id
+    from app.agents.deepagent.tool_context import set_current_user_id
 
     chat_agent = get_chat_agent()
 
@@ -341,7 +341,7 @@ async def chat_simple(
         raise HTTPException(status_code=500, detail=f"Error processing message: {str(e)}")
     finally:
         # Clear user context
-        from app.agent_tools.tool_context import clear_current_user_id
+        from app.agents.deepagent.tool_context import clear_current_user_id
         clear_current_user_id()
 
     return ChatResponse(
@@ -358,7 +358,7 @@ async def compress_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     """Compress a conversation by summarizing old messages."""
-    from app.agent_tools.tool_context import set_current_user_id, clear_current_user_id
+    from app.agents.deepagent.tool_context import set_current_user_id, clear_current_user_id
 
     # Verify ownership
     conv_stmt = select(ChatConversation).where(
