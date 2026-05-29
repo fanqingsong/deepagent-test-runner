@@ -761,3 +761,141 @@
   }
 }
 
+/* ========================================
+   Execution Timeline
+   ======================================== */
+
+.execution-timeline {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+  padding: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.execution-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 0;
+  transition: background 0.2s;
+}
+
+.execution-step.completed {
+  opacity: 0.7;
+}
+
+.execution-step.active {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.execution-step-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.execution-step-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.execution-step-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.execution-step-status {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.execution-step-duration {
+  font-size: 11px;
+  color: #888;
+}
+
+.execution-step-check {
+  color: #10b981;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.execution-step-spinner {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.execution-tool-call {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 32px;
+  font-size: 12px;
+  color: #555;
+  border-left: 2px solid #d1d5db;
+  margin-left: 8px;
+}
+
+.execution-tool-call.result {
+  border-left-color: #10b981;
+}
+
+.execution-tool-icon {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.execution-tool-name {
+  font-weight: 600;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.execution-tool-detail {
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+
+/* Error message */
+.message-content.error {
+  color: #dc2626;
+  background: #fef2f2;
+  border-left: 3px solid #dc2626;
+  padding-left: 12px;
+}
+
+/* Stop button */
+.chat-stop-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 0;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.chat-stop-btn:hover {
+  background: #b91c1c;
+}
+

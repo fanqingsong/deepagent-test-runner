@@ -298,15 +298,14 @@ Use your memory filesystem (/memories/) to persist important information across 
 
             # Stream with multiple modes for comprehensive updates
             with llm_usage_context("chat", user_id=user_id):
-                for chunk in self.agent.stream(
+                async for chunk in self.agent.astream(
                     agent_input,
                     config=config,
                     stream_mode=["updates", "messages"],
                     subgraphs=True,
                     version="v2",
                 ):
-                    # Debug: Log the chunk structure to understand what we're receiving
-                    logger.debug(f"Stream chunk type: {chunk.get('type')}, keys: {chunk.keys()}, ns: {chunk.get('ns')}")
+                    logger.debug("Stream chunk type=%s, ns=%s", chunk.get("type"), chunk.get("ns"))
 
                     # Process different chunk types
                     if chunk.get("type") == "updates":
