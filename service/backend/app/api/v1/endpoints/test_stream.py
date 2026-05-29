@@ -2,7 +2,7 @@
 Test endpoint to inspect stream chunk structure.
 """
 from fastapi import APIRouter
-from app.agents.chat_agent import get_chat_agent
+from app.agents.deepagent.chat_agent import get_chat_agent
 
 router = APIRouter()
 

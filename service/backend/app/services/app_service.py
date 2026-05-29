@@ -257,7 +257,7 @@ class AppService:
         app.status = "generating"
         await self.db.flush()
 
-        from app.agents.planner_agent import generate_test_plan
+        from app.agents.test_runner.planner_agent import generate_test_plan
 
         plan = await generate_test_plan(
             goal=app.test_goal,
@@ -518,7 +518,7 @@ class AppService:
         # Generate plan if needed
         plan = app.current_plan
         if not use_existing_plan and (force_regenerate or not plan or not plan.get("steps")):
-            from app.agents.planner_agent import generate_test_plan
+            from app.agents.test_runner.planner_agent import generate_test_plan
 
             plan = await generate_test_plan(
                 goal=app.test_goal,
@@ -623,7 +623,7 @@ class AppService:
         ]
 
         # Refine plan
-        from app.agents.planner_agent import refine_test_plan
+        from app.agents.test_runner.planner_agent import refine_test_plan
 
         refined = await refine_test_plan(
             goal=app.test_goal,

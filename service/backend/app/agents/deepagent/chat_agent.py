@@ -21,7 +21,7 @@ from app.core.agent_config import get_llm
 from app.core.config import settings
 from app.core.llm_context import llm_usage_context
 from app.agent_tools.tool_context import set_current_user_id, clear_current_user_id
-from app.agents.subagents import (
+from app.agents.deepagent.subagents import (
     get_test_query_subagent,
     get_user_admin_subagent,
     get_test_reviewer_subagent,

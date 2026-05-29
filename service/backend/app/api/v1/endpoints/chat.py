@@ -14,7 +14,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.agents.chat_agent import get_chat_agent
+from app.agents.deepagent.chat_agent import get_chat_agent
 from app.core.database import get_db
 from app.core.permissions import RequirePermission
 from app.models.user import User

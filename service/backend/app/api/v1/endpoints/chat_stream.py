@@ -15,7 +15,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.core.agent_config import get_llm
 from app.core.security import get_current_user_ws
-from app.agents.subagents import (
+from app.agents.deepagent.subagents import (
     get_test_query_subagent,
     get_user_admin_subagent,
     get_test_reviewer_subagent,

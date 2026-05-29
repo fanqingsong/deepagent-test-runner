@@ -22,7 +22,7 @@ from app.core.config import settings
 from app.core.worker_db import run_async, run_with_session
 from app.models.test_definition import TestDefinition
 from app.models.test_step import TestStep
-from app.agents.supervisor_graph import build_pipeline_graph
+from app.agents.test_runner.supervisor_graph import build_pipeline_graph
 from app.services.execution_service import ExecutionService
 from app.models.conversation import ConversationThread, ConversationMessage
 from app.services.suite_service import SuiteService

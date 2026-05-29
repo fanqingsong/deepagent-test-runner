@@ -12,10 +12,10 @@ from typing import Any, Dict
 
 from langchain_core.runnables import RunnableConfig
 
-from app.agents.planner_agent import generate_test_plan
-from app.agents.executor_agent import interpret_and_execute_batch
-from app.agents.reviewer_agent import review_test_results
-from app.agents.supervisor_state import SupervisorState
+from app.agents.test_runner.planner_agent import generate_test_plan
+from app.agents.test_runner.executor_agent import interpret_and_execute_batch
+from app.agents.test_runner.reviewer_agent import review_test_results
+from app.agents.test_runner.supervisor_state import SupervisorState
 from app.agent_tools.playwright_tools import set_page, set_screenshot_dir
 
 logger = logging.getLogger(__name__)

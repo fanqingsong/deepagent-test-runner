@@ -1,1 +1,1 @@
-"""Agents package — LangGraph-based test agents."""
+"""Agents package — contains deepagent (chat) and test_runner (LangGraph) sub-modules."""

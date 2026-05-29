@@ -3,7 +3,7 @@ LangGraph Server 导出模块
 将 Deep Agents 导出给 LangGraph server 使用
 """
 
-from app.agents.chat_agent import ChatAgent
+from app.agents.deepagent.chat_agent import ChatAgent
 from app.core.agent_config import get_llm
 
 # 创建全局 agent 实例

@@ -10,8 +10,8 @@ from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
 
-from app.agents.supervisor_state import SupervisorState
-from app.agents.nodes import (
+from app.agents.test_runner.supervisor_state import SupervisorState
+from app.agents.test_runner.nodes import (
     error_handler_node,
     executor_node,
     planner_node,

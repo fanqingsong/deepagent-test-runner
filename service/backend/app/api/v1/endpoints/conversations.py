@@ -138,7 +138,7 @@ async def send_message(
 
     updated_plan = None
     try:
-        from app.agents.planner_agent import generate_test_plan, refine_test_plan
+        from app.agents.test_runner.planner_agent import generate_test_plan, refine_test_plan
 
         goal = test_def.test_goal if test_def else ""
         url = test_def.url if test_def else ""
@@ -285,7 +285,7 @@ async def regenerate_plan(
 
     new_plan = None
     try:
-        from app.agents.planner_agent import generate_test_plan
+        from app.agents.test_runner.planner_agent import generate_test_plan
 
         goal = test_def.test_goal if test_def else ""
         url = test_def.url if test_def else ""

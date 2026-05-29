@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities import get_default_retry_policy, get_long_running_retry_policy
-from app.agents.executor_agent import interpret_and_execute_batch
+from app.agents.test_runner.executor_agent import interpret_and_execute_batch
 from app.core.worker_db import run_with_session
 from app.temporal.database import get_worker_session
 from app.models.test_definition import TestDefinition
@@ -242,7 +242,7 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
     from playwright.async_api import async_playwright
 
     from app.core.config import settings
-    from app.agents.supervisor_graph import build_pipeline_graph
+    from app.agents.test_runner.supervisor_graph import build_pipeline_graph
 
     run_id = input.run_id
     test_definition_id_str = input.test_definition_id
