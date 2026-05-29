@@ -363,75 +363,75 @@ services:
       - test-network
     restart: unless-stopped
 
-  # SonarQube Code Quality and Security Analysis
-  sonarqube-db:
-    image: postgres:15-alpine
-    container_name: deepagent-tester-sonarqube-db
-    environment:
-      POSTGRES_USER: ${SONARQUBE_DB_USER:-sonarqube}
-      POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD}
-      POSTGRES_DB: ${SONARQUBE_DB_NAME:-sonarqube}
-    volumes:
-      - sonarqube_db_data:/var/lib/postgresql/data
-    networks:
-      - test-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${SONARQUBE_DB_USER:-sonarqube} -d ${SONARQUBE_DB_NAME:-sonarqube}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # # SonarQube Code Quality and Security Analysis
+  # sonarqube-db:
+  #   image: postgres:15-alpine
+  #   container_name: deepagent-tester-sonarqube-db
+  #   environment:
+  #     POSTGRES_USER: ${SONARQUBE_DB_USER:-sonarqube}
+  #     POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD}
+  #     POSTGRES_DB: ${SONARQUBE_DB_NAME:-sonarqube}
+  #   volumes:
+  #     - sonarqube_db_data:/var/lib/postgresql/data
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${SONARQUBE_DB_USER:-sonarqube} -d ${SONARQUBE_DB_NAME:-sonarqube}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
-  sonarqube:
-    image: sonarqube:lts-community
-    container_name: deepagent-tester-sonarqube
-    depends_on:
-      sonarqube-db:
-        condition: service_healthy
-    environment:
-      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/${SONARQUBE_DB_NAME:-sonarqube}
-      SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER:-sonarqube}
-      SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD}
-      SONAR_WEB_CONTEXT: /sonarqube
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_extensions:/opt/sonarqube/extensions
-    ports:
-      - "9002:9000"
-    networks:
-      - test-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/sonarqube/api/system/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+  # sonarqube:
+  #   image: sonarqube:lts-community
+  #   container_name: deepagent-tester-sonarqube
+  #   depends_on:
+  #     sonarqube-db:
+  #       condition: service_healthy
+  #   environment:
+  #     SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/${SONARQUBE_DB_NAME:-sonarqube}
+  #     SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER:-sonarqube}
+  #     SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD}
+  #     SONAR_WEB_CONTEXT: /sonarqube
+  #   volumes:
+  #     - sonarqube_data:/opt/sonarqube/data
+  #     - sonarqube_extensions:/opt/sonarqube/extensions
+  #   ports:
+  #     - "9002:9000"
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:9000/sonarqube/api/system/status"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
 
-  # OWASP ZAP Dynamic Application Security Testing
-  owasp-zap:
-    image: zaproxy/zap-stable:latest
-    container_name: deepagent-tester-owasp-zap
-    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=true
-    ports:
-      - "8091:8080"
-    volumes:
-      - zap_data:/zap/wrk
-      - ../infrastructure/ci/zap:/zap/scripts:ro
-    networks:
-      - test-network
-    restart: unless-stopped
-    environment:
-      ZAP_PORT: "8080"
-      ZAP_API_KEY: ${ZAP_API_KEY:-change-this-in-production}
+  # # OWASP ZAP Dynamic Application Security Testing
+  # owasp-zap:
+  #   image: zaproxy/zap-stable:latest
+  #   container_name: deepagent-tester-owasp-zap
+  #   command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=true
+  #   ports:
+  #     - "8091:8080"
+  #   volumes:
+  #     - zap_data:/zap/wrk
+  #     - ../infrastructure/ci/zap:/zap/scripts:ro
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+  #   environment:
+  #     ZAP_PORT: "8080"
+  #     ZAP_API_KEY: ${ZAP_API_KEY:-change-this-in-production}
 
 volumes:
   postgres_data:
   redis_data:
-  sonarqube_db_data:
-  sonarqube_data:
-  sonarqube_extensions:
-  zap_data:
+  # sonarqube_db_data:
+  # sonarqube_data:
+  # sonarqube_extensions:
+  # zap_data:
 
 networks:
   test-network:

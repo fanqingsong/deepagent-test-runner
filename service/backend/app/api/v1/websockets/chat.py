@@ -77,18 +77,40 @@ async def chat_websocket(
                 })
                 continue
 
-            # Call the chat agent
+            # Call the chat agent with streaming
             try:
-                agent_result = await chat_agent.chat(
+                accumulated_content = ""
+                accumulated_tool_calls = []
+
+                # Stream events and send via WebSocket
+                for event in chat_agent.chat_stream(
                     message=content,
                     thread_id=conversation.thread_id,
                     user_id=user.id,
                     current_user=user,
                     enable_search=enable_search,
                     enable_deep_thinking=enable_deep_thinking,
-                )
+                    websocket=websocket,
+                ):
+                    try:
+                        await websocket.send_json(event)
+                    except Exception as send_error:
+                        logger.warning("Failed to send stream event: %s", send_error)
+                        break
 
-                response_content = agent_result.get("response", "")
+                    # Track final content and tool calls
+                    if event["type"] == "token_delta":
+                        accumulated_content += event.get("content", "")
+                    elif event["type"] == "stream_complete":
+                        accumulated_content = event.get("content", accumulated_content)
+                        accumulated_tool_calls = event.get("tool_calls", [])
+                    elif event["type"] == "error":
+                        # Error occurred during streaming
+                        logger.error("Stream error: %s", event.get("content"))
+                        break
+
+                response_content = accumulated_content
+                tool_calls_list = accumulated_tool_calls
 
                 # Check if this is the first message and title needs updating
                 new_title = None
@@ -109,7 +131,7 @@ async def chat_websocket(
                         conversation_id=conversation_id,
                         role="assistant",
                         content=response_content,
-                        tool_calls=agent_result.get("tool_calls"),
+                        tool_calls=tool_calls_list,
                     ))
                     conversation.updated_at = datetime.utcnow()
                     if new_title:
@@ -131,7 +153,7 @@ async def chat_websocket(
                     "content": response_content,
                     "tool_calls": [
                         {"name": tc.get("name"), "args": tc.get("args")}
-                        for tc in (agent_result.get("tool_calls") or [])
+                        for tc in (tool_calls_list or [])
                     ],
                     "timestamp": datetime.utcnow().isoformat(),
                 })

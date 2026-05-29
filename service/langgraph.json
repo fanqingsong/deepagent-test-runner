@@ -1,0 +1,17 @@
+{
+  "dependencies": [
+    "langchain_openai",
+    "langchain",
+    "langchain-core",
+    "langgraph",
+    "deepagents"
+  ],
+  "graphs": {
+    "chat": "./langgraph_server/graph.py:agent"
+  },
+  "env": "./service/.env",
+  "python_version": "3.11",
+  "include": [
+    "./backend/app/**"
+  ]
+}

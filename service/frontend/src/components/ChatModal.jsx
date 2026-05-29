@@ -11,10 +11,12 @@ import {
   WebSearchIcon,
   DeepThinkingIcon
 } from './Icons';
-import { useChatMessages } from '../hooks/useChatWebSocket';
+import { useLangGraphChat } from '../hooks/useLangGraphChat';
 import { sendSimpleChatMessage, compressConversation, getChatMessages } from '../api';
 import { useChatTranslations } from '../locales/chatTranslations';
 import { ConversationList } from './ConversationList';
+import { SubagentStatus } from './SubagentStatus';
+import { TodoList } from './TodoList';
 import './ChatModal.css';
 
 const STORAGE_KEYS = {
@@ -84,18 +86,43 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   // Conversation list refresh key — bump to trigger ConversationList reload
   const [conversationRefreshKey, setConversationRefreshKey] = useState(0);
 
-  // Use WebSocket if threadId is provided, otherwise use local state
-  const { messages: wsMessages, isConnected, isStreaming, sendUserMessage, clearMessages, setInitialMessages } = useChatMessages(
-    localThreadId || '',
-    {
-      onTitleUpdated: () => {
-        setConversationRefreshKey((k) => k + 1);
-      },
-    }
-  );
+  // Use LangGraph streaming if threadId is provided, otherwise use local state
+  const {
+    stream,
+    isStreaming,
+    messages: streamMessages,
+    subagents,
+    todos,
+    submit,
+    streamingContent: streamContent,
+  } = useLangGraphChat(localThreadId || '');
 
-  // Use WebSocket messages if threadId exists, otherwise use local messages
-  const messages = localThreadId ? wsMessages : localMessages;
+  // Use streaming messages if threadId exists, otherwise use local messages
+  const messages = localThreadId ? streamMessages : localMessages;
+
+  // Extract streaming content for display
+  const streamingContent = streamContent || '';
+
+  // Get current subagent info from LangGraph subagents array
+  const currentSubagent = subagents.length > 0 ? subagents[subagents.length - 1]?.name || null : null;
+  const subagentProgress = subagents.length > 0 ? {
+    description: subagents[subagents.length - 1]?.status || '',
+    status: subagents[subagents.length - 1]?.state || 'running',
+    progress: subagents[subagents.length - 1]?.progress
+  } : { description: '', status: '', progress: undefined };
+
+  // Todo list from streaming
+  const todoList = todos || [];
+
+  // Connection status - based on stream state
+  const isConnected = stream && !stream.error;
+
+  // Reset thinking state when streaming completes
+  useEffect(() => {
+    if (!isStreaming && localThreadId) {
+      setIsThinking(false);
+    }
+  }, [isStreaming, localThreadId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -175,22 +202,9 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     setActiveConversationId(conversationId);
     setLocalThreadId(conversationId);
     setLocalMessages([]);
-    setInitialMessages([]);
-    // Load existing messages for the selected conversation
-    if (conversationId) {
-      try {
-        const msgs = await getChatMessages(conversationId);
-        const formatted = msgs.map((m) => ({
-          role: m.role,
-          content: m.content,
-          tool_calls: m.tool_calls,
-        }));
-        setInitialMessages(formatted);
-      } catch (err) {
-        console.error('Failed to load conversation messages:', err);
-      }
-    }
-  }, [setInitialMessages]);
+    // Note: The useLangGraphChat hook will automatically load messages
+    // for the new threadId from the server via LangGraph
+  }, []);
 
   const handleCompressConversation = async () => {
     if (!activeConversationId) {
@@ -219,11 +233,13 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
 
     try {
       if (localThreadId) {
-        // Use WebSocket
-        const success = sendUserMessage(content, enableSearch, deepThinking);
-        if (!success) {
-          throw new Error('Failed to send message via WebSocket');
-        }
+        // Use LangGraph streaming
+        submit({
+          messages: [{ role: 'user', content }]
+        });
+        // Note: isThinking will be reset when streaming completes
+        // Don't set it to false here for streaming
+        return;
       } else {
         // Use REST API for stateless chat
         const response = await sendSimpleChatMessage(content, enableSearch, deepThinking);
@@ -254,7 +270,10 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
         },
       ]);
     } finally {
-      setIsThinking(false);
+      // Only reset thinking state if not using streaming
+      if (!localThreadId) {
+        setIsThinking(false);
+      }
     }
   };
 
@@ -266,9 +285,12 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   };
 
   const handleClearConversation = () => {
-    clearMessages();
+    // Clear local messages
     setLocalMessages([]);
+    // Reset to no thread (will create new thread on next message)
     setLocalThreadId(null);
+    setActiveConversationId(null);
+    // Show conversation list to select or start new
     setShowConversationList(true);
   };
 
@@ -393,7 +415,26 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
               </div>
             ))}
 
-            {(isThinking || isStreaming) && (
+            {isStreaming && (
+              <div className="chat-message assistant-message streaming">
+                <SubagentStatus
+                  subagent={currentSubagent}
+                  description={subagentProgress.description}
+                  status={subagentProgress.status}
+                  progress={subagentProgress.progress}
+                />
+
+                {todoList.length > 0 && <TodoList todos={todoList} />}
+
+                <div className="message-content">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {streamingContent || 'Thinking...'}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
+
+            {isThinking && !isStreaming && (
               <div className="chat-message assistant-message">
                 <div className="message-content thinking">
                   <span className="thinking-dots">

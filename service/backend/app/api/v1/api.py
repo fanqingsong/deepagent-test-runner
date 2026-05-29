@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     auth,
     autonomous_planning,
     chat,
+    chat_stream,
     conversations,
     llm_usage,
     reviews,
@@ -23,6 +24,7 @@ from app.api.v1.endpoints import (
     test_steps,
     test_suites,
     test_versions,
+    test_stream,
     users,
 )
 from app.api.v1.websockets import chat as chat_ws
@@ -134,4 +136,16 @@ api_router.include_router(
     llm_usage.router,
     prefix="/llm-usage",
     tags=["llm-usage"]
+)
+
+api_router.include_router(
+    test_stream.router,
+    prefix="/test",
+    tags=["test-stream"]
+)
+
+api_router.include_router(
+    chat_stream.router,
+    prefix="/chat",
+    tags=["chat-stream"]
 )

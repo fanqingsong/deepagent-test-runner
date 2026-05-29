@@ -555,3 +555,209 @@
 .chat-resize-handle.active {
   background-color: #0f62fe;
 }
+
+/* ========================================
+   Streaming UI Components
+   ======================================== */
+
+/* Subagent Status Card */
+.subagent-status-card {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  border: 1px solid #d1d9e6;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.subagent-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.subagent-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.subagent-info {
+  flex: 1;
+}
+
+.subagent-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.subagent-description {
+  font-size: 12px;
+  color: #666;
+}
+
+.subagent-status-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.running {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.progress-bar {
+  margin-top: 8px;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+  transition: width 0.3s ease;
+}
+
+/* Todo List */
+.todo-list {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.todo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.todo-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.todo-count {
+  font-size: 12px;
+  color: #666;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.todo-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.todo-item:hover {
+  background: #f9fafb;
+}
+
+.todo-item.complete {
+  opacity: 0.6;
+}
+
+.todo-item.in_progress {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.todo-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.todo-item.complete .todo-checkbox {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.todo-text {
+  flex: 1;
+  font-size: 14px;
+  color: #374151;
+}
+
+.todo-item.complete .todo-text {
+  text-decoration: line-through;
+}
+
+.todo-spinner {
+  width: 16px;
+  height: 16px;
+}
+
+.spinner {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #3b82f6;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Streaming Message */
+.chat-message.streaming .message-content {
+  background: linear-gradient(to bottom, #f9fafb 0%, #ffffff 100%);
+  border-left: 3px solid #3b82f6;
+  padding-left: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

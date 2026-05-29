@@ -19,6 +19,14 @@ export function useChatWebSocket(threadId, options = {}) {
 
   const [isConnected, setIsConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+
+  // Streaming state
+  const [currentSubagent, setCurrentSubagent] = useState(null);
+  const [subagentProgress, setSubagentProgress] = useState({});
+  const [todoList, setTodoList] = useState([]);
+  const [activeToolCalls, setActiveToolCalls] = useState([]);
+  const [streamingContent, setStreamingContent] = useState('');
+
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
@@ -61,21 +69,91 @@ export function useChatWebSocket(threadId, options = {}) {
             case 'connected':
               break;
 
+            case 'token_delta':
+              // Incremental content update
+              setIsStreaming(true);
+              setStreamingContent(prev => prev + (data.content || ''));
+              setCurrentSubagent(data.source || 'main');
+              callbacksRef.current.onTokenDelta?.(data);
+              break;
+
+            case 'subagent_started':
+              setCurrentSubagent(data.subagent);
+              setSubagentProgress({
+                name: data.subagent,
+                description: data.description,
+                status: 'running',
+                progress: 0
+              });
+              callbacksRef.current.onSubagentStarted?.(data);
+              break;
+
+            case 'subagent_progress':
+              setSubagentProgress(prev => ({
+                ...prev,
+                status: data.status,
+                progress: data.progress
+              }));
+              callbacksRef.current.onSubagentProgress?.(data);
+              break;
+
+            case 'subagent_completed':
+              callbacksRef.current.onSubagentCompleted?.(data);
+              break;
+
+            case 'tool_call':
+              setActiveToolCalls(prev => [...prev, {
+                tool: data.tool,
+                args: data.args,
+                source: data.source,
+                timestamp: new Date()
+              }]);
+              callbacksRef.current.onToolCall?.(data);
+              break;
+
+            case 'tool_result':
+              setActiveToolCalls(prev =>
+                prev.map(tc =>
+                  tc.tool === data.tool
+                    ? { ...tc, result: data.result, completed: true }
+                    : tc
+                )
+              );
+              callbacksRef.current.onToolResult?.(data);
+              break;
+
+            case 'todo_update':
+              setTodoList(data.todos || []);
+              callbacksRef.current.onTodoUpdate?.(data);
+              break;
+
+            case 'stream_complete':
+              setIsStreaming(false);
+              // Build the final assistant message
+              callbacksRef.current.onMessage?.({
+                role: 'assistant',
+                content: data.content,
+                tool_calls: data.tool_calls,
+                timestamp: new Date().toISOString(),
+              });
+              break;
+
             case 'user_message':
               break;
 
             case 'assistant_message':
-              setIsStreaming(true);
+              // Legacy support for non-streaming mode
+              setIsStreaming(false);
               callbacksRef.current.onMessage?.({
                 role: 'assistant',
                 content: data.content,
                 tool_calls: data.tool_calls,
                 timestamp: data.timestamp,
               });
-              setIsStreaming(false);
               break;
 
             case 'error':
+              setIsStreaming(false);
               callbacksRef.current.onError?.(data.content);
               break;
 
@@ -129,11 +207,22 @@ export function useChatWebSocket(threadId, options = {}) {
 
     setIsConnected(false);
     setIsStreaming(false);
+    setCurrentSubagent(null);
+    setStreamingContent('');
+    setTodoList([]);
+    setActiveToolCalls([]);
+    setSubagentProgress({});
   }, []);
 
   const sendMessage = useCallback((content, enableSearch = false, deepThinking = false) => {
     const msg = JSON.stringify({ content, enable_search: enableSearch, enable_deep_thinking: deepThinking });
     const ws = wsRef.current;
+
+    // Reset streaming state for new message
+    setStreamingContent('');
+    setTodoList([]);
+    setActiveToolCalls([]);
+    setSubagentProgress({});
 
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(msg);
@@ -162,6 +251,11 @@ export function useChatWebSocket(threadId, options = {}) {
   return {
     isConnected,
     isStreaming,
+    currentSubagent,
+    subagentProgress,
+    todoList,
+    activeToolCalls,
+    streamingContent,
     sendMessage,
     connect,
     disconnect,
@@ -176,7 +270,18 @@ export function useChatWebSocket(threadId, options = {}) {
  */
 export function useChatMessages(threadId, { onTitleUpdated } = {}) {
   const [messages, setMessages] = useState([]);
-  const { isConnected, isStreaming, sendMessage, connect, disconnect } = useChatWebSocket(
+  const {
+    isConnected,
+    isStreaming,
+    currentSubagent,
+    subagentProgress,
+    todoList,
+    activeToolCalls,
+    streamingContent,
+    sendMessage,
+    connect,
+    disconnect
+  } = useChatWebSocket(
     threadId,
     {
       onMessage: (data) => {
@@ -209,6 +314,11 @@ export function useChatMessages(threadId, { onTitleUpdated } = {}) {
     messages,
     isConnected,
     isStreaming,
+    currentSubagent,
+    subagentProgress,
+    todoList,
+    activeToolCalls,
+    streamingContent,
     sendUserMessage,
     clearMessages,
     setInitialMessages,
