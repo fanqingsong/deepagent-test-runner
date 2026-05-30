@@ -4,6 +4,7 @@ import {
   DashboardIcon,
   TestCasesIcon,
   TestSuiteIcon,
+  ScheduleIcon,
   SettingsIcon,
   ChevronLeftIcon,
   ChevronRightIcon
@@ -51,6 +52,12 @@ const menuItems = [
         path: '#suites'
       }
     ]
+  },
+  {
+    id: 'schedules',
+    label: 'Schedules',
+    icon: ScheduleIcon,
+    path: '#schedules'
   },
   {
     id: 'admin',

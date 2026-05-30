@@ -21,8 +21,6 @@ from app.activities.test_activities import (
     mark_run_failed
 )
 from app.activities.schedule_activities import (
-    get_active_schedules,
-    update_schedule_next_run,
     execute_scheduled_test
 )
 from app.activities.maintenance_activities import (
@@ -32,7 +30,7 @@ from app.activities.maintenance_activities import (
 )
 from app.activities.email_activities import send_email
 from app.workflows.test_execution import TestExecutionWorkflow, RetryTestWorkflow
-from app.workflows.schedules import ScheduleSyncWorkflow, ScheduleExecutionWorkflow
+from app.workflows.schedules import ScheduleExecutionWorkflow
 from app.workflows.suites import SuiteExecutionWorkflow
 from app.workflows.emails import EmailWorkflow
 from app.workflows.maintenance import (
@@ -75,8 +73,6 @@ async def run_worker():
         save_results,
         mark_run_failed,
         # Schedule activities
-        get_active_schedules,
-        update_schedule_next_run,
         execute_scheduled_test,
         # Maintenance activities
         cleanup_old_test_runs,
@@ -90,7 +86,6 @@ async def run_worker():
     workflows = [
         TestExecutionWorkflow,
         RetryTestWorkflow,
-        ScheduleSyncWorkflow,
         ScheduleExecutionWorkflow,
         SuiteExecutionWorkflow,
         EmailWorkflow,

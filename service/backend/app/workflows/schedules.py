@@ -1,28 +1,22 @@
 """
 Schedule Management Workflows
 
-Temporal workflows for schedule management and execution.
-These workflows handle cron-based scheduling.
+Temporal workflows for schedule execution.
+Temporal native Schedules handle cron-based triggering;
+ScheduleExecutionWorkflow handles the actual test execution.
 """
 
 import logging
-from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from temporalio import workflow
 from temporalio.exceptions import ActivityError
 
 from app.activities import (
     get_default_retry_policy,
-    get_active_schedules,
-    update_schedule_next_run,
     execute_scheduled_test,
 )
 from app.activities.schedule_activities import (
-    GetActiveSchedulesInput,
-    GetActiveSchedulesOutput,
-    UpdateScheduleNextRunInput,
-    UpdateScheduleNextRunOutput,
     ExecuteScheduledTestInput,
     ExecuteScheduledTestOutput,
 )
@@ -30,115 +24,6 @@ from app.activities.schedule_activities import (
 from app.workflows import DEFAULT_EXECUTION_TIMEOUT, DEFAULT_RUN_TIMEOUT
 
 logger = logging.getLogger(__name__)
-
-
-@workflow.defn(sandboxed=False)
-class ScheduleSyncWorkflow:
-    """
-    Workflow for synchronizing database schedules to Temporal cron schedules.
-
-    This workflow periodically checks the database for active schedules and
-    ensures they are properly registered with Temporal's cron scheduling system.
-    It handles:
-    1. Fetching active schedules from database
-    2. Calculating next run times for each schedule
-    3. Triggering child workflows for due schedules
-
-    This replaces the Celery Beat scheduler with Temporal's native cron support.
-    """
-
-    @workflow.run
-    async def run(self) -> Dict[str, Any]:
-        """
-        Synchronize schedules and trigger due executions.
-
-        Returns:
-            dict: Sync results with counts of processed schedules
-        """
-        logger.info("ScheduleSyncWorkflow starting schedule synchronization")
-
-        try:
-            # Step 1: Fetch all active schedules from database
-            logger.info("Fetching active schedules from database")
-            active_output: GetActiveSchedulesOutput = await workflow.execute_activity(
-                get_active_schedules,
-                GetActiveSchedulesInput(),
-                start_to_close_timeout=DEFAULT_RUN_TIMEOUT,
-                retry_policy=get_default_retry_policy(),
-            )
-
-            active_schedules = active_output.schedules
-            logger.info(f"Found {len(active_schedules)} active schedules")
-
-            if not active_schedules:
-                logger.info("No active schedules to process")
-                return {
-                    "status": "completed",
-                    "total_schedules": 0,
-                    "updated_schedules": 0,
-                    "triggered_executions": 0,
-                }
-
-            # Step 2: Update next run times for all active schedules
-            updated_count = 0
-            for schedule in active_schedules:
-                schedule_id = schedule["id"]
-                try:
-                    logger.info(f"Updating next run time for schedule {schedule_id}")
-                    update_output: UpdateScheduleNextRunOutput = await workflow.execute_activity(
-                        update_schedule_next_run,
-                        UpdateScheduleNextRunInput(schedule_id=schedule_id),
-                        start_to_close_timeout=DEFAULT_RUN_TIMEOUT,
-                        retry_policy=get_default_retry_policy(),
-                    )
-
-                    if update_output.success:
-                        updated_count += 1
-                        logger.info(
-                            f"Schedule {schedule_id} next run: {update_output.next_run_time}"
-                        )
-                    else:
-                        logger.warning(f"Failed to update schedule {schedule_id}")
-
-                except Exception as e:
-                    logger.error(f"Error updating schedule {schedule_id}: {e}")
-                    # Continue with other schedules
-
-            logger.info(f"Updated {updated_count}/{len(active_schedules)} schedules")
-
-            # Step 3: Trigger executions for schedules that are due
-            # Note: In a real cron setup, Temporal would handle this automatically.
-            # This workflow is primarily for initial sync and manual triggering.
-            # For continuous cron execution, use Temporal's schedule feature directly.
-
-            logger.info("ScheduleSyncWorkflow completed")
-            return {
-                "status": "completed",
-                "total_schedules": len(active_schedules),
-                "updated_schedules": updated_count,
-                "triggered_executions": 0,
-                "message": "Schedule synchronization completed. Use Temporal Schedules for continuous execution.",
-            }
-
-        except ActivityError as e:
-            logger.error(f"Activity error in ScheduleSyncWorkflow: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "total_schedules": 0,
-                "updated_schedules": 0,
-                "triggered_executions": 0,
-            }
-
-        except Exception as e:
-            logger.error(f"Unexpected error in ScheduleSyncWorkflow: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "total_schedules": 0,
-                "updated_schedules": 0,
-                "triggered_executions": 0,
-            }
 
 
 @workflow.defn(sandboxed=False)

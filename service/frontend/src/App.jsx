@@ -17,6 +17,7 @@ import AppHeader from './components/AppHeader';
 import Profile from './pages/Profile';
 import TestCasesMarketplacePage from './pages/TestCasesMarketplacePage';
 import SuiteMarketplacePage from './pages/SuiteMarketplacePage';
+import SchedulesPage from './pages/SchedulesPage';
 import ChatFab from './components/ChatFab';
 import ChatModal from './components/ChatModal';
 
@@ -42,7 +43,7 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(() => {
     const hash = window.location.hash.slice(1);
-    if (['dashboard', 'users', 'roles', 'suites', 'reviews', 'profile', 'test-cases-marketplace', 'suites-marketplace'].includes(hash) || hash.startsWith('test-cases')) {
+    if (['dashboard', 'users', 'roles', 'suites', 'schedules', 'reviews', 'profile', 'test-cases-marketplace', 'suites-marketplace'].includes(hash) || hash.startsWith('test-cases')) {
       if (hash.startsWith('test-cases')) {
         return hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases';
       }
@@ -63,7 +64,7 @@ function AppContent() {
       const hash = window.location.hash.slice(1);
       if (hash.startsWith('test-cases')) {
         setCurrentView(hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases');
-      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'suites' || hash === 'reviews' || hash === 'profile' || hash === 'test-cases-marketplace' || hash === 'suites-marketplace') {
+      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'suites' || hash === 'schedules' || hash === 'reviews' || hash === 'profile' || hash === 'test-cases-marketplace' || hash === 'suites-marketplace') {
         setCurrentView(hash);
       }
     };
@@ -265,6 +266,8 @@ function AppContent() {
           <TestCasesMarketplacePage />
         ) : currentView === 'suites-marketplace' ? (
           <SuiteMarketplacePage />
+        ) : currentView === 'schedules' ? (
+          <SchedulesPage />
         ) : (
           <DashboardView />
         )}

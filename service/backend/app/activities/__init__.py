@@ -38,8 +38,6 @@ from app.activities.test_activities import (
 )
 
 from app.activities.schedule_activities import (
-    get_active_schedules,
-    update_schedule_next_run,
     execute_scheduled_test,
 )
 
@@ -52,8 +50,6 @@ __all__ = [
     "run_browser_automation",
     "save_results",
     "mark_run_failed",
-    "get_active_schedules",
-    "update_schedule_next_run",
     "execute_scheduled_test",
     "send_email",
 ]

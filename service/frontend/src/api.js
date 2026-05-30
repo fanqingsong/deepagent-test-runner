@@ -246,6 +246,57 @@ export const deleteSchedule = async (scheduleId) => {
   }
 };
 
+export const createSchedule = async (data) => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to create schedule'));
+  return response.json();
+};
+
+export const updateSchedule = async (scheduleId, data) => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/${scheduleId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to update schedule'));
+  return response.json();
+};
+
+export const toggleSchedule = async (scheduleId, isActive) => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/toggle/${scheduleId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_active: isActive }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to toggle schedule'));
+  return response.json();
+};
+
+export const triggerSchedule = async (scheduleId) => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/trigger/${scheduleId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to trigger schedule'));
+  return response.json();
+};
+
+export const getScheduleHistory = async (scheduleId) => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/${scheduleId}/history`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load schedule history'));
+  return response.json();
+};
+
+export const getScheduleRuns = async (scheduleId, limit = 20) => {
+  const response = await apiFetch(`${SCHEDULER_API}/schedules/${scheduleId}/runs?limit=${limit}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load schedule runs'));
+  return response.json();
+};
+
 export const getUsers = async () => {
   const response = await apiFetch(`${USERS_API}/users`);
   if (!response.ok) {

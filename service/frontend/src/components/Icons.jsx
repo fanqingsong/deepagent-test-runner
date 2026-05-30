@@ -182,3 +182,9 @@ export const DeepThinkingIcon = ({ size = 20 }) => (
     <circle cx="10" cy="10" r="1"/>
   </svg>
 );
+
+export const ScheduleIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M26 4h-2V2h-2v2H10V2H8v2H6a2 2 0 00-2 2v18a2 2 0 002 2h20a2 2 0 002-2V6a2 2 0 00-2-2zm0 20H6V12h20v12zM6 10V6h2v2h2V6h12v2h2V6h2v4H6z"/>
+  </svg>
+);

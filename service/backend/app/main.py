@@ -35,6 +35,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     from app.core.rbac_seed import ensure_rbac_seeded
     await ensure_rbac_seeded()
 
+    # Reconcile schedules with Temporal on startup
+    try:
+        from app.services.temporal_schedule_service import reconcile as reconcile_schedules
+        from app.core.database import async_session_maker
+        from app.models.schedule import Schedule as ScheduleModel
+        async with async_session_maker() as session:
+            from sqlalchemy import select
+            result = await session.execute(select(ScheduleModel))
+            all_schedules = result.scalars().all()
+            schedule_dicts = [
+                {
+                    "id": s.id,
+                    "is_active": s.is_active,
+                    "cron_expression": s.cron_expression,
+                    "test_definition_id": s.test_definition_id,
+                    "test_definition_ids": s.test_definition_ids or [],
+                    "test_suite_id": s.test_suite_id,
+                }
+                for s in all_schedules
+            ]
+        reconciliation = await reconcile_schedules(schedule_dicts)
+        logger.info("Schedule reconciliation on startup: %s", reconciliation)
+    except Exception as e:
+        logger.warning("Schedule reconciliation failed (non-fatal): %s", e)
+
     yield
     # Shutdown
     logger.info(f"Shutting down {settings.APP_NAME}")

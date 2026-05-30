@@ -140,3 +140,42 @@ class ScheduleTriggerResponse(BaseModel):
     """Schema for manual trigger response"""
     run_id: str = Field(..., description="Generated run ID")
     status: str = Field(..., description="Initial status")
+
+
+class ScheduleHistoryEntry(BaseModel):
+    """Single entry in schedule execution history"""
+    schedule_time: Optional[str] = None
+    started_time: Optional[str] = None
+    workflow_id: Optional[str] = None
+    run_id: Optional[str] = None
+
+
+class ScheduleHistoryResponse(BaseModel):
+    """Response for schedule execution history from Temporal"""
+    schedule_id: int
+    name: str
+    cron_expression: str
+    is_active: bool
+    paused: bool
+    recent_actions: List[dict] = []
+    next_action_times: List[str] = []
+
+
+class ScheduleRunEntry(BaseModel):
+    """Single test run in schedule run history"""
+    id: int
+    test_definition_id: Optional[int] = None
+    status: Optional[str] = None
+    total_tests: Optional[int] = None
+    passed: Optional[int] = None
+    failed: Optional[int] = None
+    total_duration_ms: Optional[int] = None
+    created_at: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+
+class ScheduleRunsResponse(BaseModel):
+    """Response for schedule test run history from DB"""
+    schedule_id: int
+    runs: List[ScheduleRunEntry] = []

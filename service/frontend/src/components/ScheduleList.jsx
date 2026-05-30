@@ -11,7 +11,7 @@ export default function ScheduleList({
   const [deletingId, setDeletingId] = useState(null);
 
   const sortedSchedules = [...schedules].sort(
-    (a, b) => new Date(a.created_at) - new Date(b.created_at)
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
   );
 
   const handleDelete = async (id) => {
@@ -38,6 +38,11 @@ export default function ScheduleList({
     );
   };
 
+  const formatTime = (isoString) => {
+    if (!isoString) return '-';
+    return new Date(isoString).toLocaleString('en-US');
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -50,7 +55,7 @@ export default function ScheduleList({
   if (isError) {
     return (
       <div className="error-container">
-        <span className="error-icon">⚠️</span>
+        <span className="error-icon">!</span>
         <span>Error: {error?.message || String(error)}</span>
       </div>
     );
@@ -58,12 +63,11 @@ export default function ScheduleList({
 
   return (
     <div className="schedule-list">
-      <h2 className="list-title">Schedule List</h2>
       {schedules.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">📅</div>
+          <div className="empty-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>&#128197;</div>
           <p className="empty-title">No schedules yet</p>
-          <p className="empty-subtitle">Click "Create Schedule" to create a scheduled task</p>
+          <p className="empty-subtitle">Click "Create Schedule" to set up a scheduled test run</p>
         </div>
       ) : (
         <div className="table-container">
@@ -74,6 +78,7 @@ export default function ScheduleList({
                 <th>Status</th>
                 <th>Cron</th>
                 <th>Timezone</th>
+                <th>Last Run</th>
                 <th>Next Run</th>
                 <th>Actions</th>
               </tr>
@@ -83,17 +88,17 @@ export default function ScheduleList({
                 <tr key={schedule.id} className="schedule-row">
                   <td className="name-cell">
                     <div className="schedule-name">{schedule.name}</div>
+                    <div style={{ fontSize: '12px', color: '#525252', marginTop: '2px' }}>
+                      {schedule.schedule_type}
+                    </div>
                   </td>
                   <td>{getStatusBadge(schedule)}</td>
                   <td className="cron-cell">
                     <code>{getCronDisplay(schedule.cron_expression)}</code>
                   </td>
                   <td>{schedule.timezone || 'UTC'}</td>
-                  <td>
-                    {schedule.next_run_at
-                      ? new Date(schedule.next_run_at).toLocaleString('en-US')
-                      : '-'}
-                  </td>
+                  <td>{formatTime(schedule.last_run_time)}</td>
+                  <td>{formatTime(schedule.next_run_time)}</td>
                   <td className="actions-cell">
                     <div className="action-buttons">
                       <button
