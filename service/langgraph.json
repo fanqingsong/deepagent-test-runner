@@ -9,9 +9,12 @@
   "graphs": {
     "chat": "./langgraph_server/graph.py:agent"
   },
+  "auth": {
+    "path": "./langgraph_server/auth.py:auth"
+  },
   "env": "./service/.env",
   "python_version": "3.11",
   "include": [
-    "./backend/app/**"
+    "./app/**"
   ]
 }

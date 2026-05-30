@@ -1,0 +1,10 @@
+FROM service-backend:latest
+
+USER root
+RUN pip install --no-cache-dir 'langgraph-cli[inmem]>=0.2.0'
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:2024/ok')"
+
+CMD ["langgraph", "dev", "--config", "/app/langgraph.json", "--port", "2024", "--no-browser", "--no-reload", "--host", "0.0.0.0"]

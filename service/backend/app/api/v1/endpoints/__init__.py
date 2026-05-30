@@ -16,7 +16,6 @@ from app.api.v1.endpoints import tags
 from app.api.v1.endpoints import run_configs
 from app.api.v1.endpoints import reviews
 from app.api.v1.endpoints import test_stream
-from app.api.v1.endpoints import chat_stream
 
 __all__ = [
     "analytics",
@@ -31,5 +30,4 @@ __all__ = [
     "run_configs",
     "reviews",
     "test_stream",
-    "chat_stream",
 ]

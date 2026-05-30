@@ -253,6 +253,7 @@ services:
     depends_on:
       - backend
       - frontend
+      - langgraph-server
     networks:
       - test-network
     restart: unless-stopped
@@ -261,6 +262,45 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  langgraph-server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.langgraph
+    container_name: deepagent-tester-langgraph
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-${SECRET_KEY:-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4}}
+      DEBUG: "true"
+    volumes:
+      - ./langgraph.json:/app/langgraph.json:ro
+      - ./langgraph_server:/app/langgraph_server:ro
+      - ./backend/app:/app/app
+      - ./screenshots:/app/screenshots
+    ports:
+      - "2024:2024"
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-network
+    restart: unless-stopped
 
   backend:
     build:

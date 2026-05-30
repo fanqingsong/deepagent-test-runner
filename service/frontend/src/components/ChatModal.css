@@ -899,3 +899,37 @@
   background: #b91c1c;
 }
 
+/* Deep Agent Todo List */
+.execution-todos {
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #f4f4f4;
+  border-left: 3px solid #0f62fe;
+}
+
+.execution-todo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 13px;
+  color: #393939;
+}
+
+.execution-todo-item.completed {
+  color: #a8a8a8;
+  text-decoration: line-through;
+}
+
+.execution-todo-check {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #0f62fe;
+}
+
+.execution-todo-text {
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+

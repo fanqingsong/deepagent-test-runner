@@ -11,6 +11,7 @@
   "dependencies": {
     "@langchain/react": "^0.2.0",
     "@langchain/core": "^1.1.27",
+    "@langchain/langgraph-sdk": "^1.8.5",
     "@tanstack/react-query": "^5.100.10",
     "axios": "^1.6.0",
     "chart.js": "^4.5.1",

@@ -7,15 +7,12 @@ import {
   RestoreIcon,
   ToolIcon,
   ChatListIcon,
-  CompressIcon,
   WebSearchIcon,
   DeepThinkingIcon
 } from './Icons';
 import { useChatStream } from '../hooks/useChatStream';
-import { sendSimpleChatMessage, compressConversation } from '../api';
 import { useChatTranslations } from '../locales/chatTranslations';
 import { ConversationList } from './ConversationList';
-import { SubagentStatus } from './SubagentStatus';
 import './ChatModal.css';
 
 const STORAGE_KEYS = {
@@ -30,9 +27,6 @@ const DEFAULT_WIDTH = 800;
 const MIN_WIDTH = 320;
 const MAX_WIDTH = 800;
 
-/**
- * Get an emoji icon for a subagent name.
- */
 function getSubagentIcon(name) {
   const icons = {
     'test-query': '🔍',
@@ -54,9 +48,6 @@ function formatDuration(seconds) {
   return `${seconds.toFixed(1)}s`;
 }
 
-/**
- * Sidebar panel for chat interface with the AI assistant.
- */
 export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' }) {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef(null);
@@ -74,7 +65,16 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     stopStreaming,
     setThreadId,
     clearMessages,
+    rawSubagents,
+    todos,
   } = useChatStream();
+
+  // Redirect to login on auth failure (401)
+  useEffect(() => {
+    if (error && /401|Unauthorized|Invalid.*token/i.test(error)) {
+      window.location.hash = 'login';
+    }
+  }, [error]);
 
   // Resize state
   const [width, setWidth] = useState(() => {
@@ -104,16 +104,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   const [showConversationList, setShowConversationList] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState(null);
 
-  // Local messages for REST API fallback (no thread)
-  const [localMessages, setLocalMessages] = useState([]);
-  const [isThinkingLocal, setIsThinkingLocal] = useState(false);
-
-  // Which mode: streaming (has threadId) or REST
-  const [useStreamMode, setUseStreamMode] = useState(false);
-
-  // Combined messages for display
-  const displayMessages = useStreamMode ? messages : localMessages;
-
   // Persist settings
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.WIDTH, width.toString()); }, [width]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.MAXIMIZED, isMaximized.toString()); }, [isMaximized]);
@@ -125,7 +115,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-  useEffect(() => { scrollToBottom(); }, [displayMessages, streamingContent, currentSubagent, toolCalls]);
+  useEffect(() => { scrollToBottom(); }, [messages, streamingContent, currentSubagent, toolCalls]);
 
   // Resize handlers
   const handleMouseDown = useCallback((e) => {
@@ -159,50 +149,15 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
 
   const handleSelectConversation = useCallback((conversationId) => {
     setActiveConversationId(conversationId);
-    setUseStreamMode(true);
     setThreadId(conversationId);
-    setLocalMessages([]);
   }, [setThreadId]);
-
-  const handleCompressConversation = async () => {
-    if (!activeConversationId) return;
-    try {
-      await compressConversation(activeConversationId);
-    } catch (err) {
-      console.error('Error compressing conversation:', err);
-    }
-  };
 
   const handleSendMessage = async () => {
     const content = inputValue.trim();
-    if (!content || isStreaming || isThinkingLocal) return;
+    if (!content || isStreaming) return;
 
     setInputValue('');
-
-    if (useStreamMode) {
-      // Use SSE streaming
-      sendMessage(content, { enableSearch, enableDeepThinking: deepThinking });
-    } else {
-      // Use REST API fallback
-      setIsThinkingLocal(true);
-      try {
-        const response = await sendSimpleChatMessage(content, enableSearch, deepThinking);
-        const finalContent = response.response || 'No response from assistant.';
-        setLocalMessages(prev => [
-          ...prev,
-          { role: 'user', content },
-          { role: 'assistant', content: finalContent, tool_calls: response.tool_calls },
-        ]);
-      } catch (err) {
-        console.error('Error sending message:', err);
-        setLocalMessages(prev => [
-          ...prev,
-          { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' },
-        ]);
-      } finally {
-        setIsThinkingLocal(false);
-      }
-    }
+    sendMessage(content, { enableSearch, enableDeepThinking: deepThinking });
   };
 
   const handleKeyPress = (e) => {
@@ -213,26 +168,18 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   };
 
   const handleClearConversation = () => {
-    if (useStreamMode) {
-      clearMessages();
-    } else {
-      setLocalMessages([]);
-    }
+    clearMessages();
     setActiveConversationId(null);
     setShowConversationList(true);
   };
 
   const handleStartNewChat = () => {
-    setUseStreamMode(true);
     clearMessages();
     setActiveConversationId(null);
     setShowConversationList(false);
   };
 
-  // Check if there's activity to show during streaming
   const hasStreamActivity = currentSubagent || subagentHistory.length > 0 || toolCalls.length > 0;
-
-  const isInputDisabled = isStreaming || isThinkingLocal;
 
   if (!isOpen) return null;
 
@@ -244,7 +191,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
         style={{ width: isMaximized ? '100vw' : `${width}px` }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Conversation List Sidebar */}
         <ConversationList
           isOpen={showConversationList}
           onClose={() => setShowConversationList(false)}
@@ -252,9 +198,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
           onSelectConversation={handleSelectConversation}
         />
 
-        {/* Main Chat Area */}
         <div className="chat-modal-main">
-          {/* Resize Handle */}
           <div
             ref={resizeHandleRef}
             className={`chat-resize-handle ${isResizing ? 'active' : ''}`}
@@ -262,11 +206,10 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
             style={{ display: isMaximized ? 'none' : 'block' }}
           />
 
-          {/* Header */}
           <div className="chat-modal-header">
             <div className="chat-modal-title">
               <h3>{t('chatTitle')}</h3>
-              {useStreamMode && <span className="connection-indicator connected" />}
+              <span className="connection-indicator connected" />
             </div>
             <div className="chat-modal-actions">
               <button
@@ -275,13 +218,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                 title="Conversations"
               >
                 <ChatListIcon size={16} />
-              </button>
-              <button
-                className="chat-modal-action-btn"
-                onClick={handleCompressConversation}
-                title="Compress Conversation"
-              >
-                <CompressIcon size={16} />
               </button>
               <button
                 className="chat-modal-action-btn"
@@ -311,9 +247,8 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
             </div>
           </div>
 
-          {/* Messages */}
           <div className="chat-modal-messages">
-            {displayMessages.length === 0 && !isStreaming && (
+            {messages.length === 0 && !isStreaming && (
               <div className="chat-welcome-message">
                 <p>👋 {t('chatWelcome')}</p>
                 <p>{t('chatWelcomeHelp')}</p>
@@ -326,7 +261,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
               </div>
             )}
 
-            {displayMessages.map((message, index) => (
+            {messages.map((message, index) => (
               <div
                 key={index}
                 className={`chat-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
@@ -335,9 +270,9 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                 </div>
 
-                {message.tool_calls && message.tool_calls.length > 0 && showToolCalls && (
+                {message.toolCalls?.length > 0 && showToolCalls && (
                   <div className="message-tool-calls">
-                    {message.tool_calls
+                    {message.toolCalls
                       .filter(tc => tc.args && Object.keys(tc.args).length > 0)
                       .map((toolCall, toolIndex) => (
                         <div key={toolIndex} className="tool-call-card">
@@ -355,13 +290,20 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
               </div>
             ))}
 
-            {/* Streaming execution process */}
             {isStreaming && (
               <div className="chat-message assistant-message streaming">
-                {/* Execution timeline */}
+                {todos && todos.length > 0 && (
+                  <div className="execution-todos">
+                    {todos.map((todo, i) => (
+                      <div key={`todo-${i}`} className={`execution-todo-item ${todo.completed ? 'completed' : ''}`}>
+                        <span className="execution-todo-check">{todo.completed ? '✓' : '○'}</span>
+                        <span className="execution-todo-text">{todo.content || todo.title || String(todo)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {hasStreamActivity && (
                   <div className="execution-timeline">
-                    {/* Completed subagents */}
                     {subagentHistory.map((sa, i) => (
                       <div key={`sa-${i}`} className="execution-step completed">
                         <div className="execution-step-icon">{getSubagentIcon(sa.name)}</div>
@@ -373,7 +315,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                       </div>
                     ))}
 
-                    {/* Active subagent */}
                     {currentSubagent && (
                       <div className="execution-step active">
                         <div className="execution-step-icon">{getSubagentIcon(currentSubagent.name)}</div>
@@ -389,7 +330,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                       </div>
                     )}
 
-                    {/* Recent tool calls during streaming */}
                     {showToolCalls && toolCalls.slice(-5).map((tc, i) => (
                       <div key={`tc-${i}`} className={`execution-tool-call ${tc.type}`}>
                         <span className="execution-tool-icon">{tc.type === 'result' ? '📄' : '🔧'}</span>
@@ -404,7 +344,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                   </div>
                 )}
 
-                {/* Streaming content */}
                 <div className="message-content">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {streamingContent || (currentSubagent ? '' : 'Thinking...')}
@@ -413,18 +352,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
               </div>
             )}
 
-            {/* REST API thinking state */}
-            {isThinkingLocal && (
-              <div className="chat-message assistant-message">
-                <div className="message-content thinking">
-                  <span className="thinking-dots">
-                    <span>.</span><span>.</span><span>.</span>
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Error display */}
             {error && (
               <div className="chat-message assistant-message">
                 <div className="message-content error">
@@ -436,7 +363,6 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           <div className="chat-modal-input-area">
             <button
               className={`chat-search-toggle-btn ${enableSearch ? 'active' : ''}`}
@@ -466,12 +392,12 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
               onKeyPress={handleKeyPress}
               placeholder={t('inputPlaceholder')}
               rows={1}
-              disabled={isInputDisabled}
+              disabled={isStreaming}
             />
             <button
               className="chat-send-btn"
               onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isInputDisabled}
+              disabled={!inputValue.trim() || isStreaming}
             >
               {t('sendButton')}
             </button>

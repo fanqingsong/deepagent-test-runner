@@ -1,20 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Client } from '@langchain/langgraph-sdk';
 import { CloseIcon, AddIcon, TrashIcon } from './Icons';
-import {
-  listChatConversations,
-  createChatConversation,
-  deleteChatConversation
-} from '../api';
+import authService from '../services/authService';
 import './ConversationList.css';
 
+const LANGGRAPH_URL = import.meta.env.VITE_LANGGRAPH_URL || `${window.location.origin}/langgraph`;
+
 /**
- * Sidebar panel for managing multiple chat conversations.
- *
- * @param {Object} props
- * @param {boolean} props.isOpen - Whether the sidebar is open
- * @param {Function} props.onClose - Callback when sidebar is closed
- * @param {string|null} props.activeConversationId - Currently selected conversation ID
- * @param {Function} props.onSelectConversation - Callback when conversation is selected
+ * Sidebar panel for managing chat conversations via LangGraph threads.
  */
 export function ConversationList({
   isOpen,
@@ -27,51 +20,53 @@ export function ConversationList({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load conversations on mount and when refreshKey changes
-  useEffect(() => {
-    loadConversations();
-  }, [refreshKey]);
+  const client = useMemo(() => new Client({
+    apiUrl: LANGGRAPH_URL,
+    defaultHeaders: authService.getAuthHeaders(),
+  }), [refreshKey]);
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await listChatConversations();
-      setConversations(Array.isArray(data) ? data : (data.conversations || []));
+      const threads = await client.threads.search({ limit: 50 });
+      setConversations(threads || []);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [client]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
 
   const handleCreateConversation = async () => {
     try {
-      const newConversation = await createChatConversation('New Chat');
-      setConversations(prev => [newConversation, ...prev]);
-      onSelectConversation(newConversation.id);
+      const thread = await client.threads.create({
+        metadata: { title: 'New Chat' },
+      });
+      setConversations(prev => [thread, ...prev]);
+      onSelectConversation(thread.thread_id);
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const handleDeleteConversation = async (conversationId, e) => {
+  const handleDeleteConversation = async (threadId, e) => {
     e.stopPropagation();
     if (!confirm('Delete this conversation?')) return;
 
     try {
-      await deleteChatConversation(conversationId);
-      setConversations(prev => prev.filter(c => c.id !== conversationId));
-      if (activeConversationId === conversationId) {
+      await client.threads.delete(threadId);
+      setConversations(prev => prev.filter(c => c.thread_id !== threadId));
+      if (activeConversationId === threadId) {
         onSelectConversation(null);
       }
     } catch (err) {
       setError(err.message);
     }
-  };
-
-  const handleSelectConversation = (conversationId) => {
-    onSelectConversation(conversationId);
   };
 
   const formatDate = (timestamp) => {
@@ -95,7 +90,6 @@ export function ConversationList({
 
   return (
     <div className={`conversation-list-sidebar ${isOpen ? 'visible' : ''}`}>
-      {/* Header */}
       <div className="conversation-list-header">
         <h3>Conversations</h3>
         <button
@@ -107,7 +101,6 @@ export function ConversationList({
         </button>
       </div>
 
-      {/* New Conversation Button */}
       <div className="conversation-list-actions">
         <button
           className="conversation-new-btn"
@@ -118,32 +111,31 @@ export function ConversationList({
         </button>
       </div>
 
-      {/* Conversations */}
       <div className="conversation-list-items">
         {isLoading && <div className="conversation-loading">Loading...</div>}
         {error && <div className="conversation-error">{error}</div>}
         {!isLoading && !error && conversations.length === 0 && (
           <div className="conversation-empty">No conversations yet</div>
         )}
-        {conversations.map((conversation) => (
+        {conversations.map((thread) => (
           <div
-            key={conversation.id}
+            key={thread.thread_id}
             className={`conversation-item ${
-              conversation.id === activeConversationId ? 'active' : ''
+              thread.thread_id === activeConversationId ? 'active' : ''
             }`}
-            onClick={() => handleSelectConversation(conversation.id)}
+            onClick={() => onSelectConversation(thread.thread_id)}
           >
             <div className="conversation-item-content">
               <div className="conversation-item-title">
-                {conversation.title || 'New Conversation'}
+                {thread.metadata?.title || 'New Conversation'}
               </div>
               <div className="conversation-item-time">
-                {formatDate(conversation.updated_at || conversation.created_at)}
+                {formatDate(thread.updated_at || thread.created_at)}
               </div>
             </div>
             <button
               className="conversation-delete-btn"
-              onClick={(e) => handleDeleteConversation(conversation.id, e)}
+              onClick={(e) => handleDeleteConversation(thread.thread_id, e)}
               aria-label="Delete conversation"
             >
               <TrashIcon size={16} />

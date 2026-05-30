@@ -15,10 +15,10 @@ from app.models.test_case import TestCase
 from app.models.test_suite import TestSuite
 from app.models.suite_run import SuiteRun, SuiteRunEntry
 from app.models.conversation import ConversationThread, ConversationMessage
-from app.models.chat import ChatConversation, ChatMessage
 from app.models.app import App
 from app.models.run_config import RunConfig
 from app.models.llm_usage import LlmUsage
+from app.models.auth import UserSession, MFASecret, EmailToken, AuditLog
 
 __all__ = [
     "Role",
@@ -36,8 +36,6 @@ __all__ = [
     "SuiteRunEntry",
     "ConversationThread",
     "ConversationMessage",
-    "ChatConversation",
-    "ChatMessage",
     "App",
     "RunConfig",
     "LlmUsage",

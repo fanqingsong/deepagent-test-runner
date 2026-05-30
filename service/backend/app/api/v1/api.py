@@ -12,8 +12,6 @@ from app.api.v1.endpoints import (
     apps,
     auth,
     autonomous_planning,
-    chat,
-    chat_stream,
     conversations,
     llm_usage,
     reviews,
@@ -27,7 +25,6 @@ from app.api.v1.endpoints import (
     test_stream,
     users,
 )
-from app.api.v1.websockets import chat as chat_ws
 
 api_router = APIRouter()
 
@@ -121,18 +118,6 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    chat.router,
-    prefix="/chat",
-    tags=["chat"]
-)
-
-api_router.include_router(
-    chat_ws.router,
-    prefix="/chat",
-    tags=["chat-websocket"]
-)
-
-api_router.include_router(
     llm_usage.router,
     prefix="/llm-usage",
     tags=["llm-usage"]
@@ -142,10 +127,4 @@ api_router.include_router(
     test_stream.router,
     prefix="/test",
     tags=["test-stream"]
-)
-
-api_router.include_router(
-    chat_stream.router,
-    prefix="/chat",
-    tags=["chat-stream"]
 )
