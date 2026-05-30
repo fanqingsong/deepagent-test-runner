@@ -9,7 +9,7 @@ def get_schedule_manager():
     global _schedule_manager
     if _schedule_manager is None:
         from app.services.schedule_manager import ScheduleManager
-        _schedule_manager = ScheduleManager(None, None)
+        _schedule_manager = ScheduleManager(None)
     return _schedule_manager
 
 

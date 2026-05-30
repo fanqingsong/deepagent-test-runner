@@ -1,7 +1,7 @@
 """
 Schedule Management Activities
 
-Temporal activities for schedule management ported from Celery tasks.
+Temporal activities for schedule management.
 These activities handle schedule synchronization and execution.
 """
 

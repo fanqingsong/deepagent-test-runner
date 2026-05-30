@@ -239,7 +239,7 @@ class ExecutionService:
         return test_run
 
     async def ensure_run_running(self, run_id: str) -> TestRun:
-        """Mark a run as running, including Celery retry after failure."""
+        """Mark a run as running, including retry after failure."""
         stmt = select(TestRun).where(TestRun.run_id == run_id)
         result = await self.db.execute(stmt)
         test_run = result.scalar_one_or_none()

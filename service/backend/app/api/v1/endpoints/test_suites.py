@@ -468,7 +468,7 @@ async def trigger_suite_run(
         environment_overrides=body.environment,
     )
 
-    # Dispatch Celery task
+    # Dispatch execution
     execute_suite.delay(suite_run.id)
 
     return SuiteRunTriggerResponse(run_id=suite_run.run_id, status="pending")

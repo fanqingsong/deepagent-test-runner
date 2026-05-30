@@ -163,7 +163,7 @@ async def test_update_run_status_invalid_transition(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_ensure_run_running_from_failed(db_session: AsyncSession):
-    """Celery retry can restart a previously failed run."""
+    """Retry can restart a previously failed run."""
     import time
 
     service = ExecutionService(db_session)

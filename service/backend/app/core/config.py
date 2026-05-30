@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     )
     EMAIL_BACKEND: str = Field(
         default="temporal",
-        description="Email backend: temporal, celery, or sync"
+        description="Email backend: temporal or sync"
     )
 
     # Rate Limiting
@@ -147,17 +147,7 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = Field(
         default="redis://localhost:6379/0",
-        description="Redis URL for caching and Celery"
-    )
-
-    # Celery
-    CELERY_BROKER_URL: str = Field(
-        default="redis://localhost:6379/0",
-        description="Celery broker URL"
-    )
-    CELERY_RESULT_BACKEND: str = Field(
-        default="redis://localhost:6379/0",
-        description="Celery result backend URL"
+        description="Redis URL for caching"
     )
 
     API_TIMEOUT_MS: int = Field(

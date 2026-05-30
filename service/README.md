@@ -28,9 +28,8 @@ The system consists of 4 microservices sharing a PostgreSQL database:
          └──────────────────────┘       │
                                        │
                     ┌──────────────────▼──────┐
-                    │   Redis Queue            │
+                    │   Redis                  │
                     │   Port: 6379             │
-                    │   (Celery Broker)        │
                     └──────────────────────────┘
 ```
 
@@ -48,7 +47,7 @@ FastAPI-based REST API for managing test definitions and test steps.
 **API Docs:** http://localhost:8001/api/docs
 
 ### 2. Scheduler Service (Port 8002)
-FastAPI-based service for test execution scheduling with Celery workers.
+FastAPI-based service for test execution scheduling with Temporal workers.
 
 **Features:**
 - Async test execution with Playwright
@@ -84,7 +83,7 @@ Centralized database for all services.
 - `users` - User authentication
 
 ### 5. Redis (Port 6379)
-Message broker for Celery task queue.
+In-memory data store for caching and session management.
 
 ## Quick Start
 
@@ -164,11 +163,6 @@ docker-compose logs -f
 docker-compose logs -f scheduler-service
 ```
 
-### Scale Celery Workers
-```bash
-docker-compose up -d --scale scheduler-worker=4
-```
-
 ## Database Management
 
 ### Connect to PostgreSQL
@@ -204,11 +198,6 @@ docker exec cc-test-postgres pg_isready -U cc_test_user
 
 # Redis
 docker exec cc-test-redis redis-cli ping
-```
-
-### View Celery Worker Status
-```bash
-docker exec cc-test-scheduler-worker celery -A app.core.celery_app inspect active
 ```
 
 ## Troubleshooting

@@ -54,7 +54,6 @@ The test suite covers:
 - Database models and relationships
 - Service layer (execution, scheduling, test generation)
 - Schema validation
-- Celery task integration
 
 ## Notes
 

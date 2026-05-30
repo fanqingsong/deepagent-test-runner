@@ -1,7 +1,7 @@
 """
 Test Execution Activities
 
-Temporal activities for test execution logic ported from Celery tasks.
+Temporal activities for test execution logic.
 These activities wrap the existing execution service and agent logic.
 """
 

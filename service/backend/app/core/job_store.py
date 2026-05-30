@@ -1,5 +1,5 @@
 """
-Redis-backed job metadata store for Celery test execution jobs.
+Redis-backed job metadata store for test execution jobs.
 
 Replaces in-process dict storage so job state survives API restarts.
 """

@@ -88,7 +88,7 @@ async def executor_node(
     run_id = state.get("run_id", "default")
     environment = state.get("environment", {})
 
-    # Get Playwright page from config (set by Celery task)
+    # Get Playwright page from config (set by Temporal activity)
     configurable = config.get("configurable", {})
     page = configurable.get("page")
 

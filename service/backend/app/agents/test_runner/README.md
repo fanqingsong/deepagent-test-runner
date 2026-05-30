@@ -125,7 +125,7 @@ app/agents/
 
 ## 集成方式
 
-Celery 任务 (`test_execution.py`) 负责 Playwright 浏览器生命周期管理，通过 `RunnableConfig` 将 Page 对象传入图：
+Temporal activity 负责 Playwright 浏览器生命周期管理，通过 `RunnableConfig` 将 Page 对象传入图：
 
 ```python
 graph = build_pipeline_graph()

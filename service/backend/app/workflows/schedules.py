@@ -2,7 +2,7 @@
 Schedule Management Workflows
 
 Temporal workflows for schedule management and execution.
-These workflows replace Celery Beat for cron-based scheduling.
+These workflows handle cron-based scheduling.
 """
 
 import logging
@@ -153,7 +153,7 @@ class ScheduleExecutionWorkflow:
     3. Executing tests via child workflow (TestExecutionWorkflow)
     4. Updating schedule state after execution
 
-    This workflow replaces the Celery task `schedule_sync.execute_scheduled_tests()`.
+    Executes scheduled tests.
     """
 
     @workflow.run

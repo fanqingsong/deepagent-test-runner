@@ -104,9 +104,6 @@ async def send_email(
 
     if settings.EMAIL_BACKEND == "temporal":
         return await send_email_via_temporal(to_email, subject, template_name, context)
-    elif settings.EMAIL_BACKEND == "celery":
-        from app.tasks.email_tasks import send_email_async
-        return await send_email_async(to_email, subject, template_name, context)
     else:  # sync
         from app.tasks.email_tasks import send_email_sync
         return await send_email_sync(to_email, subject, template_name, context)

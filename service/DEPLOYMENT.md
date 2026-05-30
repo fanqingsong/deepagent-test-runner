@@ -355,13 +355,6 @@ docker-compose up -d
 
 ### Horizontal Scaling
 
-**Scale Celery Workers:**
-
-```bash
-# Add more workers
-docker-compose up -d --scale scheduler-worker=4
-```
-
 **Scale API Services:**
 
 Requires load balancer (nginx, traefik):

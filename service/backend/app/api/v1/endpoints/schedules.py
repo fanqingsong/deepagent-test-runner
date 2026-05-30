@@ -2,7 +2,7 @@
 Schedules API Endpoints
 
 Schedule management for test execution using Temporal workflows.
-This replaces the Celery Beat schedule synchronization with Temporal-based scheduling.
+Temporal-based schedule management.
 """
 
 import logging

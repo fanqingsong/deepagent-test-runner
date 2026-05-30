@@ -1,13 +1,8 @@
-try:
-    from celery import shared_task
-except ImportError:
-    shared_task = None
 from pydantic import BaseModel, EmailStr
 from typing import Dict, Any
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
 import asyncio
 import logging
 
@@ -56,20 +51,6 @@ async def send_email_async(to_email: str, subject: str, template_name: str, cont
         send_email_sync,
         to_email, subject, template_name, context,
     )
-
-
-def send_email_task(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Celery task wrapper for email sending."""
-    try:
-        return send_email_sync(
-            to_email=email_data["to_email"],
-            subject=email_data["subject"],
-            template_name=email_data["template_name"],
-            context=email_data["context"],
-        )
-    except Exception as e:
-        logger.error(f"Failed to send email to {email_data.get('to_email')}: {str(e)}")
-        raise
 
 
 def _render_email_template(template_name: str, context: Dict[str, Any]) -> str:
