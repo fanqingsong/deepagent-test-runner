@@ -292,7 +292,6 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
 
         await db.commit()
 
-        # Note: In Temporal, we don't queue tasks like Celery.
         # The workflow will trigger child workflows or activities for each test.
         # This activity just prepares the execution.
 
