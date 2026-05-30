@@ -22,7 +22,6 @@ from app.api.v1.endpoints import (
     test_steps,
     test_suites,
     test_versions,
-    test_stream,
     users,
 )
 
@@ -121,10 +120,4 @@ api_router.include_router(
     llm_usage.router,
     prefix="/llm-usage",
     tags=["llm-usage"]
-)
-
-api_router.include_router(
-    test_stream.router,
-    prefix="/test",
-    tags=["test-stream"]
 )

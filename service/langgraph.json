@@ -12,7 +12,7 @@
   "auth": {
     "path": "./langgraph_server/auth.py:auth"
   },
-  "env": "./service/.env",
+  "env": "./.env",
   "python_version": "3.11",
   "include": [
     "./app/**"

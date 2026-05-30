@@ -15,7 +15,6 @@ from app.api.v1.endpoints import app_permissions
 from app.api.v1.endpoints import tags
 from app.api.v1.endpoints import run_configs
 from app.api.v1.endpoints import reviews
-from app.api.v1.endpoints import test_stream
 
 __all__ = [
     "analytics",
@@ -29,5 +28,4 @@ __all__ = [
     "tags",
     "run_configs",
     "reviews",
-    "test_stream",
 ]

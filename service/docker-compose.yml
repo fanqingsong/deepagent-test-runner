@@ -289,6 +289,10 @@ services:
     volumes:
       - ./langgraph.json:/app/langgraph.json:ro
       - ./langgraph_server:/app/langgraph_server:ro
+      # Broad mount for dev hot-reload. Access boundaries are enforced by
+      # Python imports (langgraph_server only imports agents/core/models),
+      # not by volume granularity — restricting mounts would break on every
+      # new import and add maintenance cost with no security benefit.
       - ./backend/app:/app/app
       - ./screenshots:/app/screenshots
     ports:

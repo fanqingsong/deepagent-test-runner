@@ -10,21 +10,20 @@ from datetime import datetime
 from typing import Any, Optional
 
 from langchain_core.tools import tool
-from sqlalchemy import select, and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 
-from app.models.user import User
-from app.models.role import Role, Permission
 from app.models.test_definition import TestDefinition
 from app.models.test_suite import TestSuite
 from app.models.test_run import TestRun
+from app.models.role import Role
+from app.models.user import User
+from app.agents.deepagent.db_tool import tool_db_session, AuthError, PermissionError
 
 logger = logging.getLogger(__name__)
 
 
-def _check_permission(user: User, permission_name: str) -> bool:
-    """Check if user has a specific permission."""
-    return user.is_admin or user.has_permission(permission_name)
+def _handle_auth_error(e: Exception) -> str:
+    return f"Error: {e}"
 
 
 def _format_test_case(test: TestDefinition) -> str:
@@ -100,26 +99,8 @@ async def query_test_cases(
     Returns:
         Formatted list of test cases with key details
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "read:test"):
-            return "Error: You don't have permission to view test cases."
-
-        try:
+    try:
+        async with tool_db_session("read:test") as (db, _):
             stmt = select(TestDefinition).where(TestDefinition.is_active == True)
 
             if name_filter:
@@ -141,10 +122,11 @@ async def query_test_cases(
                 formatted.append(_format_test_case(test))
 
             return "\n\n".join(formatted)
-
-        except Exception as e:
-            logger.error(f"Error querying test cases: {e}")
-            return f"Error querying test cases: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying test cases: {e}")
+        return f"Error querying test cases: {str(e)}"
 
 
 @tool
@@ -163,26 +145,8 @@ async def query_test_suites(
     Returns:
         Formatted list of test suites with key details
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "read:suite"):
-            return "Error: You don't have permission to view test suites."
-
-        try:
+    try:
+        async with tool_db_session("read:suite") as (db, _):
             stmt = select(TestSuite)
 
             if name_filter:
@@ -204,10 +168,11 @@ async def query_test_suites(
                 formatted.append(_format_test_suite(suite))
 
             return "\n\n".join(formatted)
-
-        except Exception as e:
-            logger.error(f"Error querying test suites: {e}")
-            return f"Error querying test suites: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying test suites: {e}")
+        return f"Error querying test suites: {str(e)}"
 
 
 @tool
@@ -224,26 +189,8 @@ async def query_users(
     Returns:
         Formatted list of users with their roles
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "read:user"):
-            return "Error: You don't have permission to view users."
-
-        try:
+    try:
+        async with tool_db_session("read:user") as (db, _):
             stmt = select(User)
 
             if username_filter:
@@ -262,10 +209,11 @@ async def query_users(
                 formatted.append(_format_user(user))
 
             return "\n\n".join(formatted)
-
-        except Exception as e:
-            logger.error(f"Error querying users: {e}")
-            return f"Error querying users: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying users: {e}")
+        return f"Error querying users: {str(e)}"
 
 
 @tool
@@ -280,26 +228,8 @@ async def query_roles(
     Returns:
         Formatted list of roles with their permissions
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "read:role"):
-            return "Error: You don't have permission to view roles."
-
-        try:
+    try:
+        async with tool_db_session("read:role") as (db, _):
             stmt = select(Role)
 
             if name_filter:
@@ -318,10 +248,11 @@ async def query_roles(
                 formatted.append(_format_role(role))
 
             return "\n\n".join(formatted)
-
-        except Exception as e:
-            logger.error(f"Error querying roles: {e}")
-            return f"Error querying roles: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying roles: {e}")
+        return f"Error querying roles: {str(e)}"
 
 
 @tool
@@ -338,26 +269,8 @@ async def set_user_role(
     Returns:
         Success message or error description
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    current_user_id = get_current_user_id()
-    if not current_user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == current_user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "update:user"):
-            return "Error: You don't have permission to manage user roles."
-
-        try:
+    try:
+        async with tool_db_session("update:user") as (db, _):
             # Find the user
             user_stmt = select(User).where(User.id == user_id)
             user_result = await db.execute(user_stmt)
@@ -387,10 +300,11 @@ async def set_user_role(
 
             return f"✅ Successfully assigned role '{role_name}' to user '{user.username}'."
 
-        except Exception as e:
-            logger.error(f"Error setting user role: {e}")
-            await db.rollback()
-            return f"Error setting user role: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error setting user role: {e}")
+        return f"Error setting user role: {str(e)}"
 
 
 @tool
@@ -407,26 +321,8 @@ async def remove_user_role(
     Returns:
         Success message or error description
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    current_user_id = get_current_user_id()
-    if not current_user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == current_user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "update:user"):
-            return "Error: You don't have permission to manage user roles."
-
-        try:
+    try:
+        async with tool_db_session("update:user") as (db, _):
             # Find the user
             user_stmt = select(User).where(User.id == user_id)
             user_result = await db.execute(user_stmt)
@@ -446,10 +342,11 @@ async def remove_user_role(
 
             return f"✅ Successfully removed role '{role_name}' from user '{user.username}'."
 
-        except Exception as e:
-            logger.error(f"Error removing user role: {e}")
-            await db.rollback()
-            return f"Error removing user role: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error removing user role: {e}")
+        return f"Error removing user role: {str(e)}"
 
 
 @tool
@@ -464,26 +361,8 @@ async def approve_test(
     Returns:
         Success message or error description
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "review:test"):
-            return "Error: You don't have permission to approve test cases."
-
-        try:
+    try:
+        async with tool_db_session("review:test") as (db, current_user):
             stmt = select(TestDefinition).where(TestDefinition.id == test_id)
             result = await db.execute(stmt)
             test = result.scalar_one_or_none()
@@ -502,10 +381,11 @@ async def approve_test(
 
             return f"✅ Successfully approved test case '{test.name}'."
 
-        except Exception as e:
-            logger.error(f"Error approving test: {e}")
-            await db.rollback()
-            return f"Error approving test: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error approving test: {e}")
+        return f"Error approving test: {str(e)}"
 
 
 @tool
@@ -522,26 +402,8 @@ async def reject_test(
     Returns:
         Success message or error description
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "review:test"):
-            return "Error: You don't have permission to reject test cases."
-
-        try:
+    try:
+        async with tool_db_session("review:test") as (db, current_user):
             stmt = select(TestDefinition).where(TestDefinition.id == test_id)
             result = await db.execute(stmt)
             test = result.scalar_one_or_none()
@@ -558,10 +420,11 @@ async def reject_test(
 
             return f"✅ Successfully rejected test case '{test.name}'. Reason: {reason}"
 
-        except Exception as e:
-            logger.error(f"Error rejecting test: {e}")
-            await db.rollback()
-            return f"Error rejecting test: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error rejecting test: {e}")
+        return f"Error rejecting test: {str(e)}"
 
 
 @tool
@@ -576,26 +439,8 @@ async def approve_suite(
     Returns:
         Success message or error description
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "review:suite"):
-            return "Error: You don't have permission to approve test suites."
-
-        try:
+    try:
+        async with tool_db_session("review:suite") as (db, current_user):
             stmt = select(TestSuite).where(TestSuite.id == suite_id)
             result = await db.execute(stmt)
             suite = result.scalar_one_or_none()
@@ -614,10 +459,11 @@ async def approve_suite(
 
             return f"✅ Successfully approved test suite '{suite.name}'."
 
-        except Exception as e:
-            logger.error(f"Error approving suite: {e}")
-            await db.rollback()
-            return f"Error approving suite: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error approving suite: {e}")
+        return f"Error approving suite: {str(e)}"
 
 
 @tool
@@ -634,26 +480,8 @@ async def reject_suite(
     Returns:
         Success message or error description
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        if not _check_permission(current_user, "review:suite"):
-            return "Error: You don't have permission to reject test suites."
-
-        try:
+    try:
+        async with tool_db_session("review:suite") as (db, current_user):
             stmt = select(TestSuite).where(TestSuite.id == suite_id)
             result = await db.execute(stmt)
             suite = result.scalar_one_or_none()
@@ -670,10 +498,11 @@ async def reject_suite(
 
             return f"✅ Successfully rejected test suite '{suite.name}'. Reason: {reason}"
 
-        except Exception as e:
-            logger.error(f"Error rejecting suite: {e}")
-            await db.rollback()
-            return f"Error rejecting suite: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error rejecting suite: {e}")
+        return f"Error rejecting suite: {str(e)}"
 
 
 @tool
@@ -684,39 +513,20 @@ async def get_system_stats(
     Returns:
         Formatted system statistics
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
-
-    user_id = get_current_user_id()
-    if not user_id:
-        return "Error: Authentication required."
-
-    async with async_session_maker() as db:
-        # Get current user from database
-        user_stmt = select(User).where(User.id == user_id)
-        user_result = await db.execute(user_stmt)
-        current_user = user_result.scalar_one_or_none()
-
-        if not current_user:
-            return "Error: User not found."
-
-        try:
-            # Count various entities
-            test_count_stmt = select(TestDefinition).where(TestDefinition.is_active == True)
-            test_result = await db.execute(test_count_stmt)
-            test_count = len(test_result.scalars().all())
-
-            suite_stmt = select(TestSuite)
-            suite_result = await db.execute(suite_stmt)
-            suite_count = len(suite_result.scalars().all())
-
-            user_stmt = select(User)
-            user_result = await db.execute(user_stmt)
-            user_count = len(user_result.scalars().all())
-
-            role_stmt = select(Role)
-            role_result = await db.execute(role_stmt)
-            role_count = len(role_result.scalars().all())
+    try:
+        async with tool_db_session() as (db, _):
+            test_count = await db.scalar(
+                select(func.count()).select_from(TestDefinition).where(TestDefinition.is_active == True)
+            )
+            suite_count = await db.scalar(
+                select(func.count()).select_from(TestSuite)
+            )
+            user_count = await db.scalar(
+                select(func.count()).select_from(User)
+            )
+            role_count = await db.scalar(
+                select(func.count()).select_from(Role)
+            )
 
             stats = (
                 f"📊 **System Statistics**\n\n"
@@ -733,6 +543,8 @@ async def get_system_stats(
 
             return stats
 
-        except Exception as e:
-            logger.error(f"Error getting system stats: {e}")
-            return f"Error getting system stats: {str(e)}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error getting system stats: {e}")
+        return f"Error getting system stats: {str(e)}"
