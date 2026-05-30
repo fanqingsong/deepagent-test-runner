@@ -3,11 +3,16 @@ Chat Tools for AI Assistant
 
 Provides tools for querying system data and executing actions
 with proper permission checks.
+
+All DB operations use sync SQLAlchemy (sync_session_maker) wrapped
+in run_in_executor to avoid greenlet_spawn errors in LangGraph's
+thread pool.
 """
 
+import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from langchain_core.tools import tool
 from sqlalchemy import select, func
@@ -17,7 +22,7 @@ from app.models.test_suite import TestSuite
 from app.models.test_run import TestRun
 from app.models.role import Role
 from app.models.user import User
-from app.agents.deepagent.db_tool import tool_db_session, AuthError, PermissionError
+from app.agents.deepagent.db_tool import sync_tool_db_session, AuthError, PermissionError
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +32,6 @@ def _handle_auth_error(e: Exception) -> str:
 
 
 def _format_test_case(test: TestDefinition) -> str:
-    """Format a test case for display."""
     status_emoji = {
         "draft": "📝",
         "pending_review": "⏳",
@@ -44,7 +48,6 @@ def _format_test_case(test: TestDefinition) -> str:
 
 
 def _format_test_suite(suite: TestSuite) -> str:
-    """Format a test suite for display."""
     status_emoji = {
         "draft": "📝",
         "pending_review": "⏳",
@@ -62,7 +65,6 @@ def _format_test_suite(suite: TestSuite) -> str:
 
 
 def _format_user(user: User) -> str:
-    """Format a user for display."""
     roles_str = ", ".join([role.name for role in user.roles]) if user.roles else "No roles"
     return (
         f"👤 **{user.username}** (ID: {user.id})\n"
@@ -73,7 +75,6 @@ def _format_user(user: User) -> str:
 
 
 def _format_role(role: Role) -> str:
-    """Format a role for display."""
     perm_count = len(role.permissions) if role.permissions else 0
     return (
         f"🔐 **{role.name}** (ID: {role.id})\n"
@@ -81,6 +82,257 @@ def _format_role(role: Role) -> str:
         f"   Permissions: {perm_count}\n"
         f"   System: {'Yes' if role.is_system else 'No'}"
     )
+
+
+# --- Blocking DB helpers (run via run_in_executor) ---
+
+
+def _query_test_cases_sync(name_filter, status_filter, limit):
+    try:
+        with sync_tool_db_session("read:test") as (db, _):
+            stmt = select(TestDefinition).where(TestDefinition.is_active == True)
+            if name_filter:
+                stmt = stmt.where(TestDefinition.name.ilike(f"%{name_filter}%"))
+            if status_filter:
+                stmt = stmt.where(TestDefinition.review_status == status_filter)
+            stmt = stmt.order_by(TestDefinition.created_at.desc()).limit(limit)
+            result = db.execute(stmt)
+            tests = result.scalars().all()
+            if not tests:
+                return "No test cases found matching your criteria."
+            formatted = [f"Found {len(tests)} test case(s):\n"]
+            for test in tests:
+                formatted.append(_format_test_case(test))
+            return "\n\n".join(formatted)
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying test cases: {e}")
+        return f"Error querying test cases: {str(e)}"
+
+
+def _query_test_suites_sync(name_filter, status_filter, limit):
+    try:
+        with sync_tool_db_session("read:suite") as (db, _):
+            stmt = select(TestSuite)
+            if name_filter:
+                stmt = stmt.where(TestSuite.name.ilike(f"%{name_filter}%"))
+            if status_filter:
+                stmt = stmt.where(TestSuite.review_status == status_filter)
+            stmt = stmt.order_by(TestSuite.created_at.desc()).limit(limit)
+            result = db.execute(stmt)
+            suites = result.scalars().all()
+            if not suites:
+                return "No test suites found matching your criteria."
+            formatted = [f"Found {len(suites)} test suite(s):\n"]
+            for suite in suites:
+                formatted.append(_format_test_suite(suite))
+            return "\n\n".join(formatted)
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying test suites: {e}")
+        return f"Error querying test suites: {str(e)}"
+
+
+def _query_users_sync(username_filter, limit):
+    try:
+        with sync_tool_db_session("read:user") as (db, _):
+            stmt = select(User)
+            if username_filter:
+                stmt = stmt.where(User.username.ilike(f"%{username_filter}%"))
+            stmt = stmt.order_by(User.created_at.desc()).limit(limit)
+            result = db.execute(stmt)
+            users = result.scalars().all()
+            if not users:
+                return "No users found matching your criteria."
+            formatted = [f"Found {len(users)} user(s):\n"]
+            for user in users:
+                formatted.append(_format_user(user))
+            return "\n\n".join(formatted)
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying users: {e}")
+        return f"Error querying users: {str(e)}"
+
+
+def _query_roles_sync(name_filter):
+    try:
+        with sync_tool_db_session("read:role") as (db, _):
+            stmt = select(Role)
+            if name_filter:
+                stmt = stmt.where(Role.name.ilike(f"%{name_filter}%"))
+            stmt = stmt.order_by(Role.name)
+            result = db.execute(stmt)
+            roles = result.scalars().all()
+            if not roles:
+                return "No roles found matching your criteria."
+            formatted = [f"Found {len(roles)} role(s):\n"]
+            for role in roles:
+                formatted.append(_format_role(role))
+            return "\n\n".join(formatted)
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error querying roles: {e}")
+        return f"Error querying roles: {str(e)}"
+
+
+def _set_user_role_sync(user_id, role_name):
+    try:
+        with sync_tool_db_session("update:user") as (db, _):
+            user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+            if not user:
+                return f"Error: User with ID {user_id} not found."
+            role = db.execute(select(Role).where(Role.name == role_name)).scalar_one_or_none()
+            if not role:
+                return f"Error: Role '{role_name}' not found."
+            if user.roles and any(r.id == role.id for r in user.roles):
+                return f"User '{user.username}' already has role '{role_name}'."
+            if not user.roles:
+                user.roles = []
+            user.roles.append(role)
+            db.commit()
+            return f"✅ Successfully assigned role '{role_name}' to user '{user.username}'."
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error setting user role: {e}")
+        return f"Error setting user role: {str(e)}"
+
+
+def _remove_user_role_sync(user_id, role_name):
+    try:
+        with sync_tool_db_session("update:user") as (db, _):
+            user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+            if not user:
+                return f"Error: User with ID {user_id} not found."
+            if not user.roles or not any(r.name == role_name for r in user.roles):
+                return f"User '{user.username}' does not have role '{role_name}'."
+            user.roles = [r for r in user.roles if r.name != role_name]
+            db.commit()
+            return f"✅ Successfully removed role '{role_name}' from user '{user.username}'."
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error removing user role: {e}")
+        return f"Error removing user role: {str(e)}"
+
+
+def _approve_test_sync(test_id):
+    try:
+        with sync_tool_db_session("review:test") as (db, current_user):
+            test = db.execute(select(TestDefinition).where(TestDefinition.id == test_id)).scalar_one_or_none()
+            if not test:
+                return f"Error: Test case with ID {test_id} not found."
+            if test.review_status == "approved":
+                return f"Test case '{test.name}' is already approved."
+            test.review_status = "approved"
+            test.reviewed_by = current_user.id
+            test.reviewed_at = datetime.utcnow()
+            db.commit()
+            return f"✅ Successfully approved test case '{test.name}'."
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error approving test: {e}")
+        return f"Error approving test: {str(e)}"
+
+
+def _reject_test_sync(test_id, reason):
+    try:
+        with sync_tool_db_session("review:test") as (db, current_user):
+            test = db.execute(select(TestDefinition).where(TestDefinition.id == test_id)).scalar_one_or_none()
+            if not test:
+                return f"Error: Test case with ID {test_id} not found."
+            test.review_status = "rejected"
+            test.rejection_reason = reason
+            test.reviewed_by = current_user.id
+            test.reviewed_at = datetime.utcnow()
+            db.commit()
+            return f"✅ Successfully rejected test case '{test.name}'. Reason: {reason}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error rejecting test: {e}")
+        return f"Error rejecting test: {str(e)}"
+
+
+def _approve_suite_sync(suite_id):
+    try:
+        with sync_tool_db_session("review:suite") as (db, current_user):
+            suite = db.execute(select(TestSuite).where(TestSuite.id == suite_id)).scalar_one_or_none()
+            if not suite:
+                return f"Error: Test suite with ID {suite_id} not found."
+            if suite.review_status == "approved":
+                return f"Test suite '{suite.name}' is already approved."
+            suite.review_status = "approved"
+            suite.reviewed_by = current_user.id
+            suite.reviewed_at = datetime.utcnow()
+            db.commit()
+            return f"✅ Successfully approved test suite '{suite.name}'."
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error approving suite: {e}")
+        return f"Error approving suite: {str(e)}"
+
+
+def _reject_suite_sync(suite_id, reason):
+    try:
+        with sync_tool_db_session("review:suite") as (db, current_user):
+            suite = db.execute(select(TestSuite).where(TestSuite.id == suite_id)).scalar_one_or_none()
+            if not suite:
+                return f"Error: Test suite with ID {suite_id} not found."
+            suite.review_status = "rejected"
+            suite.rejection_reason = reason
+            suite.reviewed_by = current_user.id
+            suite.reviewed_at = datetime.utcnow()
+            db.commit()
+            return f"✅ Successfully rejected test suite '{suite.name}'. Reason: {reason}"
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error rejecting suite: {e}")
+        return f"Error rejecting suite: {str(e)}"
+
+
+def _get_system_stats_sync():
+    try:
+        with sync_tool_db_session() as (db, _):
+            test_count = db.scalar(
+                select(func.count()).select_from(TestDefinition).where(TestDefinition.is_active == True)
+            )
+            suite_count = db.scalar(
+                select(func.count()).select_from(TestSuite)
+            )
+            user_count = db.scalar(
+                select(func.count()).select_from(User)
+            )
+            role_count = db.scalar(
+                select(func.count()).select_from(Role)
+            )
+            return (
+                f"📊 **System Statistics**\n\n"
+                f"🧪 Test Cases: {test_count}\n"
+                f"📋 Test Suites: {suite_count}\n"
+                f"👥 Users: {user_count}\n"
+                f"🔐 Roles: {role_count}\n\n"
+                f"You can ask me to:\n"
+                f"• Query test cases or suites\n"
+                f"• View users and roles\n"
+                f"• Set user roles (requires permission)\n"
+                f"• Approve/reject tests or suites (requires permission)"
+            )
+    except (AuthError, PermissionError) as e:
+        return _handle_auth_error(e)
+    except Exception as e:
+        logger.error(f"Error getting system stats: {e}")
+        return f"Error getting system stats: {str(e)}"
+
+
+# --- LangChain @tool wrappers (async, delegate to sync via run_in_executor) ---
 
 
 @tool
@@ -99,34 +351,9 @@ async def query_test_cases(
     Returns:
         Formatted list of test cases with key details
     """
-    try:
-        async with tool_db_session("read:test") as (db, _):
-            stmt = select(TestDefinition).where(TestDefinition.is_active == True)
-
-            if name_filter:
-                stmt = stmt.where(TestDefinition.name.ilike(f"%{name_filter}%"))
-
-            if status_filter:
-                stmt = stmt.where(TestDefinition.review_status == status_filter)
-
-            stmt = stmt.order_by(TestDefinition.created_at.desc()).limit(limit)
-
-            result = await db.execute(stmt)
-            tests = result.scalars().all()
-
-            if not tests:
-                return "No test cases found matching your criteria."
-
-            formatted = [f"Found {len(tests)} test case(s):\n"]
-            for test in tests:
-                formatted.append(_format_test_case(test))
-
-            return "\n\n".join(formatted)
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error querying test cases: {e}")
-        return f"Error querying test cases: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _query_test_cases_sync, name_filter, status_filter, limit,
+    )
 
 
 @tool
@@ -145,34 +372,9 @@ async def query_test_suites(
     Returns:
         Formatted list of test suites with key details
     """
-    try:
-        async with tool_db_session("read:suite") as (db, _):
-            stmt = select(TestSuite)
-
-            if name_filter:
-                stmt = stmt.where(TestSuite.name.ilike(f"%{name_filter}%"))
-
-            if status_filter:
-                stmt = stmt.where(TestSuite.review_status == status_filter)
-
-            stmt = stmt.order_by(TestSuite.created_at.desc()).limit(limit)
-
-            result = await db.execute(stmt)
-            suites = result.scalars().all()
-
-            if not suites:
-                return "No test suites found matching your criteria."
-
-            formatted = [f"Found {len(suites)} test suite(s):\n"]
-            for suite in suites:
-                formatted.append(_format_test_suite(suite))
-
-            return "\n\n".join(formatted)
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error querying test suites: {e}")
-        return f"Error querying test suites: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _query_test_suites_sync, name_filter, status_filter, limit,
+    )
 
 
 @tool
@@ -189,31 +391,9 @@ async def query_users(
     Returns:
         Formatted list of users with their roles
     """
-    try:
-        async with tool_db_session("read:user") as (db, _):
-            stmt = select(User)
-
-            if username_filter:
-                stmt = stmt.where(User.username.ilike(f"%{username_filter}%"))
-
-            stmt = stmt.order_by(User.created_at.desc()).limit(limit)
-
-            result = await db.execute(stmt)
-            users = result.scalars().all()
-
-            if not users:
-                return "No users found matching your criteria."
-
-            formatted = [f"Found {len(users)} user(s):\n"]
-            for user in users:
-                formatted.append(_format_user(user))
-
-            return "\n\n".join(formatted)
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error querying users: {e}")
-        return f"Error querying users: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _query_users_sync, username_filter, limit,
+    )
 
 
 @tool
@@ -228,31 +408,9 @@ async def query_roles(
     Returns:
         Formatted list of roles with their permissions
     """
-    try:
-        async with tool_db_session("read:role") as (db, _):
-            stmt = select(Role)
-
-            if name_filter:
-                stmt = stmt.where(Role.name.ilike(f"%{name_filter}%"))
-
-            stmt = stmt.order_by(Role.name)
-
-            result = await db.execute(stmt)
-            roles = result.scalars().all()
-
-            if not roles:
-                return "No roles found matching your criteria."
-
-            formatted = [f"Found {len(roles)} role(s):\n"]
-            for role in roles:
-                formatted.append(_format_role(role))
-
-            return "\n\n".join(formatted)
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error querying roles: {e}")
-        return f"Error querying roles: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _query_roles_sync, name_filter,
+    )
 
 
 @tool
@@ -269,42 +427,9 @@ async def set_user_role(
     Returns:
         Success message or error description
     """
-    try:
-        async with tool_db_session("update:user") as (db, _):
-            # Find the user
-            user_stmt = select(User).where(User.id == user_id)
-            user_result = await db.execute(user_stmt)
-            user = user_result.scalar_one_or_none()
-
-            if not user:
-                return f"Error: User with ID {user_id} not found."
-
-            # Find the role
-            role_stmt = select(Role).where(Role.name == role_name)
-            role_result = await db.execute(role_stmt)
-            role = role_result.scalar_one_or_none()
-
-            if not role:
-                return f"Error: Role '{role_name}' not found."
-
-            # Check if user already has this role
-            if user.roles and any(r.id == role.id for r in user.roles):
-                return f"User '{user.username}' already has role '{role_name}'."
-
-            # Assign the role
-            if not user.roles:
-                user.roles = []
-            user.roles.append(role)
-
-            await db.commit()
-
-            return f"✅ Successfully assigned role '{role_name}' to user '{user.username}'."
-
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error setting user role: {e}")
-        return f"Error setting user role: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _set_user_role_sync, user_id, role_name,
+    )
 
 
 @tool
@@ -321,32 +446,9 @@ async def remove_user_role(
     Returns:
         Success message or error description
     """
-    try:
-        async with tool_db_session("update:user") as (db, _):
-            # Find the user
-            user_stmt = select(User).where(User.id == user_id)
-            user_result = await db.execute(user_stmt)
-            user = user_result.scalar_one_or_none()
-
-            if not user:
-                return f"Error: User with ID {user_id} not found."
-
-            # Check if user has this role
-            if not user.roles or not any(r.name == role_name for r in user.roles):
-                return f"User '{user.username}' does not have role '{role_name}'."
-
-            # Remove the role
-            user.roles = [r for r in user.roles if r.name != role_name]
-
-            await db.commit()
-
-            return f"✅ Successfully removed role '{role_name}' from user '{user.username}'."
-
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error removing user role: {e}")
-        return f"Error removing user role: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _remove_user_role_sync, user_id, role_name,
+    )
 
 
 @tool
@@ -361,31 +463,9 @@ async def approve_test(
     Returns:
         Success message or error description
     """
-    try:
-        async with tool_db_session("review:test") as (db, current_user):
-            stmt = select(TestDefinition).where(TestDefinition.id == test_id)
-            result = await db.execute(stmt)
-            test = result.scalar_one_or_none()
-
-            if not test:
-                return f"Error: Test case with ID {test_id} not found."
-
-            if test.review_status == "approved":
-                return f"Test case '{test.name}' is already approved."
-
-            test.review_status = "approved"
-            test.reviewed_by = current_user.id
-            test.reviewed_at = datetime.utcnow()
-
-            await db.commit()
-
-            return f"✅ Successfully approved test case '{test.name}'."
-
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error approving test: {e}")
-        return f"Error approving test: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _approve_test_sync, test_id,
+    )
 
 
 @tool
@@ -402,29 +482,9 @@ async def reject_test(
     Returns:
         Success message or error description
     """
-    try:
-        async with tool_db_session("review:test") as (db, current_user):
-            stmt = select(TestDefinition).where(TestDefinition.id == test_id)
-            result = await db.execute(stmt)
-            test = result.scalar_one_or_none()
-
-            if not test:
-                return f"Error: Test case with ID {test_id} not found."
-
-            test.review_status = "rejected"
-            test.rejection_reason = reason
-            test.reviewed_by = current_user.id
-            test.reviewed_at = datetime.utcnow()
-
-            await db.commit()
-
-            return f"✅ Successfully rejected test case '{test.name}'. Reason: {reason}"
-
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error rejecting test: {e}")
-        return f"Error rejecting test: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _reject_test_sync, test_id, reason,
+    )
 
 
 @tool
@@ -439,31 +499,9 @@ async def approve_suite(
     Returns:
         Success message or error description
     """
-    try:
-        async with tool_db_session("review:suite") as (db, current_user):
-            stmt = select(TestSuite).where(TestSuite.id == suite_id)
-            result = await db.execute(stmt)
-            suite = result.scalar_one_or_none()
-
-            if not suite:
-                return f"Error: Test suite with ID {suite_id} not found."
-
-            if suite.review_status == "approved":
-                return f"Test suite '{suite.name}' is already approved."
-
-            suite.review_status = "approved"
-            suite.reviewed_by = current_user.id
-            suite.reviewed_at = datetime.utcnow()
-
-            await db.commit()
-
-            return f"✅ Successfully approved test suite '{suite.name}'."
-
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error approving suite: {e}")
-        return f"Error approving suite: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _approve_suite_sync, suite_id,
+    )
 
 
 @tool
@@ -480,71 +518,18 @@ async def reject_suite(
     Returns:
         Success message or error description
     """
-    try:
-        async with tool_db_session("review:suite") as (db, current_user):
-            stmt = select(TestSuite).where(TestSuite.id == suite_id)
-            result = await db.execute(stmt)
-            suite = result.scalar_one_or_none()
-
-            if not suite:
-                return f"Error: Test suite with ID {suite_id} not found."
-
-            suite.review_status = "rejected"
-            suite.rejection_reason = reason
-            suite.reviewed_by = current_user.id
-            suite.reviewed_at = datetime.utcnow()
-
-            await db.commit()
-
-            return f"✅ Successfully rejected test suite '{suite.name}'. Reason: {reason}"
-
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error rejecting suite: {e}")
-        return f"Error rejecting suite: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _reject_suite_sync, suite_id, reason,
+    )
 
 
 @tool
-async def get_system_stats(
-) -> str:
+async def get_system_stats() -> str:
     """Get system statistics and overview.
 
     Returns:
         Formatted system statistics
     """
-    try:
-        async with tool_db_session() as (db, _):
-            test_count = await db.scalar(
-                select(func.count()).select_from(TestDefinition).where(TestDefinition.is_active == True)
-            )
-            suite_count = await db.scalar(
-                select(func.count()).select_from(TestSuite)
-            )
-            user_count = await db.scalar(
-                select(func.count()).select_from(User)
-            )
-            role_count = await db.scalar(
-                select(func.count()).select_from(Role)
-            )
-
-            stats = (
-                f"📊 **System Statistics**\n\n"
-                f"🧪 Test Cases: {test_count}\n"
-                f"📋 Test Suites: {suite_count}\n"
-                f"👥 Users: {user_count}\n"
-                f"🔐 Roles: {role_count}\n\n"
-                f"You can ask me to:\n"
-                f"• Query test cases or suites\n"
-                f"• View users and roles\n"
-                f"• Set user roles (requires permission)\n"
-                f"• Approve/reject tests or suites (requires permission)"
-            )
-
-            return stats
-
-    except (AuthError, PermissionError) as e:
-        return _handle_auth_error(e)
-    except Exception as e:
-        logger.error(f"Error getting system stats: {e}")
-        return f"Error getting system stats: {str(e)}"
+    return await asyncio.get_running_loop().run_in_executor(
+        None, _get_system_stats_sync,
+    )

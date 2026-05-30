@@ -16,7 +16,9 @@ export function useChatStream() {
   const stream = useStream({
     apiUrl: LANGGRAPH_URL,
     assistantId: 'chat',
-    threadId: threadIdRef.current,
+    onThreadId: (id) => {
+      threadIdRef.current = id;
+    },
     filterSubagentMessages: true,
     defaultHeaders: authService.getAuthHeaders(),
   });

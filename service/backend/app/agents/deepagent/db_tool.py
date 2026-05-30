@@ -1,40 +1,45 @@
 """
-Context manager for chat tools that need database access with auth.
+Sync DB helpers for chat tools running inside LangGraph thread pools.
 
-Eliminates the repeated auth + DB session + permission check boilerplate
-from every tool function.
+LangGraph executes tool calls in a sync thread pool where async SQLAlchemy
+cannot run (greenlet_spawn error). All tools must use sync DB operations
+via sync_session_maker.
 """
 
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+import logging
+from contextlib import contextmanager
+from typing import Generator
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.models.user import User
+from app.agents.deepagent.tool_context import get_current_user_id
+
+logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def tool_db_session(
+@contextmanager
+def sync_tool_db_session(
     permission: str | None = None,
-) -> AsyncGenerator[tuple[AsyncSession, User], None, None]:
-    """Yield an authenticated (db_session, user) pair.
+) -> Generator[tuple[Session, User], None, None]:
+    """Yield an authenticated (sync_db_session, user) pair.
 
-    Usage inside a @tool function::
+    Usage inside a blocking helper function::
 
-        async with tool_db_session("read:test") as (db, user):
-            result = await db.execute(...)
+        with sync_tool_db_session("read:test") as (db, user):
+            result = db.execute(...)
             return format_result(result)
     """
-    from app.core.database import async_session_maker
-    from app.agents.deepagent.tool_context import get_current_user_id
+    from app.core.database import sync_session_maker
 
     user_id = get_current_user_id()
     if not user_id:
         raise AuthError("Authentication required.")
 
-    async with async_session_maker() as db:
-        user_result = await db.execute(select(User).where(User.id == user_id))
+    db = sync_session_maker()
+    try:
+        user_result = db.execute(select(User).where(User.id == user_id))
         current_user = user_result.scalar_one_or_none()
 
         if not current_user:
@@ -44,6 +49,12 @@ async def tool_db_session(
             raise PermissionError(f"You don't have permission ({permission}).")
 
         yield db, current_user
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 def _check_permission(user: User, permission_name: str) -> bool:

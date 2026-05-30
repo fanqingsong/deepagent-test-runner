@@ -10,6 +10,7 @@ from .user_admin_agent import get_user_admin_subagent
 from .test_reviewer_agent import get_test_reviewer_subagent
 from .analytics_agent import get_analytics_subagent
 from .search_agent import get_search_subagent
+from .email_agent import get_email_subagent
 
 __all__ = [
     "get_test_query_subagent",
@@ -17,4 +18,5 @@ __all__ = [
     "get_test_reviewer_subagent",
     "get_analytics_subagent",
     "get_search_subagent",
+    "get_email_subagent",
 ]

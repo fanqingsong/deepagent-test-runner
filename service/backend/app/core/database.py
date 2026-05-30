@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy import text
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text, create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 
 from app.core.config import settings
 
@@ -30,6 +30,23 @@ engine = create_async_engine(
 async_session_maker = async_sessionmaker(
     engine,
     class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+# Sync engine/session for subagent tools that may run in thread pools
+_sync_db_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
+_sync_engine = create_engine(
+    _sync_db_url,
+    echo=settings.DEBUG,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+)
+sync_session_maker = sessionmaker(
+    _sync_engine,
+    class_=Session,
     expire_on_commit=False,
     autocommit=False,
     autoflush=False,

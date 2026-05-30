@@ -8,7 +8,7 @@ and executing actions with proper permission checks.
 import logging
 from typing import Any
 
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.config import get_config
 from langgraph.store.memory import InMemoryStore
 from deepagents import create_deep_agent
@@ -22,23 +22,51 @@ from app.agents.deepagent.subagents import (
     get_test_reviewer_subagent,
     get_analytics_subagent,
     get_search_subagent,
+    get_email_subagent,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _get_checkpointer_conn_string() -> str:
+    """Build a psycopg connection string from async DATABASE_URL."""
+    # DATABASE_URL: postgresql+asyncpg://user:pass@host:port/db
+    url = settings.DATABASE_URL
+    url = url.replace("+asyncpg", "")
+    return url
 
 
 class ChatAgent:
     """Conversational AI assistant for the E2E testing platform."""
 
     def __init__(self):
-        """Initialize the chat agent using deepagents framework with compiled subagents."""
-        self.checkpointer = MemorySaver()
+        """Initialize the chat agent (checkpointer set up lazily in _ensure_store)."""
+        self.checkpointer: AsyncPostgresSaver | None = None
         self._store: InMemoryStore | None = None
         self._ready = False
+        self._agent = None
+
+    async def _ensure_store(self):
+        """Lazily initialize the PostgreSQL checkpointer and in-memory store."""
+        if self._ready:
+            return
+
+        from contextlib import AsyncExitStack
 
         llm = get_llm(temperature=0.7, max_tokens=8192)
+        conn_string = _get_checkpointer_conn_string()
 
-        self.agent = create_deep_agent(
+        self._exit_stack = AsyncExitStack()
+        await self._exit_stack.__aenter__()
+
+        self.checkpointer = await self._exit_stack.enter_async_context(
+            AsyncPostgresSaver.from_conn_string(conn_string)
+        )
+        await self.checkpointer.setup()
+
+        self._store = InMemoryStore()
+
+        self._agent = create_deep_agent(
             model=llm,
             checkpointer=self.checkpointer,
             system_prompt=self._get_system_prompt(),
@@ -61,22 +89,20 @@ class ChatAgent:
                 get_test_reviewer_subagent(llm),
                 get_analytics_subagent(llm),
                 get_search_subagent(llm),
+                get_email_subagent(llm),
             ],
             debug=True,
         )
-
-        logger.info("Chat agent initialized (store will be set up on first chat)")
-
-    async def _ensure_store(self):
-        """Lazily initialize the in-memory store."""
-        if self._ready:
-            return
-
-        self._store = InMemoryStore()
-        self.agent.store = self._store
+        self._agent.store = self._store
         self._ready = True
 
-        logger.info("InMemoryStore initialized — memory persists during runtime")
+        logger.info("Chat agent initialized with PostgreSQL checkpointer")
+
+    @property
+    def agent(self):
+        if self._agent is None:
+            raise RuntimeError("ChatAgent not initialized — call _ensure_store() first")
+        return self._agent
 
     async def generate_title(self, message: str) -> str:
         """Generate a short conversation title from the user's first message."""
@@ -133,6 +159,7 @@ Use your memory filesystem (/memories/) to persist important information across 
             "test-reviewer": "Analyzing test results and outcomes",
             "analytics": "Processing analytics and metrics",
             "search": "Searching web and external sources",
+            "email": "Sending emails and querying email history",
             "planner": "Planning task execution",
             "executor": "Executing planned tasks",
             "reviewer": "Reviewing and validating results",

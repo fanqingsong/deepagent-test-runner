@@ -7,10 +7,10 @@
     "deepagents"
   ],
   "graphs": {
-    "chat": "./langgraph_server/graph.py:agent"
+    "chat": "./entrypoints/langgraph/graph.py:agent"
   },
   "auth": {
-    "path": "./langgraph_server/auth.py:auth"
+    "path": "./entrypoints/langgraph/auth.py:auth"
   },
   "env": "./.env",
   "python_version": "3.11",

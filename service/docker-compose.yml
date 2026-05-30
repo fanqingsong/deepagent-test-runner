@@ -186,15 +186,20 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-${SECRET_KEY:-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4}}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Cases}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-sync}
       DEBUG: "true"
     volumes:
-      - ./langgraph.json:/app/langgraph.json:ro
-      - ./langgraph_server:/app/langgraph_server:ro
-      # Broad mount for dev hot-reload. Access boundaries are enforced by
-      # Python imports (langgraph_server only imports agents/core/models),
-      # not by volume granularity — restricting mounts would break on every
-      # new import and add maintenance cost with no security benefit.
+      - ./backend/langgraph.json:/app/langgraph.json:ro
+      # Mount shared application code
       - ./backend/app:/app/app
+      # Mount entrypoints (graph.py, auth.py for langgraph server)
+      - ./backend/entrypoints:/app/entrypoints
       - ./screenshots:/app/screenshots
     ports:
       - "2024:2024"
@@ -264,12 +269,14 @@ services:
     volumes:
       # Mount source for hot reload in development
       - ./backend/app:/app/app
+      # Mount entrypoints (FastAPI main.py)
+      - ./backend/entrypoints:/app/entrypoints
       # Mount alembic for migration development
       - ./backend/alembic:/app/alembic
       - ./backend/alembic.ini:/app/alembic.ini
       # Mount screenshots directory for static file serving
       - ./screenshots:/app/screenshots
-    command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"]
+    command: ["sh", "-c", "uvicorn entrypoints.fastapi.main:app --host 0.0.0.0 --port 8001 --reload"]
     depends_on:
       prestart:
         condition: service_completed_successfully
