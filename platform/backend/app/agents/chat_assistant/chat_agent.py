@@ -31,6 +31,7 @@ from app.agents.chat_assistant.subagents import (
     get_rag_subagent,
     get_sql_query_subagent,
     get_content_builder_subagent,
+    get_deep_research_subagent,
 )
 
 logger = logging.getLogger(__name__)
@@ -145,6 +146,7 @@ class ChatAgent:
                 get_rag_subagent(llm),
                 get_sql_query_subagent(llm),
                 get_content_builder_subagent(llm),
+                get_deep_research_subagent(llm),
             ],
             debug=True,
         )
