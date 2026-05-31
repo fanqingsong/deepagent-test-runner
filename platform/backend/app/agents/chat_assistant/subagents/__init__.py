@@ -14,6 +14,7 @@ from .email_agent import get_email_subagent
 from .data_analysis_agent import get_data_analysis_subagent
 from .rag_agent import get_rag_subagent
 from .sql_agent import get_sql_query_subagent
+from .content_builder_agent import get_content_builder_subagent
 
 __all__ = [
     "get_test_query_subagent",
@@ -25,4 +26,5 @@ __all__ = [
     "get_data_analysis_subagent",
     "get_rag_subagent",
     "get_sql_query_subagent",
+    "get_content_builder_subagent",
 ]

@@ -30,6 +30,7 @@ from app.agents.chat_assistant.subagents import (
     get_data_analysis_subagent,
     get_rag_subagent,
     get_sql_query_subagent,
+    get_content_builder_subagent,
 )
 
 logger = logging.getLogger(__name__)
@@ -143,6 +144,7 @@ class ChatAgent:
                 get_data_analysis_subagent(llm),
                 get_rag_subagent(llm),
                 get_sql_query_subagent(llm),
+                get_content_builder_subagent(llm),
             ],
             debug=True,
         )
@@ -236,6 +238,7 @@ Use your memory filesystem (/memories/) to persist important information across 
             "data-analysis": "Analyzing data, generating charts and visualizations",
             "sql-query": "Querying the database with SQL",
             "rag-knowledge": "Indexing documents and answering questions from knowledge base",
+            "content-builder": "Researching topics and writing content",
             "planner": "Planning task execution",
             "executor": "Executing planned tasks",
             "reviewer": "Reviewing and validating results",
