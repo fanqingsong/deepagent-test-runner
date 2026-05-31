@@ -71,13 +71,13 @@ async def _query_rag(sub_query: str) -> tuple[str, str]:
         result, docs = retrieve_context.invoke({"query": sub_query, "k": 4})
 
         if not docs:
-            return "RAG", "No relevant documents found in the knowledge base."
+            return "rag", "No relevant documents found in the knowledge base."
 
-        return "RAG", result
+        return "rag", result
 
     except Exception as e:
         logger.error(f"Error querying RAG: {e}")
-        return "RAG", f"Error retrieving from knowledge base: {str(e)}"
+        return "rag", f"Error retrieving from knowledge base: {str(e)}"
 
 
 async def _query_web(sub_query: str) -> tuple[str, str]:
@@ -91,7 +91,7 @@ async def _query_web(sub_query: str) -> tuple[str, str]:
     """
     # Check if Tavily API key is configured
     if not settings.TAVILY_API_KEY or settings.TAVILY_API_KEY.strip() == "":
-        return "Web", "Web search is not available. TAVILY_API_KEY is not configured."
+        return "web", "Web search is not available. TAVILY_API_KEY is not configured."
 
     try:
         # Try importing from langchain_tavily first
@@ -114,7 +114,7 @@ async def _query_web(sub_query: str) -> tuple[str, str]:
         results = await search.ainvoke({"query": sub_query})
 
         if not results:
-            return "Web", f"No web search results found for '{sub_query}'."
+            return "web", f"No web search results found for '{sub_query}'."
 
         # Handle list result
         if isinstance(results, list):
@@ -136,18 +136,18 @@ async def _query_web(sub_query: str) -> tuple[str, str]:
                 elif isinstance(result, str):
                     formatted_lines.append(f"\n{i}. {result}")
 
-            return "Web", "\n".join(formatted_lines)
+            return "web", "\n".join(formatted_lines)
 
         # Handle string result
         if isinstance(results, str):
-            return "Web", f"**Web search results for '{sub_query}'**\n\n{results}"
+            return "web", f"**Web search results for '{sub_query}'**\n\n{results}"
 
         # Fallback
-        return "Web", f"**Web search results for '{sub_query}'**\n\n{str(results)}"
+        return "web", f"**Web search results for '{sub_query}'**\n\n{str(results)}"
 
     except Exception as e:
         logger.error(f"Error querying web: {e}")
-        return "Web", f"Error executing web search: {str(e)}"
+        return "web", f"Error executing web search: {str(e)}"
 
 
 async def _query_db(sub_query: str) -> tuple[str, str]:
@@ -184,7 +184,7 @@ Return ONLY the SQL query, no explanation."""
         # Validate the query is read-only
         is_valid, error_msg = _is_read_only(sql_query)
         if not is_valid:
-            return "Database", f"Error: Generated SQL is not read-only: {error_msg}"
+            return "db", f"Error: Generated SQL is not read-only: {error_msg}"
 
         # Ensure LIMIT clause
         sql_query = _ensure_limit(sql_query)
@@ -197,11 +197,11 @@ Return ONLY the SQL query, no explanation."""
             sql_query
         )
 
-        return "Database", result_text
+        return "db", result_text
 
     except Exception as e:
         logger.error(f"Error querying database: {e}")
-        return "Database", f"Error executing database query: {str(e)}"
+        return "db", f"Error executing database query: {str(e)}"
 
 
 def _execute_sync_query(sql_query: str) -> str:
