@@ -16,6 +16,7 @@ deepagents
 email-validator==2.1.0
 fastapi==0.109.0
 httpx>=0.27.1,<1.0.0
+markdownify>=0.13.0
 passlib[bcrypt]==1.7.4
 playwright==1.41.0  # Browsers installed in Dockerfile via: playwright install --with-deps chromium
 psycopg2-binary==2.9.12
