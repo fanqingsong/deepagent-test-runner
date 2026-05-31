@@ -13,7 +13,7 @@ from .email_agent import get_email_subagent
 from .data_analysis_agent import get_data_analysis_subagent
 from .sql_agent import get_sql_query_subagent
 from .content_builder_agent import get_content_builder_subagent
-from .deep_research_subagent import get_deep_research_subagent
+from .deep_research_agent import get_deep_research_subagent
 from .knowledge_base_agent import get_knowledge_base_subagent
 
 __all__ = [
