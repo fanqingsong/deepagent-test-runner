@@ -5,8 +5,10 @@ Uses Tavily for URL discovery, then fetches full webpage content
 converted to markdown for in-depth analysis by researcher agents.
 """
 
+import asyncio
 import logging
 from typing import Annotated, Literal
+from urllib.parse import urlparse
 
 import httpx
 from langchain.tools import InjectedToolArg, tool
@@ -17,6 +19,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 TAVILY_API_URL = "https://api.tavily.com/search"
+ALLOWED_SCHEMES = {"http", "https"}
 
 
 def _get_tavily_api_key() -> str | None:
@@ -26,18 +29,35 @@ def _get_tavily_api_key() -> str | None:
     return None
 
 
-def fetch_webpage_content(url: str, timeout: float = 10.0) -> str:
+def _is_safe_url(url: str) -> bool:
+    """Check if URL is safe to fetch (SSRF protection)."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ALLOWED_SCHEMES:
+            return False
+        hostname = parsed.hostname or ""
+        if hostname in ("localhost", "127.0.0.1", "0.0.0.0", "169.254.169.254"):
+            return False
+        return True
+    except Exception:
+        return False
+
+
+async def fetch_webpage_content(url: str, timeout: float = 10.0) -> str:
     """Fetch webpage and convert HTML to markdown."""
+    if not _is_safe_url(url):
+        return f"Error: Unsafe URL blocked: {url}"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
     try:
-        response = httpx.get(url, headers=headers, timeout=timeout, follow_redirects=True)
-        response.raise_for_status()
-        text = markdownify(response.text)
-        if len(text) > 8000:
-            text = text[:8000] + "\n\n[Content truncated]"
-        return text
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(url, headers=headers, follow_redirects=True)
+            response.raise_for_status()
+            text = markdownify(response.text)
+            if len(text) > 8000:
+                text = text[:8000] + "\n\n[Content truncated]"
+            return text
     except Exception as e:
         return f"Error fetching {url}: {e!s}"
 
@@ -70,6 +90,13 @@ async def tavily_search(
     if not query or not query.strip():
         return "Error: Search query cannot be empty."
 
+    if max_results < 1:
+        max_results = 1
+    elif max_results > 10:
+        max_results = 10
+
+    logger.info(f"Executing deep research search: query='{query}', max_results={max_results}, topic='{topic}'")
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
@@ -93,11 +120,19 @@ async def tavily_search(
     if not results:
         return f"No results found for '{query}'."
 
+    logger.info(f"Deep research search completed: found {len(results)} results for '{query}'")
+
+    async def _safe_fetch(url: str) -> str:
+        if not url:
+            return "No URL available."
+        return await fetch_webpage_content(url)
+
+    contents = await asyncio.gather(*[_safe_fetch(r.get("url", "")) for r in results])
+
     result_texts = []
-    for result in results:
-        url = result.get("url", "")
+    for result, content in zip(results, contents):
         title = result.get("title", "Untitled")
-        content = fetch_webpage_content(url) if url else "No URL available."
+        url = result.get("url", "")
         result_texts.append(f"## {title}\n**URL:** {url}\n\n{content}\n---")
 
     return f"Found {len(result_texts)} result(s) for '{query}':\n\n" + "\n".join(
