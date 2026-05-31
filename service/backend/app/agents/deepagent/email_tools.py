@@ -21,6 +21,7 @@ from app.core.config import settings
 from app.core.database import sync_session_maker
 from app.models.email_sent_log import EmailSentLog
 from app.agents.deepagent.tool_context import get_current_user_id
+from app.agents.deepagent.chat_tools import _resolve_user_id
 from app.utils.email import is_valid_email_format
 
 logger = logging.getLogger(__name__)
@@ -100,7 +101,7 @@ async def send_email_tool(
         msg["Cc"] = cc
     msg.attach(MIMEText(body, "plain"))
 
-    user_id = get_current_user_id()
+    user_id = _resolve_user_id()
 
     try:
         result = await asyncio.get_running_loop().run_in_executor(
@@ -175,7 +176,7 @@ async def query_sent_emails(
     elif limit > 50:
         limit = 50
 
-    user_id = get_current_user_id()
+    user_id = _resolve_user_id()
 
     try:
         return await asyncio.get_running_loop().run_in_executor(

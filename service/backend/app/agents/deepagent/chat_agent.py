@@ -5,7 +5,9 @@ Provides a simple chat interface with tools for querying system data
 and executing actions with proper permission checks.
 """
 
+import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -13,6 +15,7 @@ from langgraph.config import get_config
 from langgraph.store.memory import InMemoryStore
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from deepagents.backends.utils import create_file_data
 
 from app.core.agent_config import get_llm
 from app.core.config import settings
@@ -26,6 +29,29 @@ from app.agents.deepagent.subagents import (
 )
 
 logger = logging.getLogger(__name__)
+
+SKILLS_DIR = Path(__file__).resolve().parent / "skills"
+
+
+def _load_skills_files_sync() -> dict:
+    """Load skill files from disk into StateBackend format (blocking I/O)."""
+    files = {}
+    if not SKILLS_DIR.is_dir():
+        logger.warning("Skills directory not found: %s", SKILLS_DIR)
+        return files
+    for skill_dir in sorted(d for d in SKILLS_DIR.iterdir() if d.is_dir()):
+        for fpath in sorted(skill_dir.rglob("*")):
+            if not fpath.is_file():
+                continue
+            rel = fpath.relative_to(SKILLS_DIR).as_posix()
+            key = f"/skills/{rel}"
+            files[key] = create_file_data(fpath.read_text(encoding="utf-8"))
+    return files
+
+
+async def _load_skills_files() -> dict:
+    """Async wrapper — runs blocking I/O in a thread."""
+    return await asyncio.to_thread(_load_skills_files_sync)
 
 
 def _get_checkpointer_conn_string() -> str:
@@ -66,14 +92,29 @@ class ChatAgent:
 
         self._store = InMemoryStore()
 
+        skills_files = await _load_skills_files()
+        for key, data in skills_files.items():
+            self._store.put(
+                namespace=("skills", "shared"),
+                key=key,
+                value=data,
+            )
+
+        skills_backend = StoreBackend(
+            store=self._store,
+            namespace=lambda _rt: ("skills", "shared"),
+        )
+
         self._agent = create_deep_agent(
             model=llm,
             checkpointer=self.checkpointer,
             system_prompt=self._get_system_prompt(),
             memory=["/memories/AGENTS.md"],
+            skills=["/skills/"],
             backend=CompositeBackend(
                 default=StateBackend(),
                 routes={
+                    "/skills/": skills_backend,
                     "/memories/": StoreBackend(
                         namespace=lambda rt: ("user", str(
                             get_config().get("configurable", {}).get("user_id")
@@ -94,6 +135,11 @@ class ChatAgent:
             debug=True,
         )
         self._agent.store = self._store
+        self._skills_files = skills_files
+
+        if skills_files:
+            logger.info("Loaded %d skill files into StoreBackend", len(skills_files))
+
         self._ready = True
 
         logger.info("Chat agent initialized with PostgreSQL checkpointer")
@@ -103,6 +149,13 @@ class ChatAgent:
         if self._agent is None:
             raise RuntimeError("ChatAgent not initialized — call _ensure_store() first")
         return self._agent
+
+    @property
+    def skills_files(self) -> dict:
+        """Skill files for seeding the StateBackend on first invoke."""
+        if not self._ready:
+            raise RuntimeError("ChatAgent not initialized — call _ensure_store() first")
+        return self._skills_files
 
     async def generate_title(self, message: str) -> str:
         """Generate a short conversation title from the user's first message."""

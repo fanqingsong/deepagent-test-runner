@@ -31,6 +31,19 @@ def _handle_auth_error(e: Exception) -> str:
     return f"Error: {e}"
 
 
+def _resolve_user_id() -> Optional[int]:
+    """Resolve user_id from LangGraph config (must be called in async context)."""
+    try:
+        from langgraph.config import get_config
+        config = get_config()
+        uid = config.get("configurable", {}).get("user_id")
+        if uid is not None:
+            return int(uid)
+    except Exception:
+        pass
+    return None
+
+
 def _format_test_case(test: TestDefinition) -> str:
     status_emoji = {
         "draft": "📝",
@@ -87,9 +100,9 @@ def _format_role(role: Role) -> str:
 # --- Blocking DB helpers (run via run_in_executor) ---
 
 
-def _query_test_cases_sync(name_filter, status_filter, limit):
+def _query_test_cases_sync(user_id, name_filter, status_filter, limit):
     try:
-        with sync_tool_db_session("read:test") as (db, _):
+        with sync_tool_db_session("read:test", user_id=user_id) as (db, _):
             stmt = select(TestDefinition).where(TestDefinition.is_active == True)
             if name_filter:
                 stmt = stmt.where(TestDefinition.name.ilike(f"%{name_filter}%"))
@@ -111,9 +124,9 @@ def _query_test_cases_sync(name_filter, status_filter, limit):
         return f"Error querying test cases: {str(e)}"
 
 
-def _query_test_suites_sync(name_filter, status_filter, limit):
+def _query_test_suites_sync(user_id, name_filter, status_filter, limit):
     try:
-        with sync_tool_db_session("read:suite") as (db, _):
+        with sync_tool_db_session("read:suite", user_id=user_id) as (db, _):
             stmt = select(TestSuite)
             if name_filter:
                 stmt = stmt.where(TestSuite.name.ilike(f"%{name_filter}%"))
@@ -135,9 +148,9 @@ def _query_test_suites_sync(name_filter, status_filter, limit):
         return f"Error querying test suites: {str(e)}"
 
 
-def _query_users_sync(username_filter, limit):
+def _query_users_sync(user_id, username_filter, limit):
     try:
-        with sync_tool_db_session("read:user") as (db, _):
+        with sync_tool_db_session("read:user", user_id=user_id) as (db, _):
             stmt = select(User)
             if username_filter:
                 stmt = stmt.where(User.username.ilike(f"%{username_filter}%"))
@@ -157,9 +170,9 @@ def _query_users_sync(username_filter, limit):
         return f"Error querying users: {str(e)}"
 
 
-def _query_roles_sync(name_filter):
+def _query_roles_sync(user_id, name_filter):
     try:
-        with sync_tool_db_session("read:role") as (db, _):
+        with sync_tool_db_session("read:role", user_id=user_id) as (db, _):
             stmt = select(Role)
             if name_filter:
                 stmt = stmt.where(Role.name.ilike(f"%{name_filter}%"))
@@ -179,9 +192,9 @@ def _query_roles_sync(name_filter):
         return f"Error querying roles: {str(e)}"
 
 
-def _set_user_role_sync(user_id, role_name):
+def _set_user_role_sync(caller_id, user_id, role_name):
     try:
-        with sync_tool_db_session("update:user") as (db, _):
+        with sync_tool_db_session("update:user", user_id=caller_id) as (db, _):
             user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
             if not user:
                 return f"Error: User with ID {user_id} not found."
@@ -202,9 +215,9 @@ def _set_user_role_sync(user_id, role_name):
         return f"Error setting user role: {str(e)}"
 
 
-def _remove_user_role_sync(user_id, role_name):
+def _remove_user_role_sync(caller_id, user_id, role_name):
     try:
-        with sync_tool_db_session("update:user") as (db, _):
+        with sync_tool_db_session("update:user", user_id=caller_id) as (db, _):
             user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
             if not user:
                 return f"Error: User with ID {user_id} not found."
@@ -220,9 +233,9 @@ def _remove_user_role_sync(user_id, role_name):
         return f"Error removing user role: {str(e)}"
 
 
-def _approve_test_sync(test_id):
+def _approve_test_sync(user_id, test_id):
     try:
-        with sync_tool_db_session("review:test") as (db, current_user):
+        with sync_tool_db_session("review:test", user_id=user_id) as (db, current_user):
             test = db.execute(select(TestDefinition).where(TestDefinition.id == test_id)).scalar_one_or_none()
             if not test:
                 return f"Error: Test case with ID {test_id} not found."
@@ -240,9 +253,9 @@ def _approve_test_sync(test_id):
         return f"Error approving test: {str(e)}"
 
 
-def _reject_test_sync(test_id, reason):
+def _reject_test_sync(user_id, test_id, reason):
     try:
-        with sync_tool_db_session("review:test") as (db, current_user):
+        with sync_tool_db_session("review:test", user_id=user_id) as (db, current_user):
             test = db.execute(select(TestDefinition).where(TestDefinition.id == test_id)).scalar_one_or_none()
             if not test:
                 return f"Error: Test case with ID {test_id} not found."
@@ -259,9 +272,9 @@ def _reject_test_sync(test_id, reason):
         return f"Error rejecting test: {str(e)}"
 
 
-def _approve_suite_sync(suite_id):
+def _approve_suite_sync(user_id, suite_id):
     try:
-        with sync_tool_db_session("review:suite") as (db, current_user):
+        with sync_tool_db_session("review:suite", user_id=user_id) as (db, current_user):
             suite = db.execute(select(TestSuite).where(TestSuite.id == suite_id)).scalar_one_or_none()
             if not suite:
                 return f"Error: Test suite with ID {suite_id} not found."
@@ -279,9 +292,9 @@ def _approve_suite_sync(suite_id):
         return f"Error approving suite: {str(e)}"
 
 
-def _reject_suite_sync(suite_id, reason):
+def _reject_suite_sync(user_id, suite_id, reason):
     try:
-        with sync_tool_db_session("review:suite") as (db, current_user):
+        with sync_tool_db_session("review:suite", user_id=user_id) as (db, current_user):
             suite = db.execute(select(TestSuite).where(TestSuite.id == suite_id)).scalar_one_or_none()
             if not suite:
                 return f"Error: Test suite with ID {suite_id} not found."
@@ -298,9 +311,9 @@ def _reject_suite_sync(suite_id, reason):
         return f"Error rejecting suite: {str(e)}"
 
 
-def _get_system_stats_sync():
+def _get_system_stats_sync(user_id):
     try:
-        with sync_tool_db_session() as (db, _):
+        with sync_tool_db_session(user_id=user_id) as (db, _):
             test_count = db.scalar(
                 select(func.count()).select_from(TestDefinition).where(TestDefinition.is_active == True)
             )
@@ -351,8 +364,9 @@ async def query_test_cases(
     Returns:
         Formatted list of test cases with key details
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _query_test_cases_sync, name_filter, status_filter, limit,
+        None, _query_test_cases_sync, user_id, name_filter, status_filter, limit,
     )
 
 
@@ -372,8 +386,9 @@ async def query_test_suites(
     Returns:
         Formatted list of test suites with key details
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _query_test_suites_sync, name_filter, status_filter, limit,
+        None, _query_test_suites_sync, user_id, name_filter, status_filter, limit,
     )
 
 
@@ -391,8 +406,9 @@ async def query_users(
     Returns:
         Formatted list of users with their roles
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _query_users_sync, username_filter, limit,
+        None, _query_users_sync, user_id, username_filter, limit,
     )
 
 
@@ -408,8 +424,9 @@ async def query_roles(
     Returns:
         Formatted list of roles with their permissions
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _query_roles_sync, name_filter,
+        None, _query_roles_sync, user_id, name_filter,
     )
 
 
@@ -427,8 +444,9 @@ async def set_user_role(
     Returns:
         Success message or error description
     """
+    caller_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _set_user_role_sync, user_id, role_name,
+        None, _set_user_role_sync, caller_id, user_id, role_name,
     )
 
 
@@ -446,8 +464,9 @@ async def remove_user_role(
     Returns:
         Success message or error description
     """
+    caller_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _remove_user_role_sync, user_id, role_name,
+        None, _remove_user_role_sync, caller_id, user_id, role_name,
     )
 
 
@@ -463,8 +482,9 @@ async def approve_test(
     Returns:
         Success message or error description
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _approve_test_sync, test_id,
+        None, _approve_test_sync, user_id, test_id,
     )
 
 
@@ -482,8 +502,9 @@ async def reject_test(
     Returns:
         Success message or error description
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _reject_test_sync, test_id, reason,
+        None, _reject_test_sync, user_id, test_id, reason,
     )
 
 
@@ -499,8 +520,9 @@ async def approve_suite(
     Returns:
         Success message or error description
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _approve_suite_sync, suite_id,
+        None, _approve_suite_sync, user_id, suite_id,
     )
 
 
@@ -518,8 +540,9 @@ async def reject_suite(
     Returns:
         Success message or error description
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _reject_suite_sync, suite_id, reason,
+        None, _reject_suite_sync, user_id, suite_id, reason,
     )
 
 
@@ -530,6 +553,7 @@ async def get_system_stats() -> str:
     Returns:
         Formatted system statistics
     """
+    user_id = _resolve_user_id()
     return await asyncio.get_running_loop().run_in_executor(
-        None, _get_system_stats_sync,
+        None, _get_system_stats_sync, user_id,
     )

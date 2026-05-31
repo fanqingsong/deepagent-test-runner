@@ -22,18 +22,20 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def sync_tool_db_session(
     permission: str | None = None,
+    user_id: int | None = None,
 ) -> Generator[tuple[Session, User], None, None]:
     """Yield an authenticated (sync_db_session, user) pair.
 
     Usage inside a blocking helper function::
 
-        with sync_tool_db_session("read:test") as (db, user):
+        with sync_tool_db_session("read:test", user_id=15) as (db, user):
             result = db.execute(...)
             return format_result(result)
     """
     from app.core.database import sync_session_maker
 
-    user_id = get_current_user_id()
+    if user_id is None:
+        user_id = get_current_user_id()
     if not user_id:
         raise AuthError("Authentication required.")
 
