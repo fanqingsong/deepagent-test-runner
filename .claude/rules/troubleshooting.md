@@ -2,7 +2,7 @@
 
 ## Scheduled tests not executing
 
-**Solution:** Check Celery Beat logs, verify schedule is_active=true, ensure cron expression is valid
+**Solution:** Check Temporal Server logs, verify schedule is_active=true, ensure cron expression is valid
 
 ## Test results not showing in dashboard
 

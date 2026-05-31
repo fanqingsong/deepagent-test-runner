@@ -2,9 +2,9 @@
 
 ## Pipeline
 
-1. **Schedule Trigger**: Celery Beat detects due schedule → calls `schedule_sync.execute_scheduled_tests()`
+1. **Schedule Trigger**: Temporal Schedule detects due cron → triggers `ScheduleExecutionWorkflow`
 2. **Job Creation**: Creates TestRun record with status='pending'
-3. **Test Execution**: Worker calls `test_execution.execute_test()` with test_definition_id
+3. **Test Execution**: Workflow calls execution with test_definition_id
 4. **LangGraph Pipeline**: `supervisor_graph.py` routes to planner/executor/reviewer nodes
 5. **Browser Automation**: `executor_agent.py` uses `create_react_agent` with Playwright tools
 6. **Result Saving**: `ExecutionService.save_test_results()` saves:

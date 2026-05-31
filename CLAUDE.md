@@ -15,7 +15,7 @@ AI-powered E2E testing framework using GLM LLM + LangGraph + Playwright for brow
 ```
 Frontend (React/Vite :5173) → Nginx (:8080) → Unified Backend (FastAPI :8011)
                                                     ↓
-                              PostgreSQL (:5432) ← Celery Worker + Beat ← Redis
+                              PostgreSQL (:5432) ← Temporal Server
 ```
 
 ## Project Rules

@@ -2,7 +2,7 @@
 
 ## Microservices Development
 
-Working directory: `service/`
+Working directory: `platform/`
 
 ```bash
 # Start/stop environments (preferred)
@@ -12,14 +12,14 @@ Working directory: `service/`
 ./stop-prod.sh                # Stop prod environment
 
 # Direct docker compose (fallback)
-cd service
+cd platform
 docker compose ps             # Check service status
 docker compose logs -f [service]  # View logs
 docker compose restart [service]  # Restart specific service
 ```
 
 **Hot-reload enabled for:**
-- `backend/app:/app/app` (API and Celery worker)
+- `backend/app:/app/app` (API backend)
 - `frontend/src:/app/frontend` (Vite dev server)
 
 Changes to these directories are automatically reflected without rebuilding.

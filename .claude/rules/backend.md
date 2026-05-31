@@ -5,8 +5,8 @@
 ```
 backend/app/
 ├── api/          # REST endpoints (organized by domain)
-├── services/     # Business logic (execution, schedules, sessions)
-├── tasks/        # Celery tasks (test_execution, schedule_sync)
+├── services/     # Business logic (execution, sessions)
+├── temporal/     # Temporal workflows and activities
 ├── models/       # SQLAlchemy ORM models
 ├── agents/       # LangGraph agent pipeline (supervisor_graph, executor_agent, nodes)
 ├── agent_tools/  # Playwright tools for browser automation
@@ -18,7 +18,6 @@ backend/app/
 ## Critical Service Methods
 
 - `ExecutionService.save_test_results()`: Saves both test_runs summary AND test_cases details
-- `ScheduleManager.parse_cron_expression()`: Validates cron expressions
 
 ## LLM Integration
 
@@ -32,6 +31,6 @@ All AI features use GLM via OpenAI-compatible API (`ChatOpenAI` from `langchain_
 
 ## Service Interactions
 
-- **Unified Backend**: test definitions, schedules, jobs, analytics, sessions
-- **Celery Workers**: execute tests via LangGraph + Playwright; load test data from PostgreSQL (not HTTP self-calls)
+- **Unified Backend**: test definitions, jobs, analytics, sessions
+- **Temporal Server**: executes scheduled tests via workflows; DB is source of truth, Temporal is execution engine
 - **Job metadata**: stored in Redis (`app/core/job_store.py`) for status polling across API restarts
