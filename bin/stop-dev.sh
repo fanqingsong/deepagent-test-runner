@@ -15,11 +15,11 @@ NC='\033[0m'
 # 项目根目录检测
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-SERVICE_DIR="${PROJECT_ROOT}/service"
+SERVICE_DIR="${PROJECT_ROOT}/platform"
 
 # 检查服务目录
 if [ ! -d "${SERVICE_DIR}" ]; then
-    echo -e "${RED}错误: service 目录不存在于 ${SERVICE_DIR}${NC}"
+    echo -e "${RED}错误: platform 目录不存在于 ${SERVICE_DIR}${NC}"
     exit 1
 fi
 

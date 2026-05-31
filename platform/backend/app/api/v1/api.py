@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     apps,
     auth,
     autonomous_planning,
+    charts,
     conversations,
     llm_usage,
     reviews,
@@ -113,4 +114,9 @@ api_router.include_router(
     llm_usage.router,
     prefix="/llm-usage",
     tags=["llm-usage"]
+)
+
+api_router.include_router(
+    charts.router,
+    tags=["charts"]
 )

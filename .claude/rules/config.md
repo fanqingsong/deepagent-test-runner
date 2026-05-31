@@ -2,7 +2,7 @@
 
 ## Environment Variables
 
-**File:** `service/.env`
+**File:** `platform/.env`
 
 ### Required Variables
 

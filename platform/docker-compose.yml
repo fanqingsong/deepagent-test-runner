@@ -1,0 +1,388 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: deepagent-tester-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d:ro
+    # NOTE: Exposing 5433 to host for development only.
+    # Remove this ports mapping in production.
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: deepagent-tester-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    # NOTE: Exposing 6380 to host for development only.
+    # Remove this ports mapping in production.
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: deepagent-tester-temporal
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=cc_test_user
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postgres
+    ports:
+      - "7233:7233"  # RPC
+      - "8088:8088"  # Web UI
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "tctl --address $(hostname -i):7233 cluster health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  temporal-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: deepagent-tester-temporal-worker
+    command: python -m app.temporal.worker_main
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      TEMPORAL_HOST_URL: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: unified-backend-task-queue
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      # LLM Configuration
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Studio}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8085}
+    volumes:
+      # Mount source for hot reload in development
+      - ./backend/app:/app/app
+      # Mount screenshots directory for test execution artifacts
+      - ./screenshots:/app/screenshots
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+      temporal:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  prestart:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: deepagent-tester-prestart
+    command: bash scripts/prestart.sh
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4}
+      DEBUG: "true"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/scripts:/app/scripts
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-network
+    restart: "no"
+
+  nginx:
+    image: nginx:alpine
+    container_name: deepagent-tester-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Mount screenshots directory for static file serving
+      - ./screenshots:/app/screenshots:ro
+    ports:
+      - "8085:80"
+    depends_on:
+      - backend
+      - frontend
+      - langgraph-server
+    networks:
+      - test-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "cat /etc/nginx/nginx.conf | grep -q 'worker_processes' && nginx -t"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  langgraph-server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.langgraph
+    container_name: deepagent-tester-langgraph
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-${SECRET_KEY:-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4}}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Cases}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-sync}
+      DEBUG: "true"
+    volumes:
+      - ./backend/langgraph.json:/app/langgraph.json:ro
+      # Mount shared application code
+      - ./backend/app:/app/app
+      # Mount entrypoints (graph.py, auth.py for langgraph server)
+      - ./backend/entrypoints:/app/entrypoints
+      - ./screenshots:/app/screenshots
+    ports:
+      - "2024:2024"
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: deepagent-tester-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_TIMEOUT_MS: ${API_TIMEOUT_MS:-300000}
+      # LLM Configuration
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      LLM_MODEL: ${LLM_MODEL:-glm-4-plus}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://open.bigmodel.cn/api/paas/v4/}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Tavily Search API
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000","http://localhost:8013","http://localhost:5173"]'
+      # Authentication Settings
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@example.com}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Studio}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8085}
+      # Temporal Configuration
+      TEMPORAL_HOST_URL: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: unified-backend-task-queue
+      # Observability Settings
+      PROMETHEUS_ENABLED: "true"
+      LOKI_ENABLED: "true"
+      JAEGER_ENABLED: "false"
+      LOG_FORMAT: "json"
+      LOG_LEVEL: "INFO"
+      RATE_LIMIT_ENABLED: "true"
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/1
+      MAX_CONCURRENT_SESSIONS: ${MAX_CONCURRENT_SESSIONS:-5}
+      SESSION_EXPIRE_HOURS: ${SESSION_EXPIRE_HOURS:-24}
+      SESSION_REMEMBER_ME_DAYS: ${SESSION_REMEMBER_ME_DAYS:-30}
+      MFA_TOTP_ISSUER: ${MFA_TOTP_ISSUER:-CC-Test-Runner}
+      MFA_RECOVERY_CODE_COUNT: ${MFA_RECOVERY_CODE_COUNT:-10}
+    ports:
+      - "8011:8001"
+    volumes:
+      # Mount source for hot reload in development
+      - ./backend/app:/app/app
+      # Mount entrypoints (FastAPI main.py)
+      - ./backend/entrypoints:/app/entrypoints
+      # Mount alembic for migration development
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+      # Mount screenshots directory for static file serving
+      - ./screenshots:/app/screenshots
+    command: ["sh", "-c", "uvicorn entrypoints.fastapi.main:app --host 0.0.0.0 --port 8001 --reload"]
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: deepagent-tester-frontend
+    environment:
+      NODE_ENV: development
+    ports:
+      - "5174:5173"  # Vite dev server port for development (changed from 5173 to avoid conflict)
+    volumes:
+      # Mount frontend source for hot reload in development
+      - ./frontend/src:/app/frontend
+      # Preserve container's node_modules (avoid host override causing React dup)
+      - /app/frontend/node_modules
+    command: ["sh", "-c", "cd /app/frontend && NODE_OPTIONS='--max-old-space-size=2048' npm run dev -- --host 0.0.0.0"]
+    networks:
+      - test-network
+    restart: unless-stopped
+
+  # # SonarQube Code Quality and Security Analysis
+  # sonarqube-db:
+  #   image: postgres:15-alpine
+  #   container_name: deepagent-tester-sonarqube-db
+  #   environment:
+  #     POSTGRES_USER: ${SONARQUBE_DB_USER:-sonarqube}
+  #     POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD}
+  #     POSTGRES_DB: ${SONARQUBE_DB_NAME:-sonarqube}
+  #   volumes:
+  #     - sonarqube_db_data:/var/lib/postgresql/data
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${SONARQUBE_DB_USER:-sonarqube} -d ${SONARQUBE_DB_NAME:-sonarqube}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # sonarqube:
+  #   image: sonarqube:lts-community
+  #   container_name: deepagent-tester-sonarqube
+  #   depends_on:
+  #     sonarqube-db:
+  #       condition: service_healthy
+  #   environment:
+  #     SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/${SONARQUBE_DB_NAME:-sonarqube}
+  #     SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER:-sonarqube}
+  #     SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD}
+  #     SONAR_WEB_CONTEXT: /sonarqube
+  #   volumes:
+  #     - sonarqube_data:/opt/sonarqube/data
+  #     - sonarqube_extensions:/opt/sonarqube/extensions
+  #   ports:
+  #     - "9002:9000"
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:9000/sonarqube/api/system/status"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
+
+  # # OWASP ZAP Dynamic Application Security Testing
+  # owasp-zap:
+  #   image: zaproxy/zap-stable:latest
+  #   container_name: deepagent-tester-owasp-zap
+  #   command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=true
+  #   ports:
+  #     - "8091:8080"
+  #   volumes:
+  #     - zap_data:/zap/wrk
+  #     - ../infrastructure/ci/zap:/zap/scripts:ro
+  #   networks:
+  #     - test-network
+  #   restart: unless-stopped
+  #   environment:
+  #     ZAP_PORT: "8080"
+  #     ZAP_API_KEY: ${ZAP_API_KEY:-change-this-in-production}
+
+volumes:
+  postgres_data:
+  redis_data:
+  # sonarqube_db_data:
+  # sonarqube_data:
+  # sonarqube_extensions:
+  # zap_data:
+
+networks:
+  test-network:
+    driver: bridge
