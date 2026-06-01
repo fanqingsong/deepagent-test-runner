@@ -23,6 +23,7 @@ from app.api.v1.endpoints import (
     test_suites,
     test_versions,
     users,
+    voice,
 )
 
 api_router = APIRouter()
@@ -119,4 +120,10 @@ api_router.include_router(
 api_router.include_router(
     charts.router,
     tags=["charts"]
+)
+
+api_router.include_router(
+    voice.router,
+    prefix="/voice",
+    tags=["voice"],
 )
