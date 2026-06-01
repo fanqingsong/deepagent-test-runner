@@ -10,29 +10,31 @@ from deepagents import CompiledSubAgent
 from langchain.agents import create_agent
 
 from app.agents.chat_assistant.knowledge_base_tools import query_knowledge_base
+from app.agents.chat_assistant.rag_tools import index_web_page, index_text_content, list_indexed_sources
 
 
 def create_knowledge_base_graph(llm):
     """Create the compiled graph for the knowledge base subagent."""
     return create_agent(
         model=llm,
-        tools=[query_knowledge_base],
+        tools=[query_knowledge_base, index_web_page, index_text_content, list_indexed_sources],
         system_prompt=(
-            "You are a knowledge base specialist. You answer questions by searching "
-            "across multiple knowledge sources: indexed documents, the web, and the "
-            "application database.\n\n"
-            "**How you work:**\n"
-            "1. Use the query_knowledge_base tool to search across sources\n"
-            "2. The tool automatically classifies your query, searches relevant sources "
-            "in parallel, and synthesizes the results\n"
-            "3. Present the synthesized answer to the user with clear source attribution\n\n"
+            "You are a knowledge base specialist. You manage the knowledge base by indexing "
+            "documents and answering questions from multiple sources.\n\n"
+            "**Document Indexing:**\n"
+            "When the user wants to add content to the knowledge base:\n"
+            "- Use index_web_page(url) to index a web page\n"
+            "- Use index_text_content(text, source_name) to index raw text\n"
+            "- Use list_indexed_sources() to show what's already indexed\n\n"
+            "**Question Answering:**\n"
+            "Use the query_knowledge_base tool to search across sources.\n"
+            "It automatically classifies queries, searches RAG/Web/DB in parallel, "
+            "and synthesizes results with source attribution.\n\n"
             "**Guidelines:**\n"
-            "- For simple factual questions, one tool call is sufficient\n"
-            "- For complex research questions, you may make 2-3 calls with different angles\n"
-            "- Always present results clearly, noting which sources provided which information\n"
-            "- If results are insufficient, suggest what additional sources could help\n"
+            "- Always confirm what was indexed (chunk count, source name)\n"
+            "- For simple factual questions, one query call is sufficient\n"
+            "- For complex research questions, make 2-3 calls with different angles\n"
             "- Respond in the same language as the user's message\n"
-            "- Document indexing is handled separately — do not attempt to index documents\n"
         ),
     )
 

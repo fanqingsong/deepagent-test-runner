@@ -30,9 +30,9 @@ def _get_embeddings() -> OpenAIEmbeddings:
     global _embeddings
     if _embeddings is None:
         _embeddings = OpenAIEmbeddings(
-            model=os.getenv("LLM_EMBEDDING_MODEL", "embedding-3"),
-            base_url=os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4"),
-            api_key=os.getenv("LLM_API_KEY"),
+            model=os.getenv("LLM_EMBEDDING_MODEL", "BAAI/bge-m3"),
+            base_url=os.getenv("LLM_EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1"),
+            api_key=os.getenv("LLM_EMBEDDING_API_KEY"),
         )
     return _embeddings
 
@@ -47,7 +47,7 @@ def _get_vector_store() -> PGVector:
     global _vector_store
     if _vector_store is None:
         _vector_store = PGVector(
-            embeddings=_get_embeddings(),
+            embedding=_get_embeddings(),
             collection_name="rag_knowledge",
             connection=_get_connection_string(),
             use_jsonb=True,
