@@ -1,4 +1,3 @@
-import React from 'react';
 import './StatsCards.css';
 
 function StatsCards({ stats, totalDefinitions }) {

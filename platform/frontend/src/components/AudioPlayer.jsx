@@ -1,4 +1,3 @@
-import React from 'react';
 import { SpeakerIcon } from './Icons';
 import './ChatModal.css';
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import TrendChart from './TrendChart';
 import PassRateChart from './PassRateChart';
 import DurationChart from './DurationChart';

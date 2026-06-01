@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDashboard, useSuiteTimeline, useSuiteRunEntries } from '../hooks/useDashboard';
 import { useLlmUsage } from '../hooks/useLlmUsage';

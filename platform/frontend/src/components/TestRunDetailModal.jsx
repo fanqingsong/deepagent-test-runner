@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getTestRunDetails, saveAsRegression } from '../api';
 import './TestRunDetailModal.css';
 import './Modal.css';

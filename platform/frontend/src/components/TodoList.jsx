@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * TodoList component displays a list of tasks with their completion status.

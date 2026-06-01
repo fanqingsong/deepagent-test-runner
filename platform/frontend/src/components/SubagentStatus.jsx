@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * SubagentStatus component displays the currently active subagent

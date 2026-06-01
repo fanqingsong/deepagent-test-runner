@@ -1,4 +1,3 @@
-import React from 'react';
 import { MicIcon } from './Icons';
 import './ChatModal.css';
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Client } from '@langchain/langgraph-sdk';
 import { CloseIcon, AddIcon, TrashIcon } from './Icons';
 import authService from '../services/authService';
