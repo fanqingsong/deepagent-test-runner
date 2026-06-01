@@ -10,7 +10,7 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -213,7 +213,7 @@ class SuiteService:
         # Run teardown test if defined
         if suite and suite.teardown_test_id:
             await self._dispatch_single(
-                suite_run, suite.teardown_test_id, "teardown", execute_test
+                suite_run, suite.teardown_test_id, "teardown"
             )
 
         return {"run_id": suite_run.run_id, "status": "completed"}
@@ -294,6 +294,25 @@ class SuiteService:
             )
         return True
 
+    async def _dispatch_workflow(
+        self,
+        suite_run: SuiteRun,
+        test_definition_id: int,
+    ) -> str:
+        """Dispatch a Temporal workflow for a test definition. Returns test_run_id."""
+        from app.temporal import get_temporal_client
+        from app.temporal.workflows.test_execution import TestExecutionWorkflow
+
+        test_run_id = f"test-{uuid.uuid4().hex[:12]}"
+        client = await get_temporal_client()
+        await client.start_workflow(
+            TestExecutionWorkflow.run,
+            args=[str(test_definition_id), test_run_id, suite_run.environment],
+            id=f"test-execution-{test_run_id}",
+            task_queue="unified-backend-task-queue",
+        )
+        return test_run_id
+
     async def _dispatch_single(
         self,
         suite_run: SuiteRun,
@@ -301,25 +320,11 @@ class SuiteService:
         label: str,
     ) -> None:
         """Dispatch a single setup/teardown test using Temporal workflow."""
-        from app.temporal import get_temporal_client
-        from app.temporal.workflows.test_execution import TestExecutionWorkflow
-
-        now_ms = int(time.time() * 1000)
-        test_run_id = f"test-{uuid.uuid4().hex[:12]}"
-
         try:
-            client = await get_temporal_client()
-
-            workflow_result = await client.start_workflow(
-                TestExecutionWorkflow.run,
-                args=[str(test_definition_id), test_run_id, suite_run.environment],
-                id=f"test-execution-{test_run_id}",
-                task_queue="unified-backend-task-queue",
-            )
-
+            test_run_id = await self._dispatch_workflow(suite_run, test_definition_id)
             logger.info(
-                "Dispatched %s test_def=%d as run %s (workflow: %s)",
-                label, test_definition_id, test_run_id, workflow_result.id
+                "Dispatched %s test_def=%d as run %s",
+                label, test_definition_id, test_run_id
             )
         except Exception as exc:
             logger.error("Failed to dispatch %s test_def=%d: %s", label, test_definition_id, exc)
@@ -330,31 +335,18 @@ class SuiteService:
         entry: SuiteRunEntry,
     ) -> None:
         """Execute a single entry and update its status using Temporal workflow."""
-        from app.temporal import get_temporal_client
-        from app.temporal.workflows.test_execution import TestExecutionWorkflow
-
         now_ms = int(time.time() * 1000)
         entry.status = "running"
         entry.started_at = now_ms
         await self.db.commit()
 
-        test_run_id = f"test-{uuid.uuid4().hex[:12]}"
-
         try:
-            client = await get_temporal_client()
-
-            workflow_result = await client.start_workflow(
-                TestExecutionWorkflow.run,
-                args=[str(entry.test_definition_id), test_run_id, suite_run.environment],
-                id=f"test-execution-{test_run_id}",
-                task_queue="unified-backend-task-queue",
-            )
-
+            test_run_id = await self._dispatch_workflow(suite_run, entry.test_definition_id)
             entry.test_run_id = test_run_id
             entry.status = "dispatched"
             logger.info(
-                "Dispatched entry %d (test_def=%d) as run %s (workflow: %s)",
-                entry.entry_order, entry.test_definition_id, test_run_id, workflow_result.id
+                "Dispatched entry %d (test_def=%d) as run %s",
+                entry.entry_order, entry.test_definition_id, test_run_id
             )
         except Exception as exc:
             entry.status = "error"

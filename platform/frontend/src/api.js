@@ -104,129 +104,74 @@ async function apiFetch(url, options = {}) {
 
 // Dashboard API
 export const getDashboardData = async (days = 30) => {
-  try {
-    const response = await fetch(`${DASHBOARD_API}/dashboard?days=${days}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch dashboard data: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    throw error;
+  const response = await apiFetch(`${DASHBOARD_API}/dashboard?days=${days}`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, 'Failed to fetch dashboard data'));
   }
+  return response.json();
 };
 
 // Suite Dashboard API
 export const getSuiteDashboard = async (days = 30) => {
-  const response = await fetch(`${DASHBOARD_API}/suite-dashboard?days=${days}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) throw new Error(`Failed to fetch suite dashboard: ${response.statusText}`);
+  const response = await apiFetch(`${DASHBOARD_API}/suite-dashboard?days=${days}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to fetch suite dashboard'));
   return response.json();
 };
 
 export const getSuiteRunTimeline = async (suiteId, limit = 10) => {
-  const response = await fetch(
-    `${DASHBOARD_API}/suite-runs/timeline/${suiteId}?limit=${limit}`,
-    { headers: getAuthHeaders() }
+  const response = await apiFetch(
+    `${DASHBOARD_API}/suite-runs/timeline/${suiteId}?limit=${limit}`
   );
-  if (!response.ok) throw new Error(`Failed to fetch suite timeline: ${response.statusText}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to fetch suite timeline'));
   return response.json();
 };
 
 export const getSuiteRunEntries = async (runId) => {
-  const response = await fetch(`${DASHBOARD_API}/suite-runs/${runId}/entries`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) throw new Error(`Failed to fetch suite run entries: ${response.statusText}`);
+  const response = await apiFetch(`${DASHBOARD_API}/suite-runs/${runId}/entries`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to fetch suite run entries'));
   return response.json();
 };
 
 export const getTestRuns = async (limit = 20) => {
-  try {
-    const response = await fetch(`${DASHBOARD_API}/test-runs?limit=${limit}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch test runs: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching test runs:', error);
-    throw error;
+  const response = await apiFetch(`${DASHBOARD_API}/test-runs?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, 'Failed to fetch test runs'));
   }
+  return response.json();
 };
 
 export const getTestRunDetails = async (runId) => {
-  try {
-    const response = await fetch(`${DASHBOARD_API}/test-runs/${runId}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch test run details: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching test run details:', error);
-    throw error;
+  const response = await apiFetch(`${DASHBOARD_API}/test-runs/${runId}`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, 'Failed to fetch test run details'));
   }
+  return response.json();
 };
 
 // Get test job status
 export const getJobStatus = async (jobId) => {
-  try {
-    const response = await fetch(`${SCHEDULER_API}/jobs/${jobId}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      mode: 'cors'
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch job status: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching job status:', error);
-    throw error;
+  const response = await apiFetch(`${SCHEDULER_API}/jobs/${jobId}`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, 'Failed to fetch job status'));
   }
+  return response.json();
 };
 
 // Get all jobs
 export const getJobs = async () => {
-  try {
-    const response = await fetch(`${SCHEDULER_API}/jobs/`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      },
-      mode: 'cors'
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch jobs: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching jobs:', error);
-    return [];
+  const response = await apiFetch(`${SCHEDULER_API}/jobs/`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, 'Failed to fetch jobs'));
   }
+  return response.json();
 };
 
 export const getTestStats = async () => {
-  try {
-    const response = await fetch(`${DASHBOARD_API}/dashboard`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch test stats: ${response.statusText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching test stats:', error);
-    throw error;
+  const response = await apiFetch(`${DASHBOARD_API}/dashboard`);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response, 'Failed to fetch test stats'));
   }
+  return response.json();
 };
 
 export const getUsers = async () => {
@@ -260,9 +205,9 @@ export const deleteUser = async (userId) => {
 
 // Regression
 export const saveAsRegression = async (testId, runId) => {
-  const response = await fetch(`${TEST_API}/test-definitions/regression/save`, {
+  const response = await apiFetch(`${TEST_API}/test-definitions/regression/save`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ run_id: runId })
   });
   if (!response.ok) {
@@ -272,9 +217,7 @@ export const saveAsRegression = async (testId, runId) => {
 };
 
 export const getRegressionTests = async () => {
-  const response = await fetch(`${TEST_API}/test-definitions/regression`, {
-    headers: { ...getAuthHeaders() }
-  });
+  const response = await apiFetch(`${TEST_API}/test-definitions/regression`);
   if (!response.ok) {
     throw new Error(await parseApiError(response, 'Failed to load regression test list'));
   }

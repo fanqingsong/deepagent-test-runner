@@ -273,7 +273,6 @@ function AppContent() {
       {/* Chat Components */}
       <ChatFab
         onClick={() => {
-          console.log('ChatFab clicked, setting isChatOpen to true');
           setIsChatOpen(true);
         }}
         className={isChatOpen ? 'hidden' : ''}
@@ -281,7 +280,6 @@ function AppContent() {
       <ChatModal
         isOpen={isChatOpen}
         onClose={() => {
-          console.log('ChatModal close requested');
           setIsChatOpen(false);
         }}
       />

@@ -283,14 +283,6 @@ async def update_test_suite(
         suite.reviewed_at = None
         suite.rejection_reason = None
 
-    if suite_data.suite_entries is not None:
-        suite.suite_entries = [e.model_dump() for e in suite_data.suite_entries]
-        # Auto-sync test_definition_ids
-        if not suite_data.test_definition_ids:
-            suite.test_definition_ids = [
-                e.test_definition_id for e in suite_data.suite_entries
-            ]
-
     await _sync_suite_schedule(db, suite)
     await db.commit()
     await db.refresh(suite)

@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChatIcon } from './Icons';
 import './ChatFab.css';
 
@@ -10,7 +9,6 @@ export function ChatFab({ onClick, hasUnreadMessages = false, className = '' }) 
   const handleClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('ChatFab clicked!');
     if (onClick) {
       onClick();
     }
