@@ -163,6 +163,9 @@ results/
 debug-output/
 *.png
 trace.zip
+playwright-report/
+videos/
+screenshots/
 
 # Git worktrees
 .worktrees/
