@@ -14,6 +14,12 @@ import { useChatStream } from '../hooks/useChatStream';
 import { useChatTranslations } from '../locales/chatTranslations';
 import { ConversationList } from './ConversationList';
 import './ChatModal.css';
+import { VoiceButton } from './VoiceButton';
+import { AudioPlayer } from './AudioPlayer';
+import { SpeakerIcon } from './Icons';
+import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
+import { useVoicePlayback } from '../hooks/useVoicePlayback';
+import { getVoiceConfig, transcribeAudio } from '../services/voiceService';
 
 const STORAGE_KEYS = {
   WIDTH: 'chat-modal-width',
@@ -101,6 +107,25 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     return localStorage.getItem(STORAGE_KEYS.DEEP_THINKING) === 'true';
   });
 
+  // Voice state
+  const { isRecording, start: startRecording, stop: stopRecording } = useVoiceRecorder();
+  const { play: playAudio, isPlaying: isAudioPlaying } = useVoicePlayback();
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(() => localStorage.getItem('voice-auto-play') !== 'false');
+  const [selectedVoice, setSelectedVoice] = useState('alex');
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const lastAssistantMsgRef = useRef(null);
+
+  // Check voice config on mount
+  useEffect(() => {
+    getVoiceConfig().then((config) => {
+      setVoiceEnabled(config.voice_enabled);
+      if (config.default_voice) setSelectedVoice(config.default_voice);
+    }).catch(() => setVoiceEnabled(false));
+  }, []);
+
+  useEffect(() => { localStorage.setItem('voice-auto-play', autoPlay.toString()); }, [autoPlay]);
+
   // Conversation list state
   const [showConversationList, setShowConversationList] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState(null);
@@ -179,6 +204,37 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     setActiveConversationId(null);
     setShowConversationList(false);
   };
+
+  const handleVoiceRecord = async () => {
+    if (isRecording) {
+      const blob = await stopRecording();
+      if (!blob) return;
+      setVoiceLoading(true);
+      try {
+        const { text } = await transcribeAudio(blob);
+        if (text?.trim()) {
+          setInputValue('');
+          sendMessage(text.trim(), { enableSearch, enableDeepThinking: deepThinking });
+        }
+      } catch (err) {
+        console.error('Voice transcription failed:', err);
+      } finally {
+        setVoiceLoading(false);
+      }
+    } else {
+      await startRecording();
+    }
+  };
+
+  // Auto-play TTS when AI response completes
+  useEffect(() => {
+    if (!autoPlay || !voiceEnabled || isStreaming) return;
+    const lastMsg = messages.filter((m) => m.role === 'assistant').pop();
+    if (lastMsg && lastMsg.content && lastMsg !== lastAssistantMsgRef.current) {
+      lastAssistantMsgRef.current = lastMsg;
+      playAudio(lastMsg.content, selectedVoice, `msg-${messages.indexOf(lastMsg)}`);
+    }
+  }, [messages, isStreaming, autoPlay, voiceEnabled, selectedVoice, playAudio]);
 
   const hasStreamActivity = currentSubagent || subagentHistory.length > 0 || toolCalls.length > 0;
 
@@ -270,6 +326,16 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                 <div className="message-content">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                 </div>
+
+                {voiceEnabled && message.role === 'assistant' && message.content && (
+                  <AudioPlayer
+                    messageId={`msg-${index}`}
+                    text={message.content}
+                    voice={selectedVoice}
+                    isPlaying={isAudioPlaying(`msg-${index}`)}
+                    onPlay={playAudio}
+                  />
+                )}
 
                 {message.toolCalls?.length > 0 && showToolCalls && (
                   <div className="message-tool-calls">
@@ -381,6 +447,24 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
               <DeepThinkingIcon size={16} />
               <span className="chat-search-toggle-label">{t('deepThinkingToggle')}</span>
             </button>
+            {voiceEnabled && (
+              <VoiceButton
+                isRecording={isRecording}
+                onStart={startRecording}
+                onStop={handleVoiceRecord}
+                disabled={isStreaming || voiceLoading}
+              />
+            )}
+            {voiceEnabled && (
+              <button
+                className={`chat-voice-toggle ${autoPlay ? 'active' : ''}`}
+                onClick={() => setAutoPlay(prev => !prev)}
+                title={autoPlay ? 'Disable auto-play' : 'Enable auto-play'}
+              >
+                <SpeakerIcon size={16} />
+                <span className="chat-voice-toggle-label">Auto</span>
+              </button>
+            )}
             {isStreaming && (
               <button className="chat-stop-btn" onClick={stopStreaming} title="Stop">
                 Stop

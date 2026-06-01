@@ -934,3 +934,93 @@
   font-family: 'IBM Plex Sans', sans-serif;
 }
 
+/* Voice Button */
+.chat-voice-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: none;
+  border: 1px solid #e0e0e0;
+  color: #525252;
+  cursor: pointer;
+  border-radius: 0;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.chat-voice-btn:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
+
+.chat-voice-btn.recording {
+  border-color: #da1e28;
+  color: #da1e28;
+  background-color: #fff1f1;
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+
+.chat-voice-btn:disabled {
+  color: #a8a8a8;
+  cursor: not-allowed;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Audio Player */
+.chat-audio-player {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  color: #525252;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.chat-audio-player:hover {
+  color: #0f62fe;
+}
+
+.chat-audio-player.playing {
+  color: #0f62fe;
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+
+/* Voice Settings Toggle */
+.chat-voice-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
+  padding: 0 12px;
+  background: none;
+  border: 1px solid #e0e0e0;
+  color: #525252;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chat-voice-toggle:hover {
+  background-color: #e0e0e0;
+}
+
+.chat-voice-toggle.active {
+  border-color: #0f62fe;
+  color: #0f62fe;
+  background-color: #edf5ff;
+}
+
