@@ -8,7 +8,6 @@ import PasswordResetForm from '../components/auth/PasswordResetForm';
 
 function PasswordReset() {
   const handleSuccess = (email) => {
-    console.log('Password reset email sent to:', email);
   };
 
   const handleCancel = () => {

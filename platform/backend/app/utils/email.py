@@ -17,7 +17,7 @@ def is_valid_email_format(email: str) -> bool:
     try:
         email_validate(email, check_deliverability=False)
         return True
-    except:
+    except Exception:
         return False
 
 
