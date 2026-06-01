@@ -42,3 +42,4 @@ Detailed guidance is organized in `.claude/rules/`:
 - **Token Monitoring**: Per-call LLM token usage tracked via LangChain callback (`app/core/llm_usage_callback.py`), persisted to `llm_usage` table, analytics at `/api/v1/llm-usage/`
 - **Timestamps**: PostgreSQL naive datetime, use `datetime.utcnow()`
 - **Feedback**: All save/submit/delete ops must show success/failure messages
+
