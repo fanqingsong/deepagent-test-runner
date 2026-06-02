@@ -18,7 +18,6 @@ from fastapi.responses import JSONResponse
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.observability import setup_observability
-from app.api.v1.endpoints.browser_stream import browser_stream_handler
 
 logger = logging.getLogger(__name__)
 
@@ -141,9 +140,6 @@ def create_application() -> FastAPI:
     async def health():
         """Health check endpoint."""
         return {"status": "healthy"}
-
-    # WebSocket endpoint for live browser stream
-    app.websocket("/ws/browser-stream/{job_id}")(browser_stream_handler)
 
     return app
 
