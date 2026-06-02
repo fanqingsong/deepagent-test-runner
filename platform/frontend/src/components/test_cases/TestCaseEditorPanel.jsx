@@ -348,7 +348,7 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
   const isBusy = isRunning || isGenerating || isSavingSteps;
   const hasPlan = editedSteps.length > 0;
   const hasResult = testCase?.latest_result && testCase.latest_result.status;
-  const canPublish = (testCase?.status === 'passed') && !publishing;
+  const canPublish = !['pending_review', 'published'].includes(testCase?.status) && !publishing;
   const latestResult = testCase?.latest_result || {};
   const resultSteps = latestResult.steps || [];
 
@@ -390,6 +390,15 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
           )}
           {testCase?.status === 'published' && (
             <span className="studio-editor-published-tag">Published</span>
+          )}
+          {canPublish && (
+            <button
+              className="studio-editor-publish-btn"
+              onClick={handlePublish}
+              disabled={publishing}
+            >
+              {publishing ? 'Submitting...' : 'Submit for Review'}
+            </button>
           )}
         </div>
       </div>

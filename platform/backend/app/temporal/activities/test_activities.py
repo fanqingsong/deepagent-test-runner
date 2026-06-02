@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.temporal.activities import get_default_retry_policy, get_long_running_retry_policy
 from app.agents.test_runner.executor_agent import interpret_and_execute_batch
+from app.core.langfuse_callback import langfuse_handler
 from app.core.worker_db import run_with_session
 from app.temporal.database import get_worker_session
 from app.models.test_definition import TestDefinition
@@ -304,7 +305,10 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
 
                 graph_result = await graph.ainvoke(
                     initial_state,
-                    config={"configurable": {"page": page, "run_id": run_id}},
+                    config={
+                        "configurable": {"page": page, "run_id": run_id},
+                        "callbacks": [langfuse_handler],
+                    },
                 )
 
                 result = graph_result.get("final_result")

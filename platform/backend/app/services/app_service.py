@@ -123,13 +123,15 @@ class AppService:
 
     async def list_apps(
         self,
-        user_id: int,
+        user_id: Optional[int] = None,
         status: Optional[str] = None,
         search: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
     ) -> List[App]:
-        conditions = [App.created_by == user_id, App.status != "archived"]
+        conditions = [App.status != "archived"]
+        if user_id is not None:
+            conditions.append(App.created_by == user_id)
         if status:
             status_list = [s.strip() for s in status.split(",")]
             conditions.append(App.status.in_(status_list))

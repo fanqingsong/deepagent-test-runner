@@ -171,11 +171,12 @@ async def list_test_suites(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all test suites, newest first."""
+    """List the current user's test suites, newest first."""
     limit = min(limit, 1000)
 
     result = await db.execute(
         select(TestSuite)
+        .where(TestSuite.created_by == str(current_user.id))
         .order_by(TestSuite.created_at.desc())
         .offset(skip)
         .limit(limit)

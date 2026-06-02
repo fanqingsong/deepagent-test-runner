@@ -70,7 +70,7 @@ async def list_published_apps(
     """Fetch published test cases for marketplace display."""
     svc = AppService(db)
     apps = await svc.list_apps(
-        current_user.id,
+        user_id=None,
         status="published",
         search=search,
         skip=skip,
