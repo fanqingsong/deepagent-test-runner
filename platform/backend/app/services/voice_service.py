@@ -8,10 +8,10 @@ from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
-SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
-STT_MODEL = "TeleAI/TeleSpeechASR"
-TTS_MODEL = "FunAudioLLM/CosyVoice2-0.5B"
-MAX_TTS_CHARS = 2000
+SILICONFLOW_BASE_URL = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1")
+STT_MODEL = os.getenv("STT_MODEL", "TeleAI/TeleSpeechASR")
+TTS_MODEL = os.getenv("TTS_MODEL", "FunAudioLLM/CosyVoice2-0.5B")
+MAX_TTS_CHARS = int(os.getenv("MAX_TTS_CHARS", "2000"))
 
 PRESET_VOICES = [
     "alex", "anna", "bella", "benjamin",
