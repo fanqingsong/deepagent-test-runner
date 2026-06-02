@@ -1,7 +1,7 @@
 FROM service-backend:latest
 
 USER root
-RUN pip install --no-cache-dir 'langgraph-cli[inmem]>=0.2.0'
+RUN pip install --no-cache-dir 'langgraph-cli[inmem]>=0.2.0' 'matplotlib>=3.8.0'
 USER appuser
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
