@@ -96,10 +96,12 @@ export function useChatStream() {
     return calls;
   }, [stream.toolCalls]);
 
-  // Get streaming content from the last AI message
+  // Get streaming content from the last AI message (current turn only)
   const streamingContent = useMemo(() => {
     if (!stream.isLoading || !stream.messages?.length) return '';
     const msgs = stream.messages;
+    // If the last message is human, the AI hasn't started responding yet
+    if (msgs[msgs.length - 1].getType?.() === 'human') return '';
     for (let i = msgs.length - 1; i >= 0; i--) {
       const msg = msgs[i];
       if (msg.getType?.() === 'ai') {
