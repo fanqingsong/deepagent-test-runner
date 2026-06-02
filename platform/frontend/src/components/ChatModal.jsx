@@ -229,10 +229,14 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   // Auto-play TTS when AI response completes
   useEffect(() => {
     if (!autoPlay || !voiceEnabled || isStreaming) return;
-    const lastMsg = messages.filter((m) => m.role === 'assistant').pop();
-    if (lastMsg && lastMsg.content && lastMsg !== lastAssistantMsgRef.current) {
-      lastAssistantMsgRef.current = lastMsg;
-      playAudio(lastMsg.content, selectedVoice, `msg-${messages.indexOf(lastMsg)}`);
+    const assistantMsgs = messages.filter((m) => m.role === 'assistant');
+    const lastMsg = assistantMsgs[assistantMsgs.length - 1];
+    if (lastMsg && lastMsg.content) {
+      const key = `${assistantMsgs.length - 1}:${lastMsg.content}`;
+      if (key !== lastAssistantMsgRef.current) {
+        lastAssistantMsgRef.current = key;
+        playAudio(lastMsg.content, selectedVoice, `msg-${messages.indexOf(lastMsg)}`);
+      }
     }
   }, [messages, isStreaming, autoPlay, voiceEnabled, selectedVoice, playAudio]);
 
