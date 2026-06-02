@@ -104,28 +104,14 @@ def create_application() -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
     # Include authentication routers
-    from app.api.v1.endpoints import (
-        auth,
-        mfa,
-        password,
-        sessions,
-        admin
-    )
+    from app.api.v1.endpoints import auth
 
     app.include_router(auth.router, prefix="/api/v1/auth")
-    app.include_router(mfa.router, prefix="/api/v1/auth/mfa")
-    app.include_router(password.router, prefix="/api/v1/auth/password")
-    app.include_router(sessions.router, prefix="/api/v1/auth/sessions")
-    app.include_router(admin.router, prefix="/api/v1/admin")
 
     # Include feature routers
-    from app.api.v1.endpoints import (
-        users,
-        roles,
-    )
+    from app.api.v1.endpoints import users
 
     app.include_router(users.router, prefix="/api/v1/users")
-    app.include_router(roles.router, prefix="/api/v1/roles")
 
     @app.get("/")
     async def root():
