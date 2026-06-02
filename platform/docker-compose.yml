@@ -118,6 +118,12 @@ services:
     networks:
       - test-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://temporal:7233\", timeout=5)' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   prestart:
     build:
