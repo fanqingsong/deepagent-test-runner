@@ -108,13 +108,35 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
   });
 
   // Voice state
-  const { isRecording, start: startRecording, stop: stopRecording } = useVoiceRecorder();
+  const autoStopRef = useRef(null);
+  const { isRecording, start: startRecording, stop: stopRecording } = useVoiceRecorder({
+    onAutoStop: () => autoStopRef.current?.(),
+  });
   const { play: playAudio, isPlaying: isAudioPlaying } = useVoicePlayback();
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [autoPlay, setAutoPlay] = useState(() => localStorage.getItem('voice-auto-play') !== 'false');
   const [selectedVoice, setSelectedVoice] = useState('alex');
   const [voiceLoading, setVoiceLoading] = useState(false);
   const lastAssistantMsgRef = useRef(null);
+
+  const voiceStopAndTranscribe = useCallback(async () => {
+    const blob = await stopRecording();
+    if (!blob) return;
+    setVoiceLoading(true);
+    try {
+      const { text } = await transcribeAudio(blob);
+      if (text?.trim()) {
+        setInputValue('');
+        sendMessage(text.trim(), { enableSearch, enableDeepThinking: deepThinking });
+      }
+    } catch (err) {
+      console.error('Voice transcription failed:', err);
+    } finally {
+      setVoiceLoading(false);
+    }
+  }, [stopRecording, enableSearch, deepThinking, sendMessage]);
+
+  autoStopRef.current = voiceStopAndTranscribe;
 
   // Check voice config on mount
   useEffect(() => {
@@ -207,20 +229,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
 
   const handleVoiceRecord = async () => {
     if (isRecording) {
-      const blob = await stopRecording();
-      if (!blob) return;
-      setVoiceLoading(true);
-      try {
-        const { text } = await transcribeAudio(blob);
-        if (text?.trim()) {
-          setInputValue('');
-          sendMessage(text.trim(), { enableSearch, enableDeepThinking: deepThinking });
-        }
-      } catch (err) {
-        console.error('Voice transcription failed:', err);
-      } finally {
-        setVoiceLoading(false);
-      }
+      await voiceStopAndTranscribe();
     } else {
       await startRecording();
     }
