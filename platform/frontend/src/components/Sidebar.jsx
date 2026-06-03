@@ -79,6 +79,11 @@ const menuItems = [
         label: 'Review Management',
         path: '#reviews',
         anyPermission: ['review:test', 'review:suite']
+      },
+      {
+        id: 'chat-monitor',
+        label: 'Chat Monitor',
+        path: '#chat-monitor'
       }
     ]
   }

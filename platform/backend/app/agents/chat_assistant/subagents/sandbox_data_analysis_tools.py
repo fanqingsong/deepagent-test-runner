@@ -343,6 +343,7 @@ print("SUCCESS:{output_filename}")
                         "chart_url": chart_url,
                         "filename": filename,
                         "message": f"Chart saved. View at: {chart_url}",
+                        "markdown_image": f"![{title}]({chart_url})",
                     }, ensure_ascii=False)
 
             return json.dumps({

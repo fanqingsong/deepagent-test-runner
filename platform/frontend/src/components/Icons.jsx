@@ -17,30 +17,6 @@ export const TestSuiteIcon = ({ size = 20 }) => (
   </svg>
 );
 
-export const UsersIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10 10a4 4 0 100-8 4 4 0 000 8zm0 2c-5 0-8 2-8 4v2h16v-2c0-2-3-4-8-4z"/>
-  </svg>
-);
-
-export const RolesIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10 2L2 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"/>
-  </svg>
-);
-
-export const ReviewsIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h8v2zm0-3H6V9h8v2zm0-3H6V6h8v2z"/>
-  </svg>
-);
-
-export const MarketplaceIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10 2L2 5v6c0 5.25 3.75 9.67 8 10.75 4.25-1.08 8-5.5 8-10.75V5l-8-3zm0 2.18l6 2.25v5.57c0 3.99-2.85 7.39-6 8.43-3.15-1.04-6-4.44-6-8.43V9.43l6-2.25zM8 7.5l-2 2 5 5 7-7-2-2-5 5-3-3z"/>
-  </svg>
-);
-
 export const SettingsIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M17 9h-2V7h2v2zm-4 0h-2V7h2v2zm-4 0H7V7h2v2zm-4 0H3V7h2v2zm12-4h-2V3h2v2zm-4 0H9V3h2v2zm-4 0H5V3h2v2zm-4 0H1V3h2v2zm16 12h-2v-2h2v2zm-4 0h-2v-2h2v2zm-4 0H9v-2h2v2zm-4 0H5v-2h2v2zm-4 0H1v-2h2v2zm12-4h-2V9h2v2zm-4 0H9V9h2v2zm-4 0H5V9h2v2zm-4 0H1V9h2v2z"/>
@@ -62,12 +38,6 @@ export const ChevronLeftIcon = ({ size = 20 }) => (
 export const ChevronRightIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M7 16l5-5-5-5v10z"/>
-  </svg>
-);
-
-export const ChevronDownIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 7l-5 5-5-5h10z"/>
   </svg>
 );
 
@@ -124,12 +94,6 @@ export const ChatListIcon = ({ size = 20 }) => (
     <path d="M2 2h16v14H6l-4 4v-4H2V2zm2 2v10h2v2.83L9.17 14H16V4H4z"/>
     <rect x="5" y="6" width="8" height="2"/>
     <rect x="5" y="10" width="6" height="2"/>
-  </svg>
-);
-
-export const CompressIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 8h2V6h2V4H4v4zm10-4v2h2v2h2V4h-4zM6 12H4v4h4v-2H6v-2zm12 0h-2v2h-2v2h4v-4z"/>
   </svg>
 );
 

@@ -96,7 +96,7 @@ async def admin_token(async_client: AsyncClient, db_session: AsyncSession) -> st
     """Create an admin user and return access token."""
     import time
     from sqlalchemy import select
-    from app.models.auth.user_account import UserAccount
+    from app.models.user import User as UserAccount
 
     # Create unique user to avoid conflicts
     unique_id = int(time.time() * 1000)
@@ -141,7 +141,7 @@ async def user_token(async_client: AsyncClient, db_session: AsyncSession) -> str
     """Create a regular user and return access token."""
     import time
     from sqlalchemy import select
-    from app.models.auth.user_account import UserAccount
+    from app.models.user import User as UserAccount
 
     # Create unique user to avoid conflicts
     unique_id = int(time.time() * 1000)

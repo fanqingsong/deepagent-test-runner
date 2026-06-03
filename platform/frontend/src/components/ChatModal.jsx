@@ -1,6 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { MermaidBlock } from './MermaidBlock';
+
+const markdownComponents = {
+  code({ className, children, ...props }) {
+    const match = /language-mermaid/.exec(className || '');
+    if (match) {
+      return <MermaidBlock content={String(children).replace(/\n$/, '')} />;
+    }
+    return <code className={className} {...props}>{children}</code>;
+  },
+};
 import {
   CloseIcon,
   MaximizeIcon,
@@ -337,7 +348,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                 className={`chat-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
               >
                 <div className="message-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{message.content}</ReactMarkdown>
                 </div>
 
                 {voiceEnabled && message.role === 'assistant' && message.content && (
@@ -425,7 +436,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                 )}
 
                 <div className="message-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {streamingContent || (currentSubagent ? '' : 'Thinking...')}
                   </ReactMarkdown>
                 </div>

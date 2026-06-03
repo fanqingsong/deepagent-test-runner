@@ -1024,3 +1024,35 @@
   background-color: #edf5ff;
 }
 
+/* Mermaid Diagrams */
+.mermaid-container {
+  background-color: #ffffff;
+  padding: 16px;
+  margin: 8px 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-error {
+  margin: 8px 0;
+}
+
+.mermaid-error pre {
+  background-color: #1d1d1d;
+  color: #f4f4f4;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.mermaid-error-msg {
+  color: #da1e28;
+  font-size: 0.85em;
+  margin: 4px 0 0;
+  padding: 0 12px;
+}
+

@@ -39,7 +39,7 @@ async def require_admin(request: Request, db: AsyncSession = Depends(get_db)):
     # Check if user is admin (simple implementation - in production, use proper role system)
     # For now, check if email ends with @admin.com or specific user IDs
     from sqlalchemy import select
-    from app.models.auth.user_account import UserAccount
+    from app.models.user import User as UserAccount
 
     query = select(UserAccount).where(UserAccount.id == session.user_id)
     result = await db.execute(query)

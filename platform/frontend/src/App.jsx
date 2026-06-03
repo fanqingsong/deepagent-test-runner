@@ -12,6 +12,7 @@ import RoleManagement from './components/RoleManagement';
 import TestCasesIDE from './components/test_cases/TestCaseIDE';
 import SuiteIDE from './components/suite/SuiteIDE';
 import ReviewPanel from './components/admin/ReviewPanel';
+import ChatMonitorPage from './components/admin/ChatMonitorPage';
 import Sidebar from './components/Sidebar';
 import AppHeader from './components/AppHeader';
 import Profile from './pages/Profile';
@@ -42,7 +43,7 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(() => {
     const hash = window.location.hash.slice(1);
-    if (['dashboard', 'users', 'roles', 'suites', 'reviews', 'profile', 'test-cases-marketplace', 'suites-marketplace'].includes(hash) || hash.startsWith('test-cases')) {
+    if (['dashboard', 'users', 'roles', 'suites', 'reviews', 'profile', 'test-cases-marketplace', 'suites-marketplace', 'chat-monitor'].includes(hash) || hash.startsWith('test-cases')) {
       if (hash.startsWith('test-cases')) {
         return hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases';
       }
@@ -265,6 +266,8 @@ function AppContent() {
           <TestCasesMarketplacePage />
         ) : currentView === 'suites-marketplace' ? (
           <SuiteMarketplacePage />
+        ) : currentView === 'chat-monitor' ? (
+          <ChatMonitorPage />
         ) : (
           <DashboardView />
         )}

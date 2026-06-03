@@ -7,6 +7,7 @@ and executing actions with proper permission checks.
 
 import asyncio
 import logging
+import os
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ from deepagents.backends.utils import create_file_data
 
 from app.core.agent_config import get_llm
 from app.core.config import settings
+from app.core.llm_context import thread_id_ctx, user_id_ctx
 from app.agents.chat_assistant.subagents import (
     get_test_query_subagent,
     get_user_admin_subagent,
@@ -101,6 +103,10 @@ class ChatAgent:
             return stack, checkpointer, store
 
         self._exit_stack, self.checkpointer, self._store = await asyncio.to_thread(_init_sync)
+
+        # Pre-create directories needed by subagents (avoids blocking os.makedirs in async context)
+        charts_dir = str(Path(__file__).resolve().parent.parent / "charts")
+        await asyncio.to_thread(os.makedirs, charts_dir, exist_ok=True)
 
         skills_files = await asyncio.to_thread(_load_skills_files_sync)
         for key, data in skills_files.items():
@@ -210,14 +216,6 @@ You are the main coordinator that routes user requests to appropriate specialize
 - User asks for analysis, comparison, or complex data operations
 - The task has clear sequential dependencies
 - Simple single-step questions (greetings, quick lookups) do NOT need a plan
-
-**CRITICAL: Delegating to the data-analysis subagent:**
-When the user provides CSV/table data and wants analysis or charts:
-- ALWAYS include the FULL CSV data as plain text in the `task` description field
-- NEVER write the data to a file first and pass a file path
-- NEVER tell the subagent to "read a file" or "open a file"
-- The data-analysis subagent CANNOT access the filesystem — it can only receive data via the task description
-- Example correct task: "Analyze this CSV data:\nDate,Revenue\n2025-01-01,100\n2025-01-02,200\n\nGenerate a line chart with x_column=Date, y_column=Revenue"
 
 **Memory & Context:**
 Use your memory filesystem (/memories/) to persist important information across conversations. When the user shares their name, preferences, or project details, write them to /memories/AGENTS.md so you can recall them later.

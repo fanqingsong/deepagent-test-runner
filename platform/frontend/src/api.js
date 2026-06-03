@@ -13,15 +13,20 @@ import authService from './services/authService';
 
 const getAuthHeaders = () => {
   const token = authService.getAccessToken();
+  const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
   if (!token) {
     return {};
   }
-  return {
+  const headers = {
     Authorization: `Bearer ${token}`,
   };
+  if (sessionToken) {
+    headers['X-Session-Token'] = sessionToken;
+  }
+  return headers;
 };
 
-export async function parseApiError(response, fallback) {
+async function parseApiError(response, fallback) {
   const status = response?.status;
   const statusText = response?.statusText || '';
   let bodyText = '';
@@ -103,7 +108,7 @@ async function apiFetch(url, options = {}) {
 
 
 // Dashboard API
-export const getDashboardData = async (days = 30) => {
+const getDashboardData = async (days = 30) => {
   const response = await apiFetch(`${DASHBOARD_API}/dashboard?days=${days}`);
   if (!response.ok) {
     throw new Error(await parseApiError(response, 'Failed to fetch dashboard data'));
@@ -132,7 +137,7 @@ export const getSuiteRunEntries = async (runId) => {
   return response.json();
 };
 
-export const getTestRuns = async (limit = 20) => {
+const getTestRuns = async (limit = 20) => {
   const response = await apiFetch(`${DASHBOARD_API}/test-runs?limit=${limit}`);
   if (!response.ok) {
     throw new Error(await parseApiError(response, 'Failed to fetch test runs'));
@@ -158,7 +163,7 @@ export const getJobStatus = async (jobId) => {
 };
 
 // Get all jobs
-export const getJobs = async () => {
+const getJobs = async () => {
   const response = await apiFetch(`${SCHEDULER_API}/jobs/`);
   if (!response.ok) {
     throw new Error(await parseApiError(response, 'Failed to fetch jobs'));
@@ -166,7 +171,7 @@ export const getJobs = async () => {
   return response.json();
 };
 
-export const getTestStats = async () => {
+const getTestStats = async () => {
   const response = await apiFetch(`${DASHBOARD_API}/dashboard`);
   if (!response.ok) {
     throw new Error(await parseApiError(response, 'Failed to fetch test stats'));
@@ -204,7 +209,7 @@ export const deleteUser = async (userId) => {
 };
 
 // Regression
-export const saveAsRegression = async (testId, runId) => {
+const saveAsRegression = async (testId, runId) => {
   const response = await apiFetch(`${TEST_API}/test-definitions/regression/save`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -216,7 +221,7 @@ export const saveAsRegression = async (testId, runId) => {
   return response.json();
 };
 
-export const getRegressionTests = async () => {
+const getRegressionTests = async () => {
   const response = await apiFetch(`${TEST_API}/test-definitions/regression`);
   if (!response.ok) {
     throw new Error(await parseApiError(response, 'Failed to load regression test list'));
@@ -336,7 +341,7 @@ export const submitVersionForReview = async (testCaseId, versionId) => {
   return response.json();
 };
 
-export const refineTestCase = async (testCaseId, feedback) => {
+const refineTestCase = async (testCaseId, feedback) => {
   const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/refine`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -461,7 +466,7 @@ export const getSuiteRunDetail = async (runId) => {
   return response.json();
 };
 
-export const cancelSuiteRun = async (runId) => {
+const cancelSuiteRun = async (runId) => {
   const response = await apiFetch(`${TEST_API}/test-suites/runs/${runId}/cancel`, {
     method: 'POST',
   });
@@ -469,7 +474,7 @@ export const cancelSuiteRun = async (runId) => {
   return response.json();
 };
 
-export const resolveSuite = async (suiteId) => {
+const resolveSuite = async (suiteId) => {
   const response = await apiFetch(`${TEST_API}/test-suites/${suiteId}/resolve`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to resolve suite'));
   return response.json();
@@ -477,13 +482,13 @@ export const resolveSuite = async (suiteId) => {
 
 // --- Run Configs ---
 
-export const getRunConfigs = async (skip = 0, limit = 100) => {
+const getRunConfigs = async (skip = 0, limit = 100) => {
   const response = await apiFetch(`${TEST_API}/run-configs/?skip=${skip}&limit=${limit}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load run config'));
   return response.json();
 };
 
-export const createRunConfig = async (data) => {
+const createRunConfig = async (data) => {
   const response = await apiFetch(`${TEST_API}/run-configs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -493,7 +498,7 @@ export const createRunConfig = async (data) => {
   return response.json();
 };
 
-export const updateRunConfig = async (configId, data) => {
+const updateRunConfig = async (configId, data) => {
   const response = await apiFetch(`${TEST_API}/run-configs/${configId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -503,7 +508,7 @@ export const updateRunConfig = async (configId, data) => {
   return response.json();
 };
 
-export const deleteRunConfig = async (configId) => {
+const deleteRunConfig = async (configId) => {
   const response = await apiFetch(`${TEST_API}/run-configs/${configId}`, { method: 'DELETE' });
   if (!response.ok && response.status !== 204) {
     throw new Error(await parseApiError(response, 'Failed to delete run config'));
@@ -512,19 +517,19 @@ export const deleteRunConfig = async (configId) => {
 
 // --- Tags ---
 
-export const getTags = async () => {
+const getTags = async () => {
   const response = await apiFetch(`${TEST_API}/tags`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load tag list'));
   return response.json();
 };
 
-export const getTestsByTag = async (tag) => {
+const getTestsByTag = async (tag) => {
   const response = await apiFetch(`${TEST_API}/tags/${encodeURIComponent(tag)}/tests`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load tag tests'));
   return response.json();
 };
 
-export const bulkApplyTags = async (testDefinitionIds, tags, mode = 'add') => {
+const bulkApplyTags = async (testDefinitionIds, tags, mode = 'add') => {
   const response = await apiFetch(`${TEST_API}/tags/bulk-apply`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -595,7 +600,7 @@ export const removeUserRole = async (userId, roleId) => {
 
 // --- Test Definitions (for suite builder) ---
 
-export const getTestDefinitions = async (skip = 0, limit = 200) => {
+const getTestDefinitions = async (skip = 0, limit = 200) => {
   const response = await apiFetch(`${TEST_API}/apps/?skip=${skip}&limit=${limit}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load test definitions'));
   return response.json();
@@ -609,13 +614,13 @@ export const getPendingReviews = async () => {
   return response.json();
 };
 
-export const getPendingTestReviews = async () => {
+const getPendingTestReviews = async () => {
   const response = await apiFetch(`${TEST_API}/reviews/pending/tests`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load pending test reviews'));
   return response.json();
 };
 
-export const getPendingSuiteReviews = async () => {
+const getPendingSuiteReviews = async () => {
   const response = await apiFetch(`${TEST_API}/reviews/pending/suites`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load pending suite reviews'));
   return response.json();
@@ -744,8 +749,53 @@ export const getLlmUsageByAgent = async (days = 30) => {
   return response.json();
 };
 
-export const getLlmUsageByDay = async (days = 30) => {
+const getLlmUsageByDay = async (days = 30) => {
   const response = await apiFetch(`${LLM_USAGE_API}/by-day?days=${days}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load LLM usage by day'));
+  return response.json();
+};
+
+// --- Admin Chat Monitoring ---
+
+const ADMIN_CHAT_API = `${BASE_URL}/api/v1/admin/chat`;
+
+export const getActiveChatSessions = async () => {
+  const response = await apiFetch(`${ADMIN_CHAT_API}/active-sessions`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load active chat sessions'));
+  return response.json();
+};
+
+export const getChatSessions = async (params = {}) => {
+  const qs = new URLSearchParams();
+  if (params.userId) qs.set('user_id', params.userId);
+  if (params.status) qs.set('status', params.status);
+  if (params.offset !== undefined) qs.set('offset', params.offset);
+  if (params.limit) qs.set('limit', params.limit);
+  const response = await apiFetch(`${ADMIN_CHAT_API}/sessions?${qs.toString()}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load chat sessions'));
+  return response.json();
+};
+
+const getChatSessionDetail = async (threadId) => {
+  const response = await apiFetch(`${ADMIN_CHAT_API}/sessions/${threadId}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load chat session detail'));
+  return response.json();
+};
+
+export const getChatSessionMessages = async (threadId) => {
+  const response = await apiFetch(`${ADMIN_CHAT_API}/sessions/${threadId}/messages`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load chat messages'));
+  return response.json();
+};
+
+export const getChatMetrics = async (days = 30) => {
+  const response = await apiFetch(`${ADMIN_CHAT_API}/metrics?days=${days}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load chat metrics'));
+  return response.json();
+};
+
+export const getChatSubagentUsage = async (days = 30) => {
+  const response = await apiFetch(`${ADMIN_CHAT_API}/subagent-usage?days=${days}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load subagent usage'));
   return response.json();
 };

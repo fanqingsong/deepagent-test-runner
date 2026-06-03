@@ -18,6 +18,7 @@ from app.models.conversation import ConversationThread, ConversationMessage
 from app.models.app import App
 from app.models.run_config import RunConfig
 from app.models.llm_usage import LlmUsage
+from app.models.chat_session import ChatSession
 from app.models.auth import UserSession, MFASecret, EmailToken, AuditLog
 
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     "App",
     "RunConfig",
     "LlmUsage",
+    "ChatSession",
 ]

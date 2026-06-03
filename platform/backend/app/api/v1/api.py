@@ -7,6 +7,7 @@ Aggregates all API endpoint routers into a single unified router.
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    admin_chat,
     analytics,
     app_permissions,
     apps,
@@ -133,4 +134,10 @@ api_router.include_router(
     voice.router,
     prefix="/voice",
     tags=["voice"],
+)
+
+api_router.include_router(
+    admin_chat.router,
+    prefix="/admin/chat",
+    tags=["admin-chat"],
 )

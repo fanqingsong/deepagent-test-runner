@@ -112,7 +112,8 @@ def create_sandbox_data_analysis_graph(
         "- Use matplotlib for charts, save with plt.savefig(filename, dpi=150, bbox_inches='tight')\n"
         "- Close plots with plt.close() after saving to free memory\n"
         "- Write analysis reports to report.md for structured output\n"
-        "- Use print() to return results from execute_python\n\n"
+        "- Use print() to return results from execute_python\n"
+        "- IMPORTANT: When generate_chart_sandbox returns a chart_url, you MUST include the chart as a markdown image in your response using ![description](chart_url). The tool result contains a 'markdown_image' field you can use directly. Always embed the chart image so the user can see it.\n\n"
         "**Chart types:** bar, line, scatter, histogram, pie, box, heatmap\n\n"
         "**Security:**\n"
         "- You can only execute code in your isolated workspace\n"
@@ -156,9 +157,6 @@ def get_sandbox_data_analysis_subagent(
         current_dir = os.path.dirname(__file__)
         chat_assistant_dir = os.path.dirname(current_dir)
         skills_dir = os.path.join(chat_assistant_dir, "skills")
-
-    # Ensure directories exist
-    os.makedirs(charts_dir, exist_ok=True)
 
     # Create backend for this user
     backend = get_sandbox_backend(user_id)

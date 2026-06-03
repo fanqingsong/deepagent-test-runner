@@ -20,6 +20,7 @@ class LlmUsage(Base):
         Index("ix_llm_usage_agent_type_created_at", "agent_type", "created_at"),
         Index("ix_llm_usage_user_id_created_at", "user_id", "created_at"),
         Index("ix_llm_usage_test_run_id", "test_run_id"),
+        Index("ix_llm_usage_thread_id", "thread_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -35,6 +36,7 @@ class LlmUsage(Base):
 
     user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     test_run_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    thread_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

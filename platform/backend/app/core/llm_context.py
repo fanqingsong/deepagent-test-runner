@@ -12,14 +12,16 @@ from typing import Optional
 agent_type_ctx: ContextVar[Optional[str]] = ContextVar("agent_type", default=None)
 user_id_ctx: ContextVar[Optional[int]] = ContextVar("user_id", default=None)
 test_run_id_ctx: ContextVar[Optional[str]] = ContextVar("test_run_id", default=None)
+thread_id_ctx: ContextVar[Optional[str]] = ContextVar("thread_id", default=None)
 
 
 @asynccontextmanager
-async def llm_usage_context(agent_type: str, user_id: int = None, test_run_id: str = None):
+async def llm_usage_context(agent_type: str, user_id: int = None, test_run_id: str = None, thread_id: str = None):
     tokens = [
         agent_type_ctx.set(agent_type),
         user_id_ctx.set(user_id),
         test_run_id_ctx.set(test_run_id),
+        thread_id_ctx.set(thread_id),
     ]
     try:
         yield

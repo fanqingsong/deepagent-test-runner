@@ -12,6 +12,7 @@ from langchain_openai import ChatOpenAI
 
 from app.core.llm_usage_callback import _usage_callback
 from app.core.langfuse_callback import langfuse_handler
+from app.core.chat_session_callback import _chat_session_tracker
 
 
 def get_llm(
@@ -31,6 +32,8 @@ def get_llm(
         callbacks.append(_usage_callback)
     if isinstance(langfuse_handler, BaseCallbackHandler):
         callbacks.append(langfuse_handler)
+    if isinstance(_chat_session_tracker, BaseCallbackHandler):
+        callbacks.append(_chat_session_tracker)
 
     return ChatOpenAI(
         model=model_name or os.getenv("LLM_MODEL", "glm-4-plus"),

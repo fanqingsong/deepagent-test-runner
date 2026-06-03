@@ -31,7 +31,7 @@ export async function transcribeAudio(audioBlob) {
   return await res.json();
 }
 
-export async function synthesizeSpeech(text, voice = 'alex') {
+async function synthesizeSpeech(text, voice = 'alex') {
   const params = new URLSearchParams({ text, voice });
   const res = await fetch(`${API_BASE}/synthesize?${params}`, {
     method: 'POST',

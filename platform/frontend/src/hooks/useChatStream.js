@@ -4,14 +4,21 @@
  * Connects to the LangGraph Platform Server for real-time
  * subagent tracking, tool calls, and token streaming.
  */
-import { useMemo, useCallback, useRef } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useStream } from '@langchain/react';
+import { Client } from '@langchain/langgraph-sdk';
 import authService from '../services/authService';
 
 const LANGGRAPH_URL = import.meta.env.VITE_LANGGRAPH_URL || `${window.location.origin}/langgraph`;
 
 export function useChatStream() {
   const threadIdRef = useRef(null);
+  const titledThreadsRef = useRef(new Set());
+
+  const client = useMemo(() => new Client({
+    apiUrl: LANGGRAPH_URL,
+    defaultHeaders: authService.getAuthHeaders(),
+  }), []);
 
   const stream = useStream({
     apiUrl: LANGGRAPH_URL,
@@ -25,13 +32,39 @@ export function useChatStream() {
 
   // Convert LangChain BaseMessage[] to simple {role, content} for ChatModal
   const messages = useMemo(() => {
-    return (stream.messages || []).map((msg) => {
+    const allMessages = stream.messages || [];
+
+    // Collect chart URLs from preceding tool results for each assistant message
+    const chartUrls = [];
+    return allMessages.map((msg) => {
       const role = msg.getType?.() === 'human' ? 'user' : 'assistant';
-      const content = typeof msg.content === 'string'
+
+      // Track chart URLs from tool results
+      if (msg.getType?.() === 'tool') {
+        try {
+          const toolContent = typeof msg.content === 'string' ? msg.content : String(msg.content || '');
+          const parsed = JSON.parse(toolContent);
+          if (parsed?.chart_url?.startsWith('/api/v1/charts/') && parsed?.success) {
+            chartUrls.push(parsed.chart_url);
+          }
+        } catch {}
+      }
+
+      let content = typeof msg.content === 'string'
         ? msg.content
         : Array.isArray(msg.content)
           ? msg.content.map((c) => c.text || c.content || String(c)).join('')
           : String(msg.content || '');
+
+      // For assistant messages, append any chart URLs collected from preceding tool results
+      // if they aren't already referenced as markdown images in the content
+      if (role === 'assistant' && chartUrls.length > 0) {
+        const unreferenced = chartUrls.filter(url => !content.includes(url));
+        if (unreferenced.length > 0) {
+          content += '\n\n' + unreferenced.map(url => `![Chart](${url})`).join('\n');
+        }
+        chartUrls.length = 0;
+      }
 
       // Extract tool calls if present
       const toolCalls = msg.tool_calls?.length > 0
@@ -112,6 +145,27 @@ export function useChatStream() {
     }
     return '';
   }, [stream.messages, stream.isLoading]);
+
+  // Auto-generate thread title from first human message after AI responds
+  useEffect(() => {
+    const threadId = threadIdRef.current;
+    const msgs = stream.messages;
+    if (!threadId || !msgs || msgs.length < 2) return;
+    if (titledThreadsRef.current.has(threadId)) return;
+    if (stream.isLoading) return;
+
+    const humanMsg = msgs.find((m) => m.getType?.() === 'human');
+    const aiMsg = msgs.find((m) => m.getType?.() === 'ai');
+    if (!humanMsg || !aiMsg) return;
+
+    titledThreadsRef.current.add(threadId);
+    const title = (typeof humanMsg.content === 'string'
+      ? humanMsg.content
+      : String(humanMsg.content || '')
+    ).slice(0, 50);
+
+    client.threads.update(threadId, { metadata: { title } }).catch(() => {});
+  }, [stream.messages, stream.isLoading, client]);
 
   const sendMessage = useCallback(
     async (content, { enableSearch = false, enableDeepThinking = false } = {}) => {

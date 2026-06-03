@@ -40,6 +40,8 @@ export function ConversationList({
 
   useEffect(() => {
     loadConversations();
+    const interval = setInterval(loadConversations, 10000);
+    return () => clearInterval(interval);
   }, [loadConversations]);
 
   const handleCreateConversation = async () => {

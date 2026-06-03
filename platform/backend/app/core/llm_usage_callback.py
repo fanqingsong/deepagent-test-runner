@@ -12,7 +12,7 @@ from typing import Any
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
-from app.core.llm_context import agent_type_ctx, test_run_id_ctx, user_id_ctx
+from app.core.llm_context import agent_type_ctx, test_run_id_ctx, thread_id_ctx, user_id_ctx
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +80,7 @@ class LlmUsageCallbackHandler(BaseCallbackHandler):
         agent_type = agent_type_ctx.get() or "unknown"
         user_id = user_id_ctx.get()
         test_run_id = test_run_id_ctx.get()
+        thread_id = thread_id_ctx.get()
 
         await self._persist(
             agent_type=agent_type,
@@ -90,6 +91,7 @@ class LlmUsageCallbackHandler(BaseCallbackHandler):
             duration_ms=duration_ms,
             user_id=user_id,
             test_run_id=test_run_id,
+            thread_id=thread_id,
         )
 
     async def _persist(self, **kwargs):
