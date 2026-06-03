@@ -66,7 +66,7 @@ cleanup_processes() {
 check_ports() {
     echo -e "${BLUE}检查端口占用...${NC}"
 
-    local ports=(5433 6380 7233 8088 8011 8085 5174 9002 8091)
+    local ports=(5433 5435 6380 6381 7233 8088 8011 8085 5174 2024 3000 9002 9091 8091)
     local occupied_ports=()
 
     for port in "${ports[@]}"; do

@@ -416,8 +416,9 @@ The project includes a comprehensive observability stack for monitoring, logging
 
 ### Overview
 
-The observability stack provides 4-pillar monitoring:
+The observability stack provides comprehensive monitoring capabilities:
 
+- **LLM Observability** (Langfuse): LLM call tracking, token usage, cost analytics, and performance monitoring
 - **Metrics** (Prometheus): Time-series data collection and querying
 - **Logs** (Loki): Centralized log aggregation with label-based indexing
 - **Traces** (Jaeger): Distributed tracing for request flow analysis
@@ -658,3 +659,124 @@ Common issues:
 - **Logs not appearing in Loki**: Verify Promtail is running and can reach Loki
 - **No traces in Jaeger**: Ensure `JAEGER_ENABLED=true` and make API requests to generate traces
 - **Grafana dashboards not loading**: Verify datasources are configured and test connections
+
+### Langfuse LLM Observability
+
+Langfuse provides comprehensive LLM observability including token usage tracking, cost analytics, and performance monitoring.
+
+#### Architecture
+
+```mermaid
+graph TB
+    subgraph "Application Layer"
+        Backend["Backend Service<br/>:8011"]
+        LangGraph["LangGraph Server<br/>:2024"]
+    end
+    
+    subgraph "Langfuse Stack"
+        Web["Langfuse Web<br/>:3000"]
+        Worker["Langfuse Worker<br/>:3030"]
+        DB["PostgreSQL<br/>:5435"]
+        Redis["Redis<br/>:6381"]
+        ClickHouse["ClickHouse<br/>:8124,9002"]
+        MinIO["MinIO<br/>:9091"]
+    end
+    
+    Backend -->|1. LLM Callbacks| Web
+    LangGraph -->|2. LLM Callbacks| Web
+    Web -->|3. Store Data| DB
+    Web -->|4. Cache| Redis
+    Web -->|5. Analytics| ClickHouse
+    Web -->|6. Media/Events| MinIO
+    Worker -->|7. Background Jobs| Web
+    
+    style Backend fill:#bbf,stroke:#333,stroke-width:2px
+    style LangGraph fill:#fbf,stroke:#333,stroke-width:2px
+    style Web fill:#9f6,stroke:#333,stroke-width:2px
+    style Worker fill:#f96,stroke:#333,stroke-width:2px
+    style ClickHouse fill:#69f,stroke:#333,stroke-width:2px
+```
+
+#### Quick Start
+
+Langfuse is automatically started with the development environment:
+
+```bash
+./bin/start-dev.sh
+```
+
+**Access Points:**
+- Langfuse Web UI: http://localhost:3000
+- Default credentials: Create an account on first visit
+
+#### Features
+
+**LLM Call Tracking:**
+- Token usage per model and agent type
+- Cost calculation and analytics
+- Request/response latency tracking
+- Error rate monitoring
+
+**Agent Performance:**
+- Per-agent execution metrics
+- Success/failure rates
+- Average completion time
+- Resource utilization
+
+**Data Retention:**
+- PostgreSQL: User data, projects, API keys (90 days default)
+- ClickHouse: High-performance analytics queries
+- MinIO: Screenshots, traces, media files
+
+#### Configuration
+
+Enable Langfuse in backend environment variables:
+
+```bash
+# platform/.env
+LANGFUSE_PUBLIC_KEY=your-public-key
+LANGFUSE_SECRET_KEY=your-secret-key
+LANGFUSE_HOST=http://langfuse-web:3000
+```
+
+The backend automatically integrates with Langfuse through the `langfuse_callback.py` callback handler.
+
+#### API Endpoints
+
+Langfuse provides REST APIs for:
+
+- **Projects**: `/api/projects` - Manage observability projects
+- **Traces**: `/api/traces` - Query execution traces
+- **Observations**: `/api/observations` - Detailed LLM call data
+- **Scores**: `/api/scores` - Quality metrics and evaluations
+
+#### Monitoring Dashboards
+
+Pre-configured dashboards include:
+
+1. **LLM Usage Overview**
+   - Total tokens consumed
+   - Cost per model
+   - Request rate
+   - Error percentage
+
+2. **Agent Performance**
+   - Execution time by agent type
+   - Success rate
+   - Retry count
+   - Tool usage statistics
+
+3. **Cost Analytics**
+   - Daily cost breakdown
+   - Cost per project
+   - Budget alerts
+   - Trend analysis
+
+#### Troubleshooting
+
+Common Langfuse issues:
+
+- **No LLM calls appearing**: Verify `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set
+- **ClickHouse connection errors**: Check `langfuse-clickhouse` container is healthy
+- **Missing screenshots**: Ensure MinIO is running and accessible
+- **Worker not processing**: Check `langfuse-worker` logs for errors
