@@ -29,9 +29,13 @@ class ChatSessionTracker(BaseCallbackHandler):
         run_id: uuid.UUID,
         **kwargs: Any,
     ) -> None:
+        logger.info(f"ChatSessionTracker.on_llm_end called - run_id: {run_id}")
+
         thread_id = thread_id_ctx.get()
         user_id = user_id_ctx.get()
         agent_type = agent_type_ctx.get()
+
+        logger.info(f"Context vars - thread_id: {thread_id}, user_id: {user_id}, agent_type: {agent_type}")
 
         # Fall back to LangGraph's runtime config when context vars aren't set
         if not thread_id:

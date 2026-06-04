@@ -13,10 +13,12 @@ from typing import Any, Dict, List, Optional
 from jose import jwt
 from langgraph_sdk import get_sync_client
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 LANGGRAPH_URL = "http://langgraph-server:2024"
-JWT_SECRET = "z0y9x8w7v6u5t4s3r2q1p0o9n8m7l6k5j4i3h2g1f0e9d8c7"
+JWT_SECRET = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 
 

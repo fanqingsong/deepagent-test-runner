@@ -171,6 +171,10 @@ export function useChatStream() {
     async (content, { enableSearch = false, enableDeepThinking = false } = {}) => {
       if (!content.trim()) return;
 
+      // Get actual user ID from auth service
+      const user = authService.getUser();
+      const userId = user?.id || 1;
+
       await stream.submit(
         {
           messages: [{ type: 'human', content }],
@@ -178,7 +182,7 @@ export function useChatStream() {
         {
           streamSubgraphs: true,
           configurable: {
-            user_id: 1,
+            user_id: userId,
             enable_search: enableSearch,
             enable_deep_thinking: enableDeepThinking,
           },

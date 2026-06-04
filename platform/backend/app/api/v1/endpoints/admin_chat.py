@@ -36,7 +36,7 @@ async def list_sessions(
     admin_id: int = Depends(require_admin),
 ):
     """Browse all chat sessions from LangGraph server."""
-    return await langgraph_reader.list_threads(user_id, status, offset, limit)
+    return await langgraph_reader.list_threads(user_id=user_id, status=status, offset=offset, limit=limit)
 
 
 @router.get("/sessions/{thread_id}")
@@ -44,12 +44,24 @@ async def get_session_detail(
     thread_id: str,
     admin_id: int = Depends(require_admin),
 ):
-    """Get full detail of a chat session."""
-    data = await langgraph_reader.list_threads(limit=200)
-    for item in data["items"]:
-        if item["thread_id"] == thread_id:
-            return item
-    raise HTTPException(status_code=404, detail="Session not found")
+    """Get full detail of a chat session from LangGraph server."""
+    try:
+        messages = await langgraph_reader.get_thread_messages(thread_id)
+        # Get thread info from list_threads
+        threads_data = await langgraph_reader.list_threads(limit=200)
+        thread_info = None
+        for item in threads_data["items"]:
+            if item["thread_id"] == thread_id:
+                thread_info = item
+                break
+        if not thread_info:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {
+            **thread_info,
+            "messages": messages,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail="Session not found")
 
 
 @router.get("/sessions/{thread_id}/messages")
@@ -67,8 +79,8 @@ async def get_conversation_metrics(
     days: int = Query(30, ge=1, le=365),
     admin_id: int = Depends(require_admin),
 ):
-    """Aggregated conversation metrics."""
-    return await langgraph_reader.get_session_metrics(days)
+    """Aggregated conversation metrics from LangGraph server."""
+    return await langgraph_reader.get_session_metrics(days=days)
 
 
 @router.get("/subagent-usage")
