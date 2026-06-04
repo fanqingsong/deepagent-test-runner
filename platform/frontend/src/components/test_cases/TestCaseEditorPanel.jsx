@@ -11,6 +11,7 @@ import TestCasePlanTab from './TestCasePlanTab';
 import TestCaseRunHistoryTab from './TestCaseRunHistoryTab';
 import TestCaseVersionTab from './TestCaseVersionTab';
 import TestCasePermissionTab from './TestCasePermissionTab';
+import TestCaseScriptTab from './TestCaseScriptTab';
 import ScreenshotLightbox from './ScreenshotLightbox';
 import './TestCaseEditorPanel.css';
 import './test-cases-shared.css';
@@ -34,6 +35,7 @@ const REVIEW_STATUS_LABELS = {
 const TABS = [
   { key: 'config', label: 'Configuration' },
   { key: 'plan', label: 'Test Steps' },
+  { key: 'script', label: 'Playwright Script' },
   { key: 'history', label: 'Run History' },
   { key: 'versions', label: 'Version Management' },
   { key: 'permissions', label: 'Permissions' },
@@ -470,6 +472,9 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
             onRestoreVersion={handleRestoreVersion}
             onBackToCurrent={handleBackToCurrent}
           />
+        )}
+        {activeTab === 'script' && (
+          <TestCaseScriptTab testCaseId={testCaseId} />
         )}
         {activeTab === 'history' && (
           <TestCaseRunHistoryTab

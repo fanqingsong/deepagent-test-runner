@@ -37,6 +37,15 @@ class SupervisorState(TypedDict):
     review: Optional[Dict[str, Any]]  # Reviewer report
     review_error: Optional[str]  # Review failure message
 
+    # --- Script generation fields ---
+    execution_mode: str  # "nl_steps" | "script"
+    playwright_script: Optional[str]  # Generated Python script
+    script_status: Optional[str]  # "none" | "generating" | "validating" | "validated" | "failed"
+    script_error: Optional[str]  # Last script execution error
+    script_attempt: int  # Current generation attempt
+    max_script_attempts: int  # Max retries for script generation (default: 3)
+    page_context: Optional[Dict[str, Any]]  # Fetched DOM context
+
     # --- Final result ---
     final_result: Optional[Dict[str, Any]]  # Aggregated result for DB storage
 

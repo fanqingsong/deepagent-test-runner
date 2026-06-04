@@ -14,9 +14,12 @@ from app.agents.test_runner.supervisor_state import SupervisorState
 from app.agents.test_runner.nodes import (
     error_handler_node,
     executor_node,
+    page_fetcher_node,
     planner_node,
     result_builder_node,
     reviewer_node,
+    script_executor_node,
+    script_generator_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,6 +30,11 @@ logger = logging.getLogger(__name__)
 
 def route_from_start(state: SupervisorState) -> str:
     """Determine first node based on mode."""
+    execution_mode = state.get("execution_mode", "nl_steps")
+    if execution_mode == "script":
+        if state.get("playwright_script") and state.get("script_status") == "validated":
+            return "script_executor_node"
+        return "page_fetcher_node"
     mode = state.get("mode", "execute_only")
     if mode == "full_pipeline" and state.get("goal"):
         return "planner_node"
@@ -66,6 +74,32 @@ def route_after_error(state: SupervisorState) -> str:
     return "result_builder_node"
 
 
+def route_after_script_executor(state: SupervisorState) -> str:
+    """Route after script executor — retry generation or build result."""
+    script_status = state.get("script_status", "failed")
+    if script_status == "validated":
+        return "result_builder_node"
+    attempt = state.get("script_attempt", 0)
+    max_attempts = state.get("max_script_attempts", 3)
+    if attempt < max_attempts:
+        return "script_generator_node"
+    return "result_builder_node"
+
+
+def route_after_page_fetcher(state: SupervisorState) -> str:
+    """Route after page fetcher — proceed to generation or fail."""
+    if state.get("script_status") == "failed":
+        return "result_builder_node"
+    return "script_generator_node"
+
+
+def route_after_script_generator(state: SupervisorState) -> str:
+    """Route after script generator — execute or fail."""
+    if state.get("script_status") == "failed":
+        return "result_builder_node"
+    return "script_executor_node"
+
+
 # --- Graph builder ---
 
 
@@ -81,27 +115,31 @@ def build_pipeline_graph() -> StateGraph:
     """
     graph = StateGraph(SupervisorState)
 
-    # Add nodes
+    # Add nodes — existing NL pipeline
     graph.add_node("planner_node", planner_node)
     graph.add_node("executor_node", executor_node)
     graph.add_node("reviewer_node", reviewer_node)
     graph.add_node("error_handler_node", error_handler_node)
     graph.add_node("result_builder_node", result_builder_node)
 
+    # Add nodes — script generation pipeline
+    graph.add_node("page_fetcher_node", page_fetcher_node)
+    graph.add_node("script_generator_node", script_generator_node)
+    graph.add_node("script_executor_node", script_executor_node)
+
     # Entry: route based on mode
     graph.add_conditional_edges(START, route_from_start)
 
-    # Planner -> executor (success) or error_handler (failure) or retry
+    # NL pipeline edges (unchanged)
     graph.add_conditional_edges("planner_node", route_after_planner)
-
-    # Executor -> reviewer (success) or error_handler (failure) or result_builder (plan_and_execute mode)
     graph.add_conditional_edges("executor_node", route_after_executor)
-
-    # Reviewer always proceeds to result builder
     graph.add_conditional_edges("reviewer_node", route_after_reviewer)
-
-    # Error handler always proceeds to result builder
     graph.add_conditional_edges("error_handler_node", route_after_error)
+
+    # Script generation pipeline edges
+    graph.add_conditional_edges("page_fetcher_node", route_after_page_fetcher)
+    graph.add_conditional_edges("script_generator_node", route_after_script_generator)
+    graph.add_conditional_edges("script_executor_node", route_after_script_executor)
 
     # Result builder is terminal
     graph.add_edge("result_builder_node", END)

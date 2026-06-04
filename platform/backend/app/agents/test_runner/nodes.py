@@ -17,6 +17,9 @@ from app.agents.test_runner.executor_agent import interpret_and_execute_batch
 from app.agents.test_runner.reviewer_agent import review_test_results
 from app.agents.test_runner.supervisor_state import SupervisorState
 from app.agents.test_runner.playwright_tools import set_page, set_screenshot_dir
+from app.agents.test_runner.page_fetcher import fetch_page_context
+from app.agents.test_runner.script_generator import generate_playwright_script
+from app.agents.test_runner.script_executor import execute_script
 
 logger = logging.getLogger(__name__)
 
@@ -308,3 +311,147 @@ async def result_builder_node(
     )
 
     return {"final_result": final_result, "current_phase": "done"}
+
+
+# --- Script generation pipeline nodes ---
+
+
+async def page_fetcher_node(
+    state: SupervisorState, config: RunnableConfig
+) -> Dict[str, Any]:
+    """Fetch target page DOM for script generation context."""
+    target_url = state.get("target_url", "")
+    run_id = state.get("run_id", "script-gen")
+
+    configurable = config.get("configurable", {})
+    page = configurable.get("page")
+
+    if not page or not target_url:
+        return {
+            "page_context": None,
+            "script_status": "failed",
+            "script_error": "No page or target URL for page fetching",
+        }
+
+    logger.info("Supervisor: page_fetcher_node fetching %s", target_url)
+
+    try:
+        page_context = await fetch_page_context(page, target_url)
+        return {
+            "page_context": page_context,
+            "script_status": "generating",
+            "script_error": None,
+        }
+    except Exception as e:
+        logger.error("Supervisor: page_fetcher_node failed: %s", e)
+        return {
+            "page_context": None,
+            "script_status": "failed",
+            "script_error": f"Page fetch failed: {e}",
+        }
+
+
+async def script_generator_node(
+    state: SupervisorState, config: RunnableConfig
+) -> Dict[str, Any]:
+    """Generate or fix a Playwright script via LLM."""
+    goal = state.get("goal", "")
+    target_url = state.get("target_url", "")
+    page_context_data = state.get("page_context") or {}
+    page_context_text = page_context_data.get("context_text", "")
+    script_error = state.get("script_error")
+    previous_script = state.get("playwright_script")
+    attempt = state.get("script_attempt", 0)
+    run_id = state.get("run_id", "script-gen")
+
+    logger.info("Supervisor: script_generator_node attempt=%d", attempt + 1)
+
+    try:
+        result = await generate_playwright_script(
+            goal=goal,
+            url=target_url,
+            page_context=page_context_text,
+            previous_error=script_error,
+            previous_script=previous_script,
+            run_id=run_id,
+        )
+
+        script = result.get("script")
+        error = result.get("error")
+
+        if not script:
+            return {
+                "playwright_script": None,
+                "script_status": "failed",
+                "script_error": error,
+            }
+
+        return {
+            "playwright_script": script,
+            "script_status": "validating",
+            "script_error": None,
+            "script_attempt": attempt + 1,
+        }
+    except Exception as e:
+        logger.error("Supervisor: script_generator_node failed: %s", e)
+        return {
+            "playwright_script": None,
+            "script_status": "failed",
+            "script_error": str(e),
+        }
+
+
+async def script_executor_node(
+    state: SupervisorState, config: RunnableConfig
+) -> Dict[str, Any]:
+    """Execute the generated Playwright script."""
+    script = state.get("playwright_script")
+    run_id = state.get("run_id", "script-gen")
+
+    configurable = config.get("configurable", {})
+    page = configurable.get("page")
+
+    if not script or not page:
+        return {
+            "step_results": [],
+            "execution_error": "No script or page available",
+            "script_status": "failed",
+        }
+
+    logger.info("Supervisor: script_executor_node running script (%d chars)", len(script))
+
+    try:
+        result = await execute_script(script, page, timeout=60)
+        status = result.get("status", "failed")
+        error = result.get("error")
+        step_results = result.get("step_results", [])
+
+        if not step_results and status == "passed":
+            step_results = [{"step_number": 1, "description": "Script execution", "status": "passed"}]
+        elif not step_results and error:
+            step_results = [{"step_number": 1, "description": "Script execution", "status": "failed", "error": error}]
+
+        try:
+            screenshot_path = await _capture_step_screenshot(
+                page, run_id, 1, "script_result", status
+            )
+            for sr in step_results:
+                if not sr.get("screenshot_path"):
+                    sr["screenshot_path"] = screenshot_path
+        except Exception:
+            pass
+
+        return {
+            "step_results": step_results,
+            "execution_error": error if status != "passed" else None,
+            "script_status": "validated" if status == "passed" else "failed",
+            "script_error": error if status != "passed" else None,
+        }
+    except Exception as e:
+        logger.error("Supervisor: script_executor_node failed: %s", e)
+        return {
+            "step_results": [],
+            "execution_error": str(e),
+            "script_status": "failed",
+            "script_error": str(e),
+        }

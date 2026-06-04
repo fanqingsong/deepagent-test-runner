@@ -61,6 +61,7 @@ class TestDefinitionBase(BaseModel):
     tags: List[str] = Field(default_factory=list, description="Test tags")
     test_goal: Optional[str] = Field(None, description="AI planning: Natural language test goal")
     test_context: dict = Field(default_factory=dict, description="AI planning: Additional context")
+    execution_mode: str = Field(default="nl_steps", description="Execution mode: 'nl_steps' or 'script'")
 
 
 class TestDefinitionCreate(TestDefinitionBase):
@@ -81,6 +82,7 @@ class TestDefinitionUpdate(BaseModel):
     is_active: Optional[bool] = None
     test_goal: Optional[str] = Field(None, description="AI planning: Natural language test goal")
     test_context: Optional[dict] = Field(None, description="AI planning: Additional context")
+    execution_mode: Optional[str] = Field(None, description="Execution mode: 'nl_steps' or 'script'")
 
     @field_validator("tags")
     @classmethod
@@ -96,10 +98,13 @@ class TestDefinitionResponse(TestDefinitionBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[int] = None  # Allow None for unauthenticated/system-created tests
+    created_by: Optional[int] = None
     version: int
     is_active: bool
     test_steps: List[TestStepResponse] = []
+    playwright_script: Optional[str] = None
+    script_status: str = "none"
+    script_metadata: dict = {}
 
     model_config = {"from_attributes": True}
 
@@ -124,3 +129,24 @@ class TestVersionSnapshot(BaseModel):
     created_by: int
 
     model_config = {"from_attributes": True}
+
+
+class ScriptGenerationRequest(BaseModel):
+    """Request to generate a Playwright script."""
+    max_retries: int = Field(default=3, ge=1, le=5, description="Max generation attempts")
+    force_regenerate: bool = Field(default=False, description="Regenerate even if script exists")
+
+
+class ScriptResponse(BaseModel):
+    """Response with script content and metadata."""
+    playwright_script: Optional[str] = None
+    script_status: str
+    script_metadata: dict = {}
+    execution_mode: str
+
+    model_config = {"from_attributes": True}
+
+
+class ScriptUpdateRequest(BaseModel):
+    """Update script content (user edits)."""
+    playwright_script: str = Field(..., min_length=1)

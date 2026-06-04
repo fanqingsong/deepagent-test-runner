@@ -799,3 +799,49 @@ export const getChatSubagentUsage = async (days = 30) => {
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load subagent usage'));
   return response.json();
 };
+
+// --- Script Generation ---
+
+const SCRIPT_API = `${BASE_URL}/api/v1/scripts`;
+
+export const generateScript = async (testId, opts = {}) => {
+  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/generate-script`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ max_retries: opts.max_retries || 3, force_regenerate: !!opts.force_regenerate }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to generate script'));
+  return response.json();
+};
+
+export const getScript = async (testId) => {
+  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/script`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load script'));
+  return response.json();
+};
+
+export const updateScript = async (testId, script) => {
+  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/script`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playwright_script: script }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to save script'));
+  return response.json();
+};
+
+export const validateScript = async (testId) => {
+  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/validate-script`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to validate script'));
+  return response.json();
+};
+
+export const approveScript = async (testId) => {
+  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/approve-script`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to approve script'));
+  return response.json();
+};

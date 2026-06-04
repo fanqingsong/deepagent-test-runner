@@ -19,6 +19,7 @@ from app.api.v1.endpoints import (
     llm_usage,
     reviews,
     run_configs,
+    script_generation,
     tags,
     test_generation,
     test_steps,
@@ -140,4 +141,10 @@ api_router.include_router(
     admin_chat.router,
     prefix="/admin/chat",
     tags=["admin-chat"],
+)
+
+api_router.include_router(
+    script_generation.router,
+    prefix="/scripts",
+    tags=["script-generation"],
 )

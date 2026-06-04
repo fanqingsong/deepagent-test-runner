@@ -80,6 +80,12 @@ class TestDefinition(Base):
         ForeignKey("apps.id"), nullable=True,
     )
 
+    # Script generation fields
+    execution_mode: Mapped[str] = mapped_column(String(20), default="nl_steps", nullable=False)
+    playwright_script: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    script_status: Mapped[str] = mapped_column(String(20), default="none", nullable=False)
+    script_metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
     # Review/approval workflow
     review_status: Mapped[str] = mapped_column(
         String(20), default="draft", nullable=False,

@@ -56,6 +56,9 @@ class PrepareTestOutput:
     test_steps: List[Dict[str, Any]]
     environment: Dict[str, Any]
     mode: str
+    execution_mode: str = "nl_steps"
+    playwright_script: Optional[str] = None
+    script_status: Optional[str] = None
 
 
 @dataclass
@@ -69,6 +72,9 @@ class BrowserAutomationInput:
     test_steps: List[Dict[str, Any]]
     environment: Dict[str, Any]
     mode: str
+    execution_mode: str = "nl_steps"
+    playwright_script: Optional[str] = None
+    script_status: Optional[str] = None
 
 
 @dataclass
@@ -209,14 +215,22 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
         if not test_steps and test_goal:
             mode = "full_pipeline"
 
+        # Script mode fields
+        execution_mode = getattr(test_def, "execution_mode", "nl_steps")
+        playwright_script = getattr(test_def, "playwright_script", None)
+        script_status = getattr(test_def, "script_status", None)
+
         return PrepareTestOutput(
-            test_definition_id=test_definition_id_str,  # Return string version
+            test_definition_id=test_definition_id_str,
             run_id=run_id,
             url=test_url,
             test_goal=test_goal,
             test_steps=test_steps,
             environment=environment,
             mode=mode,
+            execution_mode=execution_mode,
+            playwright_script=playwright_script,
+            script_status=script_status,
         )
 
     return await run_with_session(_load_test_data)
@@ -297,6 +311,14 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
                     "max_retries": 1,
                     "current_phase": "init",
                     "messages": [],
+                    # Script mode fields
+                    "execution_mode": input.execution_mode,
+                    "playwright_script": input.playwright_script,
+                    "script_status": input.script_status,
+                    "script_error": None,
+                    "script_attempt": 0,
+                    "max_script_attempts": 3,
+                    "page_context": None,
                 }
 
                 logger.info(
