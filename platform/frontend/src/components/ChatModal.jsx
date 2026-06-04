@@ -348,8 +348,14 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                 <ul>
                   <li>{t('chatHelpQuery')}</li>
                   <li>{t('chatHelpUsers')}</li>
-                  <li>{t('chatHelpRoles')}</li>
                   <li>{t('chatHelpApprove')}</li>
+                  <li>{t('chatHelpAnalytics')}</li>
+                  <li>{t('chatHelpDataAnalysis')}</li>
+                  <li>{t('chatHelpKnowledge')}</li>
+                  <li>{t('chatHelpSql')}</li>
+                  <li>{t('chatHelpEmail')}</li>
+                  <li>{t('chatHelpContent')}</li>
+                  <li>{t('chatHelpDeepResearch')}</li>
                 </ul>
               </div>
             )}

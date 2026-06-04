@@ -10,6 +10,7 @@ import { Client } from '@langchain/langgraph-sdk';
 import authService from '../services/authService';
 
 const LANGGRAPH_URL = import.meta.env.VITE_LANGGRAPH_URL || `${window.location.origin}/langgraph`;
+const THREAD_STORAGE_KEY = 'chat-active-thread-id';
 
 export function useChatStream() {
   const threadIdRef = useRef(null);
@@ -25,10 +26,24 @@ export function useChatStream() {
     assistantId: 'chat',
     onThreadId: (id) => {
       threadIdRef.current = id;
+      if (id) {
+        sessionStorage.setItem(THREAD_STORAGE_KEY, id);
+      } else {
+        sessionStorage.removeItem(THREAD_STORAGE_KEY);
+      }
     },
     filterSubagentMessages: true,
     defaultHeaders: authService.getAuthHeaders(),
   });
+
+  // Reconnect to active thread on mount after page refresh
+  useEffect(() => {
+    const savedThreadId = sessionStorage.getItem(THREAD_STORAGE_KEY);
+    if (savedThreadId && !threadIdRef.current) {
+      threadIdRef.current = savedThreadId;
+      stream.switchThread(savedThreadId);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Convert LangChain BaseMessage[] to simple {role, content} for ChatModal
   const messages = useMemo(() => {
@@ -236,6 +251,7 @@ export function useChatStream() {
 
   const clearMessages = useCallback(() => {
     threadIdRef.current = null;
+    sessionStorage.removeItem(THREAD_STORAGE_KEY);
     stream.switchThread(null);
   }, [stream]);
 
