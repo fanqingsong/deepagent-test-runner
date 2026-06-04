@@ -69,6 +69,7 @@ export function useChatStream() {
       // Extract tool calls if present
       const toolCalls = msg.tool_calls?.length > 0
         ? msg.tool_calls.map((tc) => ({
+            id: tc.id,
             name: tc.name,
             args: tc.args,
           }))
@@ -90,6 +91,38 @@ export function useChatStream() {
       status: sa.status,
     };
   }, [stream.activeSubagents]);
+
+  // Derive enriched subagent card data from stream.subagents
+  const subagentCards = useMemo(() => {
+    if (!stream.subagents) return [];
+    return [...stream.subagents.values()].map((sa) => ({
+      id: sa.id,
+      name: sa.toolCall?.args?.subagent_type || sa.toolCall?.args?.description || sa.name || sa.id,
+      description: sa.toolCall?.args?.description || '',
+      status: sa.status,
+      result: sa.result,
+      error: sa.error,
+      messages: sa.messages || [],
+      toolCalls: sa.toolCalls || [],
+      startedAt: sa.startedAt,
+      completedAt: sa.completedAt,
+    }));
+  }, [stream.subagents]);
+
+  // Derive subagent progress stats
+  const subagentProgress = useMemo(() => {
+    if (!stream.subagents || stream.subagents.size === 0) {
+      return { completed: 0, total: 0, percentage: 0 };
+    }
+    const all = [...stream.subagents.values()];
+    const completed = all.filter((sa) => sa.status === 'complete' || sa.status === 'error').length;
+    const total = all.length;
+    return {
+      completed,
+      total,
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
+  }, [stream.subagents]);
 
   // Derive completed subagent history
   const subagentHistory = useMemo(() => {
@@ -212,6 +245,8 @@ export function useChatStream() {
     streamingContent,
     currentSubagent,
     subagentHistory,
+    subagentCards,
+    subagentProgress,
     toolCalls,
     error: stream.error?.message || null,
     sendMessage,
@@ -220,6 +255,7 @@ export function useChatStream() {
     clearMessages,
     // Expose raw subagent data for advanced UI
     rawSubagents: stream.subagents,
+    stream,
     todos: stream.values?.todos || [],
   };
 }

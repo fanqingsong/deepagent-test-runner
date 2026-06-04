@@ -901,37 +901,144 @@
 }
 
 /* Deep Agent Todo List */
-.execution-todos {
-  padding: 8px 12px;
+.todo-list-panel {
+  padding: 12px;
   margin-bottom: 8px;
   background: #f4f4f4;
   border-left: 3px solid #0f62fe;
 }
 
-.execution-todo-item {
+.todo-list-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
+  margin-bottom: 8px;
+}
+
+.todo-list-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #161616;
+}
+
+.todo-list-count {
+  font-size: 12px;
+  color: #525252;
+  background: #e0e0e0;
+  padding: 2px 8px;
+}
+
+/* Progress Bar */
+.todo-progress {
+  margin-bottom: 10px;
+}
+
+.todo-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.todo-progress-label {
+  font-size: 11px;
+  color: #525252;
+}
+
+.todo-progress-pct {
+  font-size: 11px;
+  color: #525252;
+}
+
+.todo-progress-track {
+  height: 4px;
+  background: #e0e0e0;
+  overflow: hidden;
+}
+
+.todo-progress-fill {
+  height: 100%;
+  background: #0f62fe;
+  transition: width 0.5s ease;
+}
+
+/* Todo Items */
+.todo-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: flex-start;
   gap: 8px;
-  padding: 3px 0;
+  padding: 6px 8px;
+  border-left: 3px solid transparent;
+  transition: background 0.2s ease, opacity 0.3s ease;
+}
+
+.todo-item--pending {
+  background: transparent;
+  color: #525252;
+}
+
+.todo-item--in_progress {
+  background: #edf5ff;
+  border-left-color: #0f62fe;
+}
+
+.todo-item--completed {
+  background: #defbe6;
+  border-left-color: #24a148;
+  opacity: 0.65;
+}
+
+.todo-text {
+  flex: 1;
   font-size: 13px;
-  color: #393939;
+  font-family: 'IBM Plex Sans', sans-serif;
+  line-height: 1.4;
 }
 
-.execution-todo-item.completed {
-  color: #a8a8a8;
+.todo-item--completed .todo-text {
   text-decoration: line-through;
+  color: #525252;
 }
 
-.execution-todo-check {
+.todo-item--in_progress .todo-text {
+  color: #161616;
+  font-weight: 400;
+}
+
+/* Todo Status Icons */
+.todo-icon {
   flex-shrink: 0;
   width: 16px;
   text-align: center;
   font-size: 12px;
-  color: #0f62fe;
+  line-height: 1.4;
 }
 
-.execution-todo-text {
-  font-family: 'IBM Plex Sans', sans-serif;
+.todo-icon--pending {
+  color: #a8a8a8;
+}
+
+.todo-icon--in_progress {
+  color: #0f62fe;
+  animation: todo-pulse 1.5s ease-in-out infinite;
+}
+
+.todo-icon--completed {
+  color: #24a148;
+}
+
+@keyframes todo-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* Voice Button */
@@ -1054,5 +1161,246 @@
   font-size: 0.85em;
   margin: 4px 0 0;
   padding: 0 12px;
+}
+
+/* ========================================
+   Subagent Cards
+   ======================================== */
+
+.subagent-cards-container {
+  margin-top: 8px;
+  padding-left: 12px;
+  border-left: 3px solid #0f62fe;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subagent-card {
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.subagent-card--running {
+  border-left: 3px solid #0f62fe;
+  background: #f4f4f4;
+}
+
+.subagent-card--complete {
+  border-left: 3px solid #24a148;
+}
+
+.subagent-card--error {
+  border-left: 3px solid #da1e28;
+  background: #fff1f1;
+}
+
+.subagent-card--pending {
+  border-left: 3px solid #a8a8a8;
+}
+
+.subagent-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  text-align: left;
+}
+
+.subagent-card-header:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.subagent-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.subagent-card-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.subagent-card-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.subagent-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #161616;
+  text-transform: capitalize;
+}
+
+.subagent-card-meta {
+  font-size: 11px;
+  color: #525252;
+}
+
+.subagent-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subagent-card-badge {
+  font-size: 11px;
+  font-weight: 400;
+  padding: 2px 8px;
+  border-radius: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.subagent-card-badge--pending {
+  background: #f4f4f4;
+  color: #525252;
+  border: 1px solid #e0e0e0;
+}
+
+.subagent-card-badge--running {
+  background: #edf5ff;
+  color: #0f62fe;
+  border: 1px solid #0f62fe;
+  animation: pulse 2s infinite;
+}
+
+.subagent-card-badge--complete {
+  background: #defbe6;
+  color: #24a148;
+  border: 1px solid #24a148;
+}
+
+.subagent-card-badge--error {
+  background: #fff1f1;
+  color: #da1e28;
+  border: 1px solid #da1e28;
+}
+
+.subagent-card-chevron {
+  font-size: 12px;
+  color: #525252;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.subagent-card-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.subagent-card-content {
+  border-top: 1px solid #e0e0e0;
+  padding: 8px 12px;
+}
+
+.subagent-card-streaming-text {
+  font-size: 13px;
+  color: #161616;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.subagent-card-streaming-text p {
+  margin: 0 0 4px 0;
+}
+
+.subagent-card-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: #0f62fe;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.subagent-card-error {
+  border-top: 1px solid #da1e28;
+  padding: 8px 12px;
+  color: #da1e28;
+  font-size: 12px;
+  background: #fff1f1;
+}
+
+.subagent-card-tool-calls {
+  border-top: 1px solid #e0e0e0;
+  padding: 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subagent-card-tool-call {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 11px;
+  color: #525252;
+}
+
+.subagent-card-tool-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  color: #393939;
+}
+
+.subagent-card-tool-result {
+  font-size: 10px;
+  color: #24a148;
+  background: #defbe6;
+  padding: 1px 6px;
+}
+
+/* ========================================
+   Subagent Progress Bar
+   ======================================== */
+
+.subagent-progress {
+  padding: 4px 0;
+}
+
+.subagent-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.subagent-progress-text {
+  font-size: 11px;
+  color: #525252;
+}
+
+.subagent-progress-count {
+  font-size: 11px;
+  color: #525252;
+}
+
+.subagent-progress-bar {
+  height: 4px;
+  background: #e0e0e0;
+  overflow: hidden;
+}
+
+.subagent-progress-fill {
+  height: 100%;
+  background: #0f62fe;
+  transition: width 0.3s ease;
 }
 

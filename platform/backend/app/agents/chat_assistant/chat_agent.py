@@ -19,6 +19,7 @@ from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from deepagents.backends.utils import create_file_data
 
+from app.agents.chat_assistant.retry_middleware import ModelRetryMiddleware, ToolRetryMiddleware
 from app.core.agent_config import get_llm
 from app.core.config import settings
 from app.core.llm_context import thread_id_ctx, user_id_ctx
@@ -126,6 +127,9 @@ class ChatAgent:
             model=llm,
             checkpointer=self.checkpointer,
             system_prompt=self._get_system_prompt(),
+            middleware=[
+                ModelRetryMiddleware(max_retries=3, backoff_factor=2.0, initial_delay=1.0),
+            ],
             memory=["/memories/AGENTS.md"],
             skills=["/skills/"],
             backend=CompositeBackend(

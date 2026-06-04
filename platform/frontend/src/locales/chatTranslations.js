@@ -20,6 +20,11 @@ export const chatTranslations = {
     errorPrefix: 'Sorry, I encountered an error',
     webSearchToggle: 'Web Search',
     deepThinkingToggle: 'Deep Thinking',
+    subagentProgress: 'Subagent progress',
+    subagentComplete: 'complete',
+    subagentRunning: 'Running',
+    subagentPending: 'Pending',
+    subagentError: 'Error',
   },
   zh: {
     chatTitle: '智能助手',
@@ -38,6 +43,11 @@ export const chatTranslations = {
     errorPrefix: '抱歉，我遇到了错误',
     webSearchToggle: '联网搜索',
     deepThinkingToggle: '深度思考',
+    subagentProgress: '子代理进度',
+    subagentComplete: '完成',
+    subagentRunning: '运行中',
+    subagentPending: '等待中',
+    subagentError: '错误',
   },
 };
 

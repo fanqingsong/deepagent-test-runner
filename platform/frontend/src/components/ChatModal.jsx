@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidBlock } from './MermaidBlock';
@@ -24,6 +24,9 @@ import {
 import { useChatStream } from '../hooks/useChatStream';
 import { useChatTranslations } from '../locales/chatTranslations';
 import { ConversationList } from './ConversationList';
+import { SubagentCard } from './SubagentCard';
+import { SubagentProgress } from './SubagentProgress';
+import { TodoList } from './TodoList';
 import './ChatModal.css';
 import { VoiceButton } from './VoiceButton';
 import { AudioPlayer } from './AudioPlayer';
@@ -76,6 +79,8 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     streamingContent,
     currentSubagent,
     subagentHistory,
+    subagentCards,
+    subagentProgress,
     toolCalls,
     error,
     sendMessage,
@@ -246,6 +251,13 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
     }
   };
 
+  // Map subagent cards by ID (= tool call ID) for attaching to coordinator turns
+  const subagentsByCallId = useMemo(() => {
+    const map = new Map();
+    (subagentCards || []).forEach((sa) => map.set(sa.id, sa));
+    return map;
+  }, [subagentCards]);
+
   // Auto-play TTS when AI response completes
   useEffect(() => {
     if (!autoPlay || !voiceEnabled || isStreaming) return;
@@ -342,58 +354,96 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
               </div>
             )}
 
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`chat-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
-              >
-                <div className="message-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{message.content}</ReactMarkdown>
-                </div>
+            {messages.map((message, index) => {
+              // Find subagent cards spawned by this assistant message's tool calls
+              const messageSubagents = message.role === 'assistant' && message.toolCalls?.length > 0
+                ? message.toolCalls
+                    .map((tc) => subagentsByCallId.get(tc.id))
+                    .filter(Boolean)
+                : [];
 
-                {voiceEnabled && message.role === 'assistant' && message.content && (
-                  <AudioPlayer
-                    messageId={`msg-${index}`}
-                    text={message.content}
-                    voice={selectedVoice}
-                    isPlaying={isAudioPlaying(`msg-${index}`)}
-                    onPlay={playAudio}
-                  />
-                )}
+              return (
+                <div
+                  key={index}
+                  className={`chat-message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
+                >
+                  <div className="message-content">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{message.content}</ReactMarkdown>
+                  </div>
 
-                {message.toolCalls?.length > 0 && showToolCalls && (
-                  <div className="message-tool-calls">
-                    {message.toolCalls
-                      .filter(tc => tc.args && Object.keys(tc.args).length > 0)
-                      .map((toolCall, toolIndex) => (
-                        <div key={toolIndex} className="tool-call-card">
-                          <div className="tool-call-icon">⚙️</div>
-                          <div className="tool-call-details">
-                            <div className="tool-call-name">{toolCall.name || 'tool'}</div>
-                            <div className="tool-call-args">
-                              {JSON.stringify(toolCall.args || {}, null, 2)}
+                  {voiceEnabled && message.role === 'assistant' && message.content && (
+                    <AudioPlayer
+                      messageId={`msg-${index}`}
+                      text={message.content}
+                      voice={selectedVoice}
+                      isPlaying={isAudioPlaying(`msg-${index}`)}
+                      onPlay={playAudio}
+                    />
+                  )}
+
+                  {message.toolCalls?.length > 0 && showToolCalls && (
+                    <div className="message-tool-calls">
+                      {message.toolCalls
+                        .filter(tc => tc.args && Object.keys(tc.args).length > 0)
+                        .map((toolCall, toolIndex) => (
+                          <div key={toolIndex} className="tool-call-card">
+                            <div className="tool-call-icon">⚙️</div>
+                            <div className="tool-call-details">
+                              <div className="tool-call-name">{toolCall.name || 'tool'}</div>
+                              <div className="tool-call-args">
+                                {JSON.stringify(toolCall.args || {}, null, 2)}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {messageSubagents.length > 0 && (
+                    <div className="subagent-cards-container">
+                      <SubagentProgress {...subagentProgress} />
+                      {messageSubagents.map((sa) => (
+                        <SubagentCard
+                          key={sa.id}
+                          subagent={sa}
+                          defaultExpanded={sa.status === 'running' || messageSubagents.length <= 3}
+                        />
                       ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             {isStreaming && (
               <div className="chat-message assistant-message streaming">
-                {todos && todos.length > 0 && (
-                  <div className="execution-todos">
-                    {todos.map((todo, i) => (
-                      <div key={`todo-${i}`} className={`execution-todo-item ${todo.completed ? 'completed' : ''}`}>
-                        <span className="execution-todo-check">{todo.completed ? '✓' : '○'}</span>
-                        <span className="execution-todo-text">{todo.content || todo.title || String(todo)}</span>
+                <TodoList todos={todos} />
+                {hasStreamActivity && subagentCards && subagentCards.length > 0 ? (
+                  <div className="execution-timeline">
+                    <SubagentProgress {...subagentProgress} />
+                    {subagentCards
+                      .filter((sa) => sa.status === 'complete' || sa.status === 'error')
+                      .map((sa) => (
+                        <SubagentCard key={sa.id} subagent={sa} defaultExpanded={false} />
+                      ))}
+                    {subagentCards
+                      .filter((sa) => sa.status === 'running')
+                      .map((sa) => (
+                        <SubagentCard key={sa.id} subagent={sa} defaultExpanded={true} />
+                      ))}
+                    {showToolCalls && toolCalls.slice(-5).map((tc, i) => (
+                      <div key={`tc-${i}`} className={`execution-tool-call ${tc.type}`}>
+                        <span className="execution-tool-icon">{tc.type === 'result' ? '📄' : '🔧'}</span>
+                        <span className="execution-tool-name">{tc.tool}</span>
+                        <span className="execution-tool-detail">
+                          {tc.type === 'result'
+                            ? (tc.result ? String(tc.result).substring(0, 80) : '')
+                            : (tc.args ? String(tc.args).substring(0, 80) : '')}
+                        </span>
                       </div>
                     ))}
                   </div>
-                )}
-                {hasStreamActivity && (
+                ) : hasStreamActivity ? (
                   <div className="execution-timeline">
                     {subagentHistory.map((sa, i) => (
                       <div key={`sa-${i}`} className="execution-step completed">
@@ -433,7 +483,7 @@ export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' })
                       </div>
                     ))}
                   </div>
-                )}
+                ) : null}
 
                 <div className="message-content">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>

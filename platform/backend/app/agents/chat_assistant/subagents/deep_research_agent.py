@@ -10,6 +10,7 @@ from datetime import datetime
 from deepagents import CompiledSubAgent, create_deep_agent
 
 from app.agents.chat_assistant.deep_research_tools import tavily_search
+from app.agents.chat_assistant.retry_middleware import ModelRetryMiddleware, ToolRetryMiddleware
 
 RESEARCH_WORKFLOW_INSTRUCTIONS = """# Research Workflow
 
@@ -177,6 +178,14 @@ def get_deep_research_subagent(llm):
         model=llm,
         tools=[tavily_search],
         system_prompt=_get_orchestrator_instructions(),
+        middleware=[
+            ModelRetryMiddleware(max_retries=3, backoff_factor=2.0, initial_delay=1.0),
+            ToolRetryMiddleware(
+                max_retries=2,
+                tools=["tavily_search", "search", "fetch_url"],
+                retry_on=(TimeoutError, ConnectionError),
+            ),
+        ],
         subagents=[researcher_sub_agent],
     )
 
