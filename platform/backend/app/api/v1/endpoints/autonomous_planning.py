@@ -16,7 +16,7 @@ from app.core.permissions import RequirePermission
 from app.core.security import get_current_user
 from app.models import TestDefinition
 from app.models.user import User
-from app.agents.test_runner.planner_agent import generate_test_plan as agent_generate_test_plan
+from app.agents.deepagents_test_runner.planner_agent import generate_test_plan as agent_generate_test_plan
 
 router = APIRouter()
 

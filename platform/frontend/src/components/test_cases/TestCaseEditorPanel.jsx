@@ -422,6 +422,7 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
       <div className="studio-editor-content">
         {activeTab === 'config' && (
           <TestCaseConfigTab
+            testCaseId={testCaseId}
             formName={formName}
             formUrl={formUrl}
             formGoal={formGoal}

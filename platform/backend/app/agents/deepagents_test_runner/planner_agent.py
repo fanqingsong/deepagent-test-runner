@@ -1,8 +1,7 @@
 """
-Planner Agent — AI-powered test plan generation using LangGraph.
+Planner Agent — AI-powered test plan generation.
 
-Replaces AutonomousTestPlanner. Generates structured test plans from natural
-language goals using a LangGraph react agent.
+Generates structured test plans from natural language goals using LLM.
 """
 
 import json
@@ -11,9 +10,8 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.prebuilt import create_react_agent
 
-from app.agents.test_runner.test_tools import save_test_plan
+from .test_tools import save_test_plan
 from app.core.agent_config import get_llm
 from app.core.llm_context import llm_usage_context
 
@@ -128,7 +126,6 @@ async def generate_test_plan(
     plan_id = str(uuid.uuid4())
 
     llm = get_llm(temperature=0.3, max_tokens=4096)
-    agent = create_react_agent(llm, tools=[save_test_plan])
 
     prompt = f"""Generate a test plan for the following requirement:
 
@@ -141,22 +138,14 @@ Output the plan as JSON."""
     logger.info("Planner agent: generating plan for goal: %s", goal[:100])
 
     async with llm_usage_context("planner"):
-        result = await agent.ainvoke(
-            {
-                "messages": [
-                    SystemMessage(content=SYSTEM_PROMPT),
-                    HumanMessage(content=prompt),
-                ]
-            },
-            config={"configurable": {"thread_id": f"plan-{plan_id}"}},
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=prompt),
+            ]
         )
 
-    messages = result.get("messages", [])
-    final_text = ""
-    for msg in reversed(messages):
-        if hasattr(msg, "content") and msg.content:
-            final_text = msg.content
-            break
+    final_text = response.content if hasattr(response, "content") else str(response)
 
     plan = _parse_plan_from_output(final_text, plan_id)
 
@@ -179,7 +168,7 @@ async def refine_test_plan(
 ) -> Dict[str, Any]:
     """Iteratively refine an existing test plan based on user feedback.
 
-    Takes the current plan and conversation history, then uses the LLM agent
+    Takes the current plan and conversation history, then uses the LLM
     to produce an improved plan that incorporates the user's latest feedback.
 
     Args:
@@ -207,7 +196,6 @@ async def refine_test_plan(
     formatted_history = "\n".join(history_lines)
 
     llm = get_llm(temperature=0.3, max_tokens=4096)
-    agent = create_react_agent(llm, tools=[save_test_plan])
 
     prompt = f"""Refine the existing test plan based on user feedback.
 
@@ -235,22 +223,14 @@ Please produce the complete refined plan as JSON."""
     )
 
     async with llm_usage_context("planner"):
-        result = await agent.ainvoke(
-            {
-                "messages": [
-                    SystemMessage(content=REFINEMENT_SYSTEM_PROMPT),
-                    HumanMessage(content=prompt),
-                ]
-            },
-            config={"configurable": {"thread_id": f"refine-{plan_id}"}},
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=REFINEMENT_SYSTEM_PROMPT),
+                HumanMessage(content=prompt),
+            ]
         )
 
-    messages = result.get("messages", [])
-    final_text = ""
-    for msg in reversed(messages):
-        if hasattr(msg, "content") and msg.content:
-            final_text = msg.content
-            break
+    final_text = response.content if hasattr(response, "content") else str(response)
 
     plan = _parse_plan_from_output(final_text, plan_id)
 

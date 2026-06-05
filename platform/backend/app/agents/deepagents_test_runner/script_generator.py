@@ -26,10 +26,11 @@ Rules:
 5. Use playwright.expect for assertions: from playwright.async_api import expect
 6. Return a result dict with: {"status": "passed"} or {"status": "failed", "error": "..."}
 7. Add try/except around each step to capture failures with meaningful error messages
-8. Use page.wait_for_selector() before interacting with elements
+8. Use page.wait_for_selector(selector, state="visible", timeout=15000) before interacting with elements (15s timeout)
 9. Add page.wait_for_load_state('networkidle') after navigation if needed
 10. Do NOT import os, subprocess, or any file system modules
 11. Do NOT use page.evaluate for anything other than reading data
+12. IMPORTANT: Always use timeout=15000 (15 seconds) for all wait_for_selector calls to handle slow networks
 """
 
 _GENERATE_PROMPT = """Generate a Playwright test script for this test case:

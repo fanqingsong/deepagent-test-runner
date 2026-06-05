@@ -834,6 +834,7 @@ export const updateScript = async (testId, script) => {
 export const validateScript = async (testId) => {
   const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/validate-script`, {
     method: 'POST',
+    timeout: 180000, // 3 minutes for script validation
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to validate script'));
   return response.json();
@@ -844,5 +845,14 @@ export const approveScript = async (testId) => {
     method: 'POST',
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to approve script'));
+  return response.json();
+};
+
+export const generateDescription = async (testId) => {
+  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/generate-description`, {
+    method: 'POST',
+    timeout: 30000, // 30 seconds for LLM generation
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to generate description'));
   return response.json();
 };

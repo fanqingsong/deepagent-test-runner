@@ -160,6 +160,10 @@ class Settings(BaseSettings):
         default=True,
         description="Run Playwright in headless mode"
     )
+    PLAYWRIGHT_HEADLESS_DEFAULT: bool = Field(
+        default=True,
+        description="Default headless setting for Playwright"
+    )
     TEST_TIMEOUT: int = Field(
         default=30000,
         description="Test execution timeout in milliseconds"

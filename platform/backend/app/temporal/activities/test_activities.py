@@ -14,7 +14,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.temporal.activities import get_default_retry_policy, get_long_running_retry_policy
-from app.agents.test_runner.executor_agent import interpret_and_execute_batch
 from app.core.langfuse_callback import langfuse_handler
 from app.core.worker_db import run_with_session
 from app.temporal.database import get_worker_session
@@ -239,14 +238,9 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
 @activity.defn
 async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutomationOutput:
     """
-    Execute browser automation using Playwright and LangGraph agents.
+    Execute browser automation using Playwright and Deep Agents framework.
 
-    This activity:
-    1. Launches Playwright browser
-    2. Navigates to initial URL if provided
-    3. Executes test steps via executor agent (or full pipeline if needed)
-    4. Captures screenshots and results
-    5. Returns execution results
+    This activity delegates to the Deep Agents implementation for all test execution.
 
     Args:
         input: BrowserAutomationInput with all execution parameters
@@ -254,146 +248,9 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
     Returns:
         BrowserAutomationOutput with execution results
     """
-    from playwright.async_api import async_playwright
-
-    from app.core.config import settings
-    from app.agents.test_runner.supervisor_graph import build_pipeline_graph
-
-    run_id = input.run_id
-    test_definition_id_str = input.test_definition_id
-    test_url = input.url
-    test_goal = input.test_goal
-    test_steps = input.test_steps
-    environment = input.environment or {}
-    mode = input.mode
-
-    # Convert string test_definition_id to int for database operations
-    try:
-        test_definition_id = int(test_definition_id_str)
-    except (ValueError, TypeError) as e:
-        raise ValueError(f"Invalid test_definition_id '{test_definition_id_str}': {e}")
-
-    logger.info(f"Starting browser automation for run {run_id} (mode={mode})")
-
-    start_time = int(datetime.now(timezone.utc).timestamp() * 1000)
-
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=settings.PLAYWRIGHT_HEADLESS)
-            context = await browser.new_context()
-            page = await context.new_page()
-
-            try:
-                page.set_default_timeout(settings.TEST_TIMEOUT)
-
-                # Navigate to initial URL if provided
-                navigated_url = None
-                if test_url:
-                    try:
-                        await page.goto(test_url, wait_until="domcontentloaded", timeout=30000)
-                        navigated_url = page.url
-                        logger.info(f"Initial navigation to {test_url} succeeded, final URL: {navigated_url}")
-                    except Exception as e:
-                        logger.warning(f"Initial navigation to {test_url} failed: {e}, continuing anyway")
-                        navigated_url = page.url
-
-                # Build and invoke supervisor graph
-                graph = build_pipeline_graph()
-                initial_state = {
-                    "mode": mode,
-                    "goal": test_goal,
-                    "target_url": test_url,
-                    "test_definition_id": test_definition_id,
-                    "run_id": run_id,
-                    "environment": {**environment, "navigated_url": navigated_url},
-                    "test_steps": test_steps if test_steps else None,
-                    "retry_count": 0,
-                    "max_retries": 1,
-                    "current_phase": "init",
-                    "messages": [],
-                    # Script mode fields
-                    "execution_mode": input.execution_mode,
-                    "playwright_script": input.playwright_script,
-                    "script_status": input.script_status,
-                    "script_error": None,
-                    "script_attempt": 0,
-                    "max_script_attempts": 3,
-                    "page_context": None,
-                }
-
-                logger.info(
-                    f"Supervisor: invoking pipeline mode={mode} for run {run_id} ({len(test_steps or [])} steps)"
-                )
-
-                graph_result = await graph.ainvoke(
-                    initial_state,
-                    config={
-                        "configurable": {"page": page, "run_id": run_id},
-                        "callbacks": [langfuse_handler],
-                    },
-                )
-
-                result = graph_result.get("final_result")
-                if not result:
-                    raise ValueError("Graph execution completed but no final_result was produced")
-
-                logger.info(f"Supervisor: run {run_id} completed with status {result.get('status')}")
-
-            except Exception as e:
-                result = {
-                    "run_id": run_id,
-                    "test_definition_id": test_definition_id,
-                    "status": "error",
-                    "error": str(e),
-                    "test_cases": [],
-                }
-
-            finally:
-                await browser.close()
-
-    except Exception as e:
-        logger.error(f"Failed to launch browser for run {run_id}: {e}")
-        return BrowserAutomationOutput(
-            run_id=run_id,
-            test_definition_id=test_definition_id,
-            status="error",
-            test_cases=[],
-            error=f"Failed to launch browser: {str(e)}",
-            start_time=start_time,
-            end_time=int(datetime.now(timezone.utc).timestamp() * 1000),
-            total_duration=0,
-            total_tests=0,
-            passed=0,
-            failed=0,
-            skipped=0,
-        )
-
-    end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
-    total_duration = end_time - start_time
-
-    # Extract test case results
-    test_cases = result.get("test_cases", [])
-
-    # Calculate statistics
-    total_tests = len(test_cases)
-    passed = sum(1 for tc in test_cases if tc.get("status") == "passed")
-    failed = sum(1 for tc in test_cases if tc.get("status") == "failed")
-    skipped = sum(1 for tc in test_cases if tc.get("status") == "skipped")
-
-    return BrowserAutomationOutput(
-        run_id=run_id,
-        test_definition_id=test_definition_id_str,  # Return string version
-        status=result.get("status", "unknown"),
-        test_cases=test_cases,
-        error=result.get("error"),
-        start_time=result.get("start_time", start_time),
-        end_time=result.get("end_time", end_time),
-        total_duration=result.get("total_duration", total_duration),
-        total_tests=result.get("total_tests", total_tests),
-        passed=result.get("passed", passed),
-        failed=result.get("failed", failed),
-        skipped=result.get("skipped", skipped),
-    )
+    logger.info(f"Using Deep Agents for run {input.run_id}")
+    from app.temporal.activities.deepagents_activities import run_deepagents_automation
+    return await run_deepagents_automation(input)
 
 
 @activity.defn

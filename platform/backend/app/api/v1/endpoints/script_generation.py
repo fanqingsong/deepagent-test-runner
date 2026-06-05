@@ -44,9 +44,9 @@ async def generate_script(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate a Playwright script for a test definition."""
-    from app.agents.test_runner.page_fetcher import fetch_page_context
-    from app.agents.test_runner.script_generator import generate_playwright_script
-    from app.agents.test_runner.script_executor import execute_script
+    from app.agents.deepagents_test_runner.page_fetcher import fetch_page_context
+    from app.agents.deepagents_test_runner.script_generator import generate_playwright_script
+    from app.agents.deepagents_test_runner.script_executor import execute_script
 
     result = await db.execute(
         _get_test_def_or_404(test_definition_id, db, current_user)
@@ -191,7 +191,7 @@ async def validate_script(
     db: AsyncSession = Depends(get_db),
 ):
     """Run script validation (execute and report result)."""
-    from app.agents.test_runner.script_executor import execute_script
+    from app.agents.deepagents_test_runner.script_executor import execute_script
 
     result = await db.execute(
         _get_test_def_or_404(test_definition_id, db, current_user)
@@ -212,7 +212,7 @@ async def validate_script(
             if test_def.url:
                 await page.goto(test_def.url, wait_until="domcontentloaded", timeout=30000)
 
-            exec_result = await execute_script(test_def.playwright_script, page, timeout=60)
+            exec_result = await execute_script(test_def.playwright_script, page, timeout=120)
         finally:
             await browser.close()
 
@@ -221,6 +221,7 @@ async def validate_script(
     test_def.script_metadata = {
         **(test_def.script_metadata or {}),
         "validation_error": exec_result.get("error"),
+        "last_error": exec_result.get("error"),
     }
     await db.commit()
     await db.refresh(test_def)
@@ -264,3 +265,63 @@ async def approve_script(
         script_metadata=test_def.script_metadata,
         execution_mode=test_def.execution_mode,
     )
+
+
+@router.post("/test-definitions/{test_definition_id}/generate-description")
+async def generate_description(
+    test_definition_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a concise description based on test goal using LLM."""
+    from app.core.agent_config import get_llm
+    from langchain_core.messages import SystemMessage, HumanMessage
+    from app.core.llm_context import llm_usage_context
+
+    result = await db.execute(
+        _get_test_def_or_404(test_definition_id, db, current_user)
+    )
+    test_def = result.scalar_one_or_none()
+    if not test_def:
+        raise HTTPException(status_code=404, detail="Test definition not found")
+
+    if not test_def.test_goal:
+        raise HTTPException(status_code=400, detail="Test definition must have test_goal")
+
+    system_prompt = """You are a technical writing assistant. Generate a concise, clear description for a test case based on its goal.
+
+Rules:
+1. Output ONLY the description text, no explanations or markdown
+2. Keep it under 100 characters
+3. Use active voice and present tense
+4. Focus on what is being tested, not how
+5. Be specific but brief
+6. Do NOT add any introductory or concluding text"""
+
+    user_prompt = f"""Generate a concise description for this test goal:
+
+Test Goal: {test_def.test_goal}
+
+Generate the description now."""
+
+    try:
+        llm = get_llm(temperature=0.3, max_tokens=150)
+        async with llm_usage_context("description_generator", test_run_id=f"test_def_{test_definition_id}"):
+            response = await llm.ainvoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ])
+    except Exception as e:
+        logger.error(f"Error generating description: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate description: {str(e)}"
+        )
+
+    content = response.content if hasattr(response, 'content') else str(response)
+    generated_description = content.strip()
+
+    # Clean up common LLM artifacts
+    generated_description = generated_description.rstrip('."')
+
+    return {"description": generated_description}

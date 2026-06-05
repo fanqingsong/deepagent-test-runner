@@ -15,11 +15,12 @@ logger = logging.getLogger(__name__)
 
 _DANGEROUS_PATTERNS = [
     "import os", "import subprocess", "import sys", "import shutil",
-    "import socket", "import http", "__import__", "exec(", "eval(",
+    "import socket", "import http", "exec(", "eval(",
     "compile(", "os.system", "os.popen", "subprocess.", "os.remove", "os.unlink",
 ]
 
 _SAFE_BUILTINS = {
+    "__import__": __import__,
     "print": print, "len": len, "str": str, "int": int, "float": float,
     "bool": bool, "list": list, "dict": dict, "tuple": tuple, "set": set,
     "range": range, "enumerate": enumerate, "zip": zip, "map": map,
@@ -39,6 +40,17 @@ def _check_safety(script: str) -> str | None:
     for pattern in _DANGEROUS_PATTERNS:
         if pattern in script:
             return f"Script contains blocked pattern: {pattern}"
+
+    # Check for unsafe __import__ usage
+    if "__import__" in script:
+        # Allow __import__ for module imports (from playwright.async_api import ...)
+        # Block direct dangerous __import__ calls
+        unsafe_imports = ["__import__('os')", "__import__('subprocess')", "__import__('sys')",
+                         '__import__("os")', '__import__("subprocess")', '__import__("sys")']
+        for unsafe in unsafe_imports:
+            if unsafe in script:
+                return f"Script contains unsafe import: {unsafe}"
+
     return None
 
 

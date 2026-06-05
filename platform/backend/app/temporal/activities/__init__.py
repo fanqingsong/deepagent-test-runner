@@ -37,6 +37,10 @@ from app.temporal.activities.test_activities import (
     mark_run_failed,
 )
 
+from app.temporal.activities.deepagents_activities import (
+    run_deepagents_automation,
+)
+
 from app.temporal.activities.schedule_activities import (
     execute_scheduled_test,
 )
@@ -48,6 +52,7 @@ __all__ = [
     "get_long_running_retry_policy",
     "prepare_test",
     "run_browser_automation",
+    "run_deepagents_automation",
     "save_results",
     "mark_run_failed",
     "execute_scheduled_test",
