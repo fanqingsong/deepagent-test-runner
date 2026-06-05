@@ -809,6 +809,7 @@ export const generateScript = async (testId, opts = {}) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ max_retries: opts.max_retries || 3, force_regenerate: !!opts.force_regenerate }),
+    timeout: 600000, // 10 minutes for script generation
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to generate script'));
   return response.json();

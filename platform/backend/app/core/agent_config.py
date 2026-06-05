@@ -19,7 +19,7 @@ def get_llm(
     model_name: Optional[str] = None,
     temperature: float = 0.1,
     max_tokens: int = 4096,
-    timeout: float = 300.0,
+    timeout: float = 600.0,
 ) -> ChatOpenAI:
     """Create LLM instance — supports GLM via OpenAI-compatible API."""
     api_key = os.getenv("LLM_API_KEY")

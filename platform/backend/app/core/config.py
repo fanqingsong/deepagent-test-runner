@@ -151,7 +151,7 @@ class Settings(BaseSettings):
     )
 
     API_TIMEOUT_MS: int = Field(
-        default=300000,
+        default=600000,
         description="API timeout in milliseconds"
     )
 

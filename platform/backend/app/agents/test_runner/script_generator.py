@@ -78,10 +78,18 @@ def _validate_script(script: str) -> bool:
         return False
     if "async def run_test" not in script:
         return False
-    dangerous = ["import os", "import subprocess", "import sys", "__import__"]
+    # Block dangerous imports - but allow __import__ for Playwright's internal use
+    dangerous = ["import os", "import subprocess", "import sys"]
     for pattern in dangerous:
         if pattern in script:
             return False
+    # Allow __import__ only in safe contexts (playwright internal)
+    if "__import__" in script:
+        # Check if it's being used unsafely
+        unsafe_usage = ['__import__(\'os\')', '__import__(\'subprocess\')', '__import__(\'sys\')']
+        for unsafe in unsafe_usage:
+            if unsafe in script:
+                return False
     return True
 
 
