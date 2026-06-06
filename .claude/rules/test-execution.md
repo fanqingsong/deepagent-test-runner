@@ -32,12 +32,12 @@ flowchart TD
 
 | Module | Purpose |
 |--------|---------|
-| `agents/deepagents_test_runner/agent.py` | DeepAgent singleton (plan gen + script gen) |
-| `agents/deepagents_test_runner/planner_agent.py` | Test plan generation and refinement via LLM |
-| `agents/deepagents_test_runner/script_generator.py` | Playwright script generation via LLM |
-| `agents/deepagents_test_runner/script_executor.py` | Sandboxed script execution |
-| `agents/deepagents_test_runner/page_fetcher.py` | DOM extraction for LLM context |
-| `agents/deepagents_test_runner/test_tools.py` | Agent tools (save plan, get results, validate script) |
+| `agents/test_composer/agent.py` | DeepAgent singleton (plan gen + script gen) |
+| `agents/test_composer/planner_agent.py` | Test plan generation and refinement via LLM |
+| `agents/test_composer/script_generator.py` | Playwright script generation via LLM |
+| `agents/test_composer/script_executor.py` | Sandboxed script execution |
+| `agents/test_composer/page_fetcher.py` | DOM extraction for LLM context |
+| `agents/test_composer/test_tools.py` | Agent tools (save plan, get results, validate script) |
 | `temporal/activities/test_activities.py` | Temporal activities (prepare, execute, save, fail) |
 | `services/execution_service.py` | Test run creation and result persistence |
 

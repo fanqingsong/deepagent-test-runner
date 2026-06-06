@@ -3,7 +3,7 @@ import { generateDescription } from '../../api';
 
 export default function TestCaseConfigTab({
   formName, formUrl, formGoal, formDesc,
-  configDirty, isBusy, savingConfig,
+  configDirty, isBusy, savingConfig, readOnly,
   onFormChange, onSaveConfig, testCaseId,
 }) {
   const isNew = !formUrl && !formGoal;
@@ -49,7 +49,7 @@ export default function TestCaseConfigTab({
           className="test-case-workspace-field-input"
           value={formName}
           onChange={onFormChange('name')}
-          disabled={isBusy}
+          disabled={readOnly || isBusy}
         />
       </div>
       <div className="test-case-workspace-field-group" style={{ marginTop: '16px' }}>
@@ -59,7 +59,7 @@ export default function TestCaseConfigTab({
           value={formUrl}
           onChange={onFormChange('url')}
           placeholder="https://example.com"
-          disabled={isBusy}
+          disabled={readOnly || isBusy}
         />
       </div>
       <div className="test-case-workspace-field-group" style={{ marginTop: '16px' }}>
@@ -70,13 +70,13 @@ export default function TestCaseConfigTab({
           onChange={onFormChange('goal')}
           placeholder="Describe what you want to test in natural language..."
           rows={4}
-          disabled={isBusy}
+          disabled={readOnly || isBusy}
         />
       </div>
       <div className="test-case-workspace-field-group" style={{ marginTop: '16px' }}>
         <label className="test-case-workspace-field-label">
           Description
-          {!isNew && testCaseId && (
+          {!readOnly && !isNew && testCaseId && (
             <button
               type="button"
               onClick={handleGenerateDescription}
@@ -102,7 +102,7 @@ export default function TestCaseConfigTab({
           onChange={onFormChange('desc')}
           placeholder="Optional additional description..."
           rows={2}
-          disabled={isBusy}
+          disabled={readOnly || isBusy}
         />
         {descError && (
           <div style={{
@@ -114,6 +114,7 @@ export default function TestCaseConfigTab({
           </div>
         )}
       </div>
+      {!readOnly && (
       <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
         <button
           className="test-case-workspace-secondary-btn"
@@ -123,6 +124,7 @@ export default function TestCaseConfigTab({
           {savingConfig ? 'Saving...' : 'Save Configuration'}
         </button>
       </div>
+      )}
     </div>
   );
 }

@@ -253,6 +253,8 @@ class AppService:
             "test_context": app.test_context or {},
             "execution_mode": test_def.execution_mode,
             "script_status": test_def.script_status,
+            "playwright_script": test_def.playwright_script,
+            "script_metadata": test_def.script_metadata or {},
         }
         description = run_summary or "Version saved"
         version = TestVersion(
@@ -338,6 +340,10 @@ class AppService:
             test_def.test_goal = snapshot["test_goal"]
         if snapshot.get("url"):
             test_def.url = snapshot["url"]
+        if snapshot.get("playwright_script"):
+            test_def.playwright_script = snapshot["playwright_script"]
+        if snapshot.get("script_metadata"):
+            test_def.script_metadata = snapshot["script_metadata"]
         app.iteration_count += 1
 
         count = await self._persist_steps(

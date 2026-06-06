@@ -14,13 +14,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 
+async def _run_with_db(coro):
+    """Run a coroutine with a DB session, trying worker_db first, then FastAPI's session maker."""
+    try:
+        from app.core.worker_db import run_with_session
+        return await run_with_session(coro)
+    except RuntimeError:
+        # worker_db not initialized (not in Temporal worker context)
+        from app.core.database import async_session_maker
+        async with async_session_maker() as session:
+            return await coro(session)
+
+
 @tool
 async def get_test_results(run_id: str) -> str:
     """Get test execution results for a given run_id.
 
     Returns JSON string with test run summary and individual step results.
     """
-    from app.core.worker_db import run_with_session
     from app.models.test_run import TestRun
     from app.models.test_case import TestCase
 
@@ -57,7 +68,7 @@ async def get_test_results(run_id: str) -> str:
         })
 
     try:
-        return await run_with_session(_get)
+        return await _run_with_db(_get)
     except Exception as e:
         logger.error("Failed to get results: %s", e)
         return json.dumps({"error": str(e)})
@@ -78,7 +89,6 @@ async def save_generated_script(
         script_status: One of "validated", "draft", or "failed".
         metadata_json: Optional JSON string with metadata (validation errors etc).
     """
-    from app.core.worker_db import run_with_session
     from app.models.test_definition import TestDefinition
 
     async def _save(db: AsyncSession):
@@ -96,7 +106,7 @@ async def save_generated_script(
         return f"Script saved with status '{script_status}'"
 
     try:
-        return await run_with_session(_save)
+        return await _run_with_db(_save)
     except Exception as e:
         logger.error("Failed to save script: %s", e)
         return f"Error saving script: {str(e)}"

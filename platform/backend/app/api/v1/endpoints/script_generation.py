@@ -7,6 +7,7 @@ Generate, validate, and manage Playwright test scripts for test definitions.
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from playwright.async_api import async_playwright
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +43,7 @@ async def generate_script(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate a Playwright script for a test definition."""
-    from app.agents.deepagents_test_runner.runners import run_script_generation
+    from app.agents.test_composer.runners import run_script_generation
 
     result = await db.execute(
         _get_test_def_or_404(test_definition_id, db, current_user)
@@ -70,7 +71,57 @@ async def generate_script(
         url=test_def.url,
         goal=test_def.test_goal,
         description=test_def.description,
+        db=db,
     ))
+
+
+@router.post("/test-definitions/{test_definition_id}/generate-script/stream")
+async def generate_script_stream(
+    test_definition_id: int,
+    body: ScriptGenerationRequest = ScriptGenerationRequest(),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a Playwright script with real-time SSE progress events."""
+    from app.agents.test_composer.runners import run_script_generation_stream
+
+    result = await db.execute(
+        _get_test_def_or_404(test_definition_id, db, current_user)
+    )
+    test_def = result.scalar_one_or_none()
+    if not test_def:
+        raise HTTPException(status_code=404, detail="Test definition not found")
+
+    if not test_def.url or not test_def.test_goal:
+        raise HTTPException(status_code=400, detail="Test definition must have url and test_goal")
+
+    if test_def.playwright_script and test_def.script_status == "validated" and not body.force_regenerate:
+        return ScriptResponse(
+            playwright_script=test_def.playwright_script,
+            script_status=test_def.script_status,
+            script_metadata=test_def.script_metadata,
+            execution_mode=test_def.execution_mode,
+        )
+
+    test_def.script_status = "generating"
+    await db.commit()
+    # Release DB session — subagent uses its own sessions via run_with_session
+    await db.close()
+
+    return StreamingResponse(
+        run_script_generation_stream(
+            test_definition_id=test_def.id,
+            url=test_def.url,
+            goal=test_def.test_goal,
+            description=test_def.description,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/test-definitions/{test_definition_id}/script", response_model=ScriptResponse)
@@ -130,7 +181,7 @@ async def validate_script(
     db: AsyncSession = Depends(get_db),
 ):
     """Run script validation (execute and report result)."""
-    from app.agents.deepagents_test_runner.lib import execute_script
+    from app.agents.test_composer.lib import execute_script
 
     result = await db.execute(
         _get_test_def_or_404(test_definition_id, db, current_user)

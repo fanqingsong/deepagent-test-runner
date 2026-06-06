@@ -11,7 +11,7 @@ from deepagents import CompiledSubAgent, create_deep_agent
 from deepagents.backends import StateBackend
 
 from app.agents.chat_assistant.retry_middleware import ModelRetryMiddleware
-from app.agents.deepagents_test_runner.tools import (
+from app.agents.test_composer.tools import (
     fetch_page_context_tool,
     validate_script,
     execute_script_tool,

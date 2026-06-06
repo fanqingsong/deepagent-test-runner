@@ -8,7 +8,6 @@ export default function TestCaseRunHistoryTab({
   expandedRunCases,
   expandedLoading,
   onToggleRunExpand,
-  onSelectScreenshot,
 }) {
   if (runHistoryLoading) {
     return (
@@ -39,10 +38,9 @@ export default function TestCaseRunHistoryTab({
           <thead>
             <tr>
               <th className="th-status">Status</th>
-              <th className="th-desc">Run</th>
-              <th className="th-steps-count">Steps</th>
               <th className="th-duration">Duration</th>
               <th className="th-time">Time</th>
+              <th className="th-error">Error</th>
             </tr>
           </thead>
           <tbody>
@@ -54,7 +52,6 @@ export default function TestCaseRunHistoryTab({
                 expandedCases={expandedRunCases}
                 expandedLoading={expandedLoading}
                 onToggle={() => onToggleRunExpand(run.run_id)}
-                onSelectScreenshot={onSelectScreenshot}
               />
             ))}
           </tbody>

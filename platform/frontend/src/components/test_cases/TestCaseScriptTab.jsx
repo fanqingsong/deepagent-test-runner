@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { generateScript, getScript, updateScript, validateScript, approveScript } from '../../api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getScript, updateScript, validateScript, approveScript, runTestCase, getTestCaseRunHistory } from '../../api';
+import useScriptGenerationStream from '../../hooks/useScriptGenerationStream';
+import ScriptGenProgressPanel from './ScriptGenProgressPanel';
 
 const STATUS_LABELS = {
   none: 'None',
@@ -19,15 +21,20 @@ const STATUS_COLORS = {
   failed: '#da1e28',
 };
 
-export default function TestCaseScriptTab({ testCaseId }) {
+export default function TestCaseScriptTab({ testCaseId, appId, onRunComplete, readOnly }) {
   const [script, setScript] = useState('');
   const [scriptStatus, setScriptStatus] = useState('none');
   const [scriptMetadata, setScriptMetadata] = useState({});
   const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState(null);
   const [dirty, setDirty] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [runElapsed, setRunElapsed] = useState(0);
+  const pollingRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const stream = useScriptGenerationStream(testCaseId);
 
   const loadScript = useCallback(async () => {
     try {
@@ -48,19 +55,31 @@ export default function TestCaseScriptTab({ testCaseId }) {
     loadScript();
   }, [loadScript]);
 
+  // Sync stream result back to local state when generation completes
+  useEffect(() => {
+    if (stream.isComplete) {
+      const r = stream.finalResult;
+      // Prefer DB result, fall back to script extracted from tool args
+      const finalScript = r?.playwright_script || stream.generatedScript || '';
+      const finalStatus = r?.script_status || (finalScript ? 'draft' : 'failed');
+      if (finalScript) {
+        setScript(finalScript);
+        setScriptStatus(finalStatus);
+        setScriptMetadata(r?.script_metadata || {});
+        setDirty(false);
+      } else {
+        setScriptStatus(finalStatus);
+      }
+    }
+  }, [stream.isComplete, stream.finalResult, stream.generatedScript]);
+
   const handleGenerate = async () => {
+    setError(null);
+    setScriptStatus('generating');
     try {
-      setGenerating(true);
-      setError(null);
-      const data = await generateScript(testCaseId, { force_regenerate: scriptStatus !== 'none' });
-      setScript(data.playwright_script || '');
-      setScriptStatus(data.script_status || 'none');
-      setScriptMetadata(data.script_metadata || {});
-      setDirty(false);
+      await stream.generate({ force_regenerate: scriptStatus !== 'none' });
     } catch (e) {
       setError(e.message);
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -105,7 +124,61 @@ export default function TestCaseScriptTab({ testCaseId }) {
     }
   };
 
+  const handleRun = async () => {
+    try {
+      setIsRunning(true);
+      setRunElapsed(0);
+      setError(null);
+      const result = await runTestCase(appId);
+      const runId = result.run_id;
+
+      // Start elapsed timer
+      const startTime = Date.now();
+      timerRef.current = setInterval(() => setRunElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+
+      // Poll test_runs table for completion
+      let attempts = 0;
+      const poll = async () => {
+        try {
+          const runs = await getTestCaseRunHistory(appId, { limit: 1 });
+          const latest = runs?.[0];
+          if (latest && latest.run_id === runId && latest.status !== 'running' && latest.status !== 'pending') {
+            cleanup();
+            if (latest.status === 'error' || latest.status === 'failed') {
+              setError(latest.error_message || `Test ${latest.status}`);
+            }
+            onRunComplete?.();
+            return;
+          }
+          attempts++;
+          if (attempts >= 90) { // 3 min timeout
+            cleanup();
+            setError('Execution timed out');
+          }
+        } catch {
+          attempts++;
+          if (attempts >= 90) {
+            cleanup();
+            setError('Execution timed out');
+          }
+        }
+      };
+      pollingRef.current = setInterval(poll, 2000);
+    } catch (e) {
+      setError(e.message);
+      setIsRunning(false);
+    }
+  };
+
+  const cleanup = () => {
+    setIsRunning(false);
+    setRunElapsed(0);
+    if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  };
+
   const statusColor = STATUS_COLORS[scriptStatus] || '#a0a0a0';
+  const generating = stream.active;
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -129,9 +202,10 @@ export default function TestCaseScriptTab({ testCaseId }) {
         )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+          {!readOnly && (
           <button
             onClick={handleGenerate}
-            disabled={generating || loading}
+            disabled={generating || loading || isRunning}
             style={{
               padding: '6px 16px',
               background: '#0f62fe',
@@ -139,17 +213,18 @@ export default function TestCaseScriptTab({ testCaseId }) {
               border: 'none',
               fontSize: '13px',
               fontWeight: 400,
-              cursor: generating ? 'wait' : 'pointer',
-              opacity: generating ? 0.6 : 1,
+              cursor: generating || isRunning ? 'wait' : 'pointer',
+              opacity: generating || isRunning ? 0.6 : 1,
             }}
           >
             {generating ? 'Generating...' : (scriptStatus === 'none' ? 'Generate Script' : 'Regenerate')}
           </button>
+          )}
 
-          {script && dirty && (
+          {!readOnly && script && dirty && (
             <button
               onClick={handleSave}
-              disabled={loading}
+              disabled={loading || isRunning}
               style={{
                 padding: '6px 16px',
                 background: '#393939',
@@ -163,10 +238,10 @@ export default function TestCaseScriptTab({ testCaseId }) {
             </button>
           )}
 
-          {script && scriptStatus === 'draft' && (
+          {!readOnly && script && scriptStatus === 'draft' && (
             <button
               onClick={handleValidate}
-              disabled={validating}
+              disabled={validating || isRunning}
               style={{
                 padding: '6px 16px',
                 background: '#697077',
@@ -180,10 +255,10 @@ export default function TestCaseScriptTab({ testCaseId }) {
             </button>
           )}
 
-          {scriptStatus === 'validated' && (
+          {!readOnly && scriptStatus === 'validated' && (
             <button
               onClick={handleApprove}
-              disabled={loading}
+              disabled={loading || isRunning}
               style={{
                 padding: '6px 16px',
                 background: '#42be65',
@@ -195,6 +270,33 @@ export default function TestCaseScriptTab({ testCaseId }) {
               }}
             >
               Approve for Regression
+            </button>
+          )}
+
+          {(scriptStatus === 'approved' || isRunning) && (
+            <button
+              onClick={handleRun}
+              disabled={isRunning}
+              style={{
+                padding: '6px 16px',
+                background: '#0f62fe',
+                color: '#fff',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: isRunning ? 'wait' : 'pointer',
+                opacity: isRunning ? 0.7 : 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {isRunning ? (
+                <>
+                  <span className="test-case-workspace-typing"><span></span><span></span><span></span></span>
+                  Running... {runElapsed}s
+                </>
+              ) : 'Run Test'}
             </button>
           )}
         </div>
@@ -216,12 +318,27 @@ export default function TestCaseScriptTab({ testCaseId }) {
         <div style={{ padding: '40px', textAlign: 'center', color: '#6f6f6f' }}>
           Loading...
         </div>
+      ) : generating || stream.active || (!stream.isComplete && stream.currentStep) ? (
+        <ScriptGenProgressPanel
+          active={stream.active}
+          currentStep={stream.currentStep}
+          completedSteps={stream.completedSteps}
+          streamingContent={stream.streamingContent}
+          toolCalls={stream.toolCalls}
+          generatedScript={stream.generatedScript}
+          error={stream.error}
+          isComplete={stream.isComplete}
+          finalResult={stream.finalResult}
+          progress={stream.progress}
+          onCancel={stream.cancel}
+        />
       ) : (
         <textarea
           value={script}
           onChange={(e) => { setScript(e.target.value); setDirty(true); }}
           placeholder={scriptStatus === 'none' ? 'Click "Generate Script" to create a Playwright test script...' : 'No script generated yet'}
           spellCheck={false}
+          disabled={readOnly}
           style={{
             width: '100%',
             minHeight: '400px',
@@ -229,12 +346,12 @@ export default function TestCaseScriptTab({ testCaseId }) {
             fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
             fontSize: '13px',
             lineHeight: '1.6',
-            background: '#161616',
-            color: '#f4f4f4',
+            background: readOnly ? '#262626' : '#161616',
+            color: readOnly ? '#8d8d8d' : '#f4f4f4',
             border: '1px solid #393939',
-            resize: 'vertical',
+            resize: readOnly ? 'none' : 'vertical',
             outline: 'none',
-            tabIndex: 0,
+            tabIndex: readOnly ? -1 : 0,
           }}
         />
       )}

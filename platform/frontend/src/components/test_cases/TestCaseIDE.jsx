@@ -3,7 +3,7 @@ import { listTestCases, createTestCase, archiveTestCase } from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
 import PermissionGate from '../PermissionGate';
 import TestCaseListPanel from './TestCaseListPanel';
-import TestCaseEditorPanel from './TestCaseEditorPanel';
+import TestCaseComposerWorkspace from './TestCaseComposerWorkspace';
 import './TestCaseIDE.css';
 
 export default function TestCasesIDE() {
@@ -15,11 +15,16 @@ export default function TestCasesIDE() {
   const [selectedTestCaseId, setSelectedTestCaseId] = useState(null);
   // Initialize selected test case from hash
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    const match = hash.match(/^test-cases?\/(\d+)/);
-    if (match) {
-      setSelectedTestCaseId(parseInt(match[1]));
-    }
+    const readHash = () => {
+      const hash = window.location.hash.slice(1);
+      const match = hash.match(/^test-cases?\/(\d+)/);
+      if (match) {
+        setSelectedTestCaseId(parseInt(match[1]));
+      }
+    };
+    readHash();
+    window.addEventListener('hashchange', readHash);
+    return () => window.removeEventListener('hashchange', readHash);
   }, []);
 
   // Sync hash when selection changes
@@ -104,7 +109,7 @@ export default function TestCasesIDE() {
       </div>
 
       <div className="test-cases-ide-main">
-        <TestCaseEditorPanel
+        <TestCaseComposerWorkspace
           testCaseId={selectedTestCaseId}
           onTestCaseChanged={loadTestCases}
         />

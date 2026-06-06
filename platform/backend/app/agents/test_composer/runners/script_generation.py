@@ -9,6 +9,8 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from langchain_core.messages import AIMessage, HumanMessage
 
 from app.core.llm_context import llm_usage_context
@@ -77,8 +79,9 @@ async def generate_playwright_script(
         subagent = get_script_generator_subagent(llm)
 
         async with llm_usage_context("script_generator", test_run_id=run_id):
-            result = await subagent.runnable.ainvoke(
+            result = await subagent["runnable"].ainvoke(
                 {"messages": [HumanMessage(content=prompt)]},
+                config={"recursion_limit": 50},
             )
     except Exception as e:
         logger.error("Script generation agent call failed: %s", e)
@@ -99,6 +102,7 @@ async def run_script_generation(
     url: str,
     goal: str,
     description: str = None,
+    db: AsyncSession = None,
 ) -> Dict[str, Any]:
     """Run the full script generation workflow via script-generator subagent."""
     from ..subagents import get_script_generator_subagent
@@ -125,19 +129,19 @@ Follow the Workflow:
 
     try:
         async with llm_usage_context("script_generator", test_run_id=f"gen_{test_definition_id}"):
-            await subagent.runnable.ainvoke(
+            await subagent["runnable"].ainvoke(
                 {"messages": [HumanMessage(content=prompt)]},
+                config={"recursion_limit": 50},
             )
     except Exception as e:
         logger.error("run_script_generation subagent call failed: %s", e)
 
     # Read back the result saved by the subagent via save_generated_script tool
-    from app.core.worker_db import run_with_session
     from app.models.test_definition import TestDefinition
     from sqlalchemy import select as sa_select
 
-    async def _read(db):
-        r = await db.execute(
+    async def _read(session):
+        r = await session.execute(
             sa_select(TestDefinition).where(TestDefinition.id == test_definition_id)
         )
         td = r.scalar_one_or_none()
@@ -155,4 +159,8 @@ Follow the Workflow:
             "execution_mode": "script",
         }
 
-    return await run_with_session(_read)
+    if db is not None:
+        return await _read(db)
+
+    from ..tools.db_tools import _run_with_db
+    return await _run_with_db(_read)

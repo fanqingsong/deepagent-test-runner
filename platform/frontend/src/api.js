@@ -299,6 +299,21 @@ export const getTestCaseRunHistory = async (testCaseId, { limit = 50, offset = 0
   return response.json();
 };
 
+export const getStepVersions = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load versions'));
+  return response.json();
+};
+
+export const restoreTestCaseVersion = async (testCaseId, versionId) => {
+  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to restore version'));
+  return response.json();
+};
+
 export const submitVersionForReview = async (testCaseId, versionId) => {
   const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/submit`, {
     method: 'POST',
@@ -770,6 +785,20 @@ export const generateScript = async (testId, opts = {}) => {
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to generate script'));
   return response.json();
+};
+
+export const generateScriptStream = async (testId, opts = {}) => {
+  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/generate-script/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ force_regenerate: !!opts.force_regenerate }),
+    timeout: 600000,
+  });
+  if (!response.ok) {
+    const errMsg = await parseApiError(response, 'Failed to generate script');
+    throw new Error(errMsg);
+  }
+  return response;
 };
 
 export const getScript = async (testId) => {

@@ -139,7 +139,7 @@ Execute full test suite via dashboard:
 
 ### Issue: Import errors for DeepAgents modules
 
-**Symptom:** `ModuleNotFoundError: No module named 'app.agents.deepagents_test_runner'`
+**Symptom:** `ModuleNotFoundError: No module named 'app.agents.test_composer'`
 
 **Solution:**
 ```bash

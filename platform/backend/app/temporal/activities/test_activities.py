@@ -204,7 +204,7 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
                 await page.goto(input.url, wait_until="domcontentloaded", timeout=30000)
 
             if input.execution_mode == "script" and input.playwright_script and input.script_status == "approved":
-                from app.agents.deepagents_test_runner.lib import execute_script
+                from app.agents.test_composer.lib import execute_script
                 exec_result = await execute_script(input.playwright_script, page, timeout=120)
 
                 end_time = int(datetime.utcnow().timestamp() * 1000)

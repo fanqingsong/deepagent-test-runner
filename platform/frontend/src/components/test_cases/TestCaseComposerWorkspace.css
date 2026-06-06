@@ -1,0 +1,477 @@
+/* Test Composer Workspace - Split-Pane IDE Layout */
+
+.composer-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f4f4f4;
+}
+
+/* ── Header Bar ─────────────────────────────────────── */
+
+.composer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 48px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.composer-header-name {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.composer-header-separator {
+  width: 1px;
+  height: 20px;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+
+/* Draft mode toggle */
+.composer-draft-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #525252;
+  background: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.composer-draft-toggle:hover {
+  background: #e8e8e8;
+}
+
+.composer-draft-toggle--active {
+  background: #edf5ff;
+  color: #0f62fe;
+  border-color: #0f62fe;
+}
+
+.composer-draft-toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8d8d8d;
+  flex-shrink: 0;
+}
+
+.composer-draft-toggle--active .composer-draft-toggle-dot {
+  background: #0f62fe;
+}
+
+/* Status badge */
+.composer-status-badge {
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.composer-status-badge.status-draft { background: #f4f4f4; color: #525252; }
+.composer-status-badge.status-generating { background: #fff8e1; color: #8a6914; }
+.composer-status-badge.status-testing { background: #edf5ff; color: #0f62fe; }
+.composer-status-badge.status-passed { background: #defbe6; color: #198038; }
+.composer-status-badge.status-pending_review { background: #f1c21b20; color: #8a6914; }
+.composer-status-badge.status-published { background: #defbe6; color: #198038; }
+
+/* Header actions */
+.composer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.composer-submit-btn {
+  padding: 6px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #fff;
+  background: #0f62fe;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.composer-submit-btn:hover { background: #0353e9; }
+.composer-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.composer-permissions-btn {
+  padding: 6px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #525252;
+  background: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.composer-permissions-btn:hover { background: #e8e8e8; }
+
+/* ── Split Pane ─────────────────────────────────────── */
+
+.composer-split-pane {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left Pane */
+.composer-left-pane {
+  width: 50%;
+  min-width: 360px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Draggable divider */
+.composer-divider {
+  width: 4px;
+  background: #e0e0e0;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.composer-divider:hover,
+.composer-divider--dragging {
+  background: #0f62fe;
+}
+
+/* Right Pane */
+.composer-right-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f4f4f4;
+}
+
+/* ── Sections ───────────────────────────────────────── */
+
+/* Config Section */
+.composer-config-section {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.composer-config-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #f4f4f4;
+  cursor: pointer;
+  user-select: none;
+}
+
+.composer-config-section-header:hover {
+  background: #e8e8e8;
+}
+
+.composer-config-section-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composer-config-collapse-icon {
+  font-size: 10px;
+  color: #8d8d8d;
+  transition: transform 0.15s;
+}
+
+.composer-config-collapse-icon--collapsed {
+  transform: rotate(-90deg);
+}
+
+.composer-config-body {
+  padding: 12px 16px;
+  overflow: hidden;
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.composer-config-body--collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Config fields - compact inline layout */
+.composer-config-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.composer-config-row:last-child {
+  margin-bottom: 0;
+}
+
+.composer-config-label {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #525252;
+  width: 80px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.composer-config-input {
+  flex: 1;
+  padding: 6px 8px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  color: #161616;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid #e0e0e0;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.composer-config-input:focus {
+  border-bottom-color: #0f62fe;
+}
+
+.composer-config-input:disabled {
+  background: #f4f4f4;
+  color: #525252;
+  cursor: not-allowed;
+}
+
+.composer-config-textarea {
+  flex: 1;
+  padding: 6px 8px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  color: #161616;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid #e0e0e0;
+  outline: none;
+  resize: none;
+  min-height: 32px;
+  transition: border-color 0.15s;
+}
+
+.composer-config-textarea:focus {
+  border-bottom-color: #0f62fe;
+}
+
+.composer-config-textarea:disabled {
+  background: #f4f4f4;
+  color: #525252;
+  cursor: not-allowed;
+}
+
+.composer-config-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-left: 92px;
+}
+
+.composer-config-save-btn {
+  padding: 4px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #fff;
+  background: #393939;
+  border: none;
+  cursor: pointer;
+}
+
+.composer-config-save-btn:hover { background: #525252; }
+.composer-config-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.composer-config-gen-desc-btn {
+  padding: 4px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #525252;
+  background: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+}
+
+.composer-config-gen-desc-btn:hover { background: #e8e8e8; }
+.composer-config-gen-desc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Script Section */
+.composer-script-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.composer-script-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #f4f4f4;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.composer-script-section-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composer-script-section-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Right pane sections */
+.composer-run-history-section {
+  flex: 6;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.composer-version-section {
+  flex: 4;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.composer-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.composer-section-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composer-section-count {
+  font-weight: 400;
+  color: #8d8d8d;
+  margin-left: 8px;
+}
+
+.composer-section-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Error Bar ──────────────────────────────────────── */
+
+.composer-error-bar {
+  padding: 8px 16px;
+  background: #fff1f1;
+  color: #da1e28;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* ── Empty State ────────────────────────────────────── */
+
+.composer-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #525252;
+}
+
+.composer-empty-icon {
+  font-size: 32px;
+  margin-bottom: 16px;
+  color: #8d8d8d;
+}
+
+.composer-empty h3 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.composer-empty p {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  color: #8d8d8d;
+  margin: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .composer-split-pane {
+    flex-direction: column;
+  }
+
+  .composer-left-pane {
+    width: 100%;
+    min-width: 0;
+    max-height: 50vh;
+  }
+
+  .composer-divider {
+    width: 100%;
+    height: 4px;
+    cursor: row-resize;
+  }
+
+  .composer-right-pane {
+    flex: 1;
+  }
+}

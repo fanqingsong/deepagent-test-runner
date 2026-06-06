@@ -1,0 +1,327 @@
+/* Script Generation Progress Panel — IBM Carbon design system */
+
+.sgen-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+}
+
+/* Header */
+.sgen-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f4f4f4;
+}
+
+.sgen-connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #24a148;
+  flex-shrink: 0;
+}
+
+.sgen-connection-dot.error {
+  background: #da1e28;
+}
+
+.sgen-connection-dot.idle {
+  background: #a0a0a0;
+}
+
+.sgen-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+  flex: 1;
+}
+
+.sgen-progress-label {
+  font-size: 12px;
+  color: #525252;
+}
+
+.sgen-cancel-btn {
+  background: none;
+  border: 1px solid #da1e28;
+  color: #da1e28;
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sgen-cancel-btn:hover {
+  background: #fff1f1;
+}
+
+/* Progress bar */
+.sgen-progress-bar {
+  height: 3px;
+  background: #e0e0e0;
+}
+
+.sgen-progress-fill {
+  height: 100%;
+  background: #0f62fe;
+  transition: width 0.4s ease;
+}
+
+/* Steps list */
+.sgen-steps {
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sgen-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f4f4f4;
+}
+
+.sgen-step:last-child {
+  border-bottom: none;
+}
+
+.sgen-step-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.sgen-step-icon.pending {
+  color: #a0a0a0;
+}
+
+.sgen-step-icon.running {
+  color: #0f62fe;
+}
+
+.sgen-step-icon.done {
+  color: #24a148;
+}
+
+.sgen-step-icon.error {
+  color: #da1e28;
+}
+
+.sgen-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sgen-step-name {
+  font-size: 13px;
+  font-weight: 400;
+  color: #161616;
+}
+
+.sgen-step-name.active {
+  font-weight: 600;
+  color: #0f62fe;
+}
+
+.sgen-step-name.completed {
+  color: #525252;
+}
+
+/* Spinner (reused from ChatModal.css pattern) */
+.sgen-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #0f62fe;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sgen-spin 0.8s linear infinite;
+}
+
+@keyframes sgen-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Streaming content area */
+.sgen-streaming {
+  padding: 0 16px 12px 46px;
+}
+
+.sgen-streaming-content {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #f4f4f4;
+  background: #161616;
+  padding: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sgen-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: #0f62fe;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: sgen-blink 1s step-end infinite;
+}
+
+@keyframes sgen-blink {
+  50% { opacity: 0; }
+}
+
+/* Tool calls list */
+.sgen-tool-calls {
+  padding: 0 16px 8px 46px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sgen-tool-call {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #525252;
+}
+
+.sgen-tool-name {
+  font-family: 'IBM Plex Mono', monospace;
+  color: #161616;
+}
+
+.sgen-tool-status {
+  font-size: 10px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sgen-tool-status.done {
+  background: #defbe6;
+  color: #24a148;
+}
+
+.sgen-tool-status.error {
+  background: #fff1f1;
+  color: #da1e28;
+}
+
+.sgen-tool-status.running {
+  background: #edf5ff;
+  color: #0f62fe;
+}
+
+/* Error display */
+.sgen-error {
+  padding: 10px 16px;
+  background: #fff1f1;
+  color: #da1e28;
+  font-size: 13px;
+  border-top: 1px solid #ffd7d9;
+}
+
+/* Complete banner */
+.sgen-complete {
+  padding: 10px 16px;
+  background: #defbe6;
+  color: #044317;
+  font-size: 13px;
+  font-weight: 600;
+  border-top: 1px solid #42be65;
+}
+
+.sgen-complete-partial {
+  background: #fff8e1;
+  color: #8a6914;
+  border-top-color: #f0ab00;
+}
+
+/* Script preview */
+.sgen-script-section {
+  border-top: 1px solid #e0e0e0;
+}
+
+.sgen-script-header {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #161616;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #f4f4f4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sgen-script-saved {
+  font-weight: 400;
+  font-size: 10px;
+  padding: 1px 6px;
+  background: #defbe6;
+  color: #24a148;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sgen-script-unsaved {
+  font-weight: 400;
+  font-size: 10px;
+  padding: 1px 6px;
+  background: #fff8e1;
+  color: #8a6914;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sgen-script-code {
+  margin: 0;
+  padding: 12px 16px;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #f4f4f4;
+  background: #161616;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Thinking / details sections */
+.sgen-thinking-details {
+  border-top: 1px solid #e0e0e0;
+}
+
+.sgen-thinking-summary {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #525252;
+  cursor: pointer;
+  user-select: none;
+  background: #f4f4f4;
+}
+
+.sgen-thinking-summary:hover {
+  background: #e8e8e8;
+}
+
+.sgen-thinking-details[open] .sgen-thinking-summary {
+  border-bottom: 1px solid #e0e0e0;
+}
