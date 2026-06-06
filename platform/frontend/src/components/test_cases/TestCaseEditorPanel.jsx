@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   getTestCase, updateTestCase, runTestCase, publishTestCase, getJobStatus,
-  getTestCaseRunProgress, generateTestCasePlan, saveTestCasesSteps,
-  getTestCaseRunHistory, getTestRunDetails, getTestCaseStepVersions,
-  restoreTestCaseStepVersion,
+  getTestCaseRunProgress,
+  getTestCaseRunHistory, getTestRunDetails,
 } from '../../api';
 import PermissionGate from '../PermissionGate';
 import TestCaseConfigTab from './TestCaseConfigTab';
-import TestCasePlanTab from './TestCasePlanTab';
 import TestCaseRunHistoryTab from './TestCaseRunHistoryTab';
 import TestCaseVersionTab from './TestCaseVersionTab';
 import TestCasePermissionTab from './TestCasePermissionTab';
@@ -25,16 +23,8 @@ const STATUS_LABELS = {
   published: 'Published',
 };
 
-const REVIEW_STATUS_LABELS = {
-  draft: 'Draft',
-  pending_review: 'Pending Review',
-  approved: 'Approved',
-  rejected: 'Rejected',
-};
-
 const TABS = [
   { key: 'config', label: 'Configuration' },
-  { key: 'plan', label: 'Test Steps' },
   { key: 'script', label: 'Playwright Script' },
   { key: 'history', label: 'Run History' },
   { key: 'versions', label: 'Version Management' },
@@ -49,11 +39,8 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
 
   // Execution state
   const [isRunning, setIsRunning] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSavingSteps, setIsSavingSteps] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [stepsSaved, setStepsSaved] = useState(false);
   const pollingRef = useRef(null);
 
   // Form state
@@ -62,12 +49,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
   const [formGoal, setFormGoal] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [configDirty, setConfigDirty] = useState(false);
-
-  // Plan editing state
-  const [editedSteps, setEditedSteps] = useState([]);
-  const [editingCell, setEditingCell] = useState(null);
-  const [editDraft, setEditDraft] = useState('');
-  const [planEdited, setPlanEdited] = useState(false);
 
   // Streaming progress
   const [progressSteps, setProgressSteps] = useState([]);
@@ -85,8 +66,7 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
   const [expandedRunCases, setExpandedRunCases] = useState([]);
   const [expandedRunLoading, setExpandedRunLoading] = useState(false);
 
-  // Step versions
-  const [stepVersions, setStepVersions] = useState([]);
+  // Version viewing
   const [viewingVersionId, setViewingVersionId] = useState(null);
   const [viewedSteps, setViewedSteps] = useState(null);
 
@@ -102,10 +82,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
       setFormGoal(data.test_goal || '');
       setFormDesc(data.description || '');
       setConfigDirty(false);
-      const steps = data.current_plan?.steps || [];
-      setEditedSteps(steps.map(s => ({ ...s })));
-      setPlanEdited(false);
-      setStepsSaved(false);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -128,17 +104,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
 
   useEffect(() => { loadRunHistory(); }, [loadRunHistory]);
 
-  const loadStepVersions = useCallback(async () => {
-    if (!testCaseId) return;
-    try {
-      const versions = await getTestCaseStepVersions(testCaseId);
-      setStepVersions(versions);
-    } catch { /* non-critical */ }
-  }, [testCaseId]);
-
-  useEffect(() => { loadStepVersions(); }, [loadStepVersions]);
-
-  // Handlers
   const handleSaveConfig = async () => {
     try {
       setSavingConfig(true);
@@ -154,46 +119,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
       setError(e.message);
     } finally {
       setSavingConfig(false);
-    }
-  };
-
-  const handleGeneratePlan = async () => {
-    try {
-      setIsGenerating(true);
-      setError(null);
-      if (configDirty) {
-        await updateTestCase(testCaseId, {
-          name: formName, url: formUrl,
-          test_goal: formGoal, description: formDesc || null,
-        });
-        setConfigDirty(false);
-      }
-      await generateTestCasePlan(testCaseId);
-      await loadTestCase();
-      setActiveTab('plan');
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleSaveSteps = async () => {
-    try {
-      setIsSavingSteps(true);
-      setError(null);
-      if (planEdited) {
-        await updateTestCase(testCaseId, {
-          current_plan: { ...testCase.current_plan, steps: editedSteps },
-        });
-        setPlanEdited(false);
-      }
-      await saveTestCasesSteps(testCaseId);
-      setStepsSaved(true);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setIsSavingSteps(false);
     }
   };
 
@@ -226,7 +151,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
           pollingRef.current = null;
           await loadTestCase();
           loadRunHistory();
-          loadStepVersions();
           return;
         }
         attempts++;
@@ -239,12 +163,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
     try {
       setIsRunning(true);
       setError(null);
-      if (planEdited) {
-        await updateTestCase(testCaseId, {
-          current_plan: { ...testCase.current_plan, steps: editedSteps },
-        });
-        setPlanEdited(false);
-      }
       const result = await runTestCase(testCaseId, {
         forceRegenerate: !!opts.forceRegenerate,
         useExistingPlan: !!opts.useExistingPlan,
@@ -270,38 +188,12 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
     }
   };
 
-  // Inline editing
-  const startEdit = (stepIdx, field, currentValue) => {
-    setEditingCell({ stepIdx, field });
-    setEditDraft(currentValue || '');
-  };
-
-  const commitEdit = () => {
-    if (!editingCell) return;
-    const { stepIdx, field } = editingCell;
-    setEditedSteps(prev => {
-      const next = [...prev];
-      next[stepIdx] = { ...next[stepIdx], [field]: editDraft };
-      return next;
-    });
-    setPlanEdited(true);
-    setStepsSaved(false);
-    setEditingCell(null);
-    setEditDraft('');
-  };
-
-  const handleEditKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); }
-    else if (e.key === 'Escape') { setEditingCell(null); setEditDraft(''); }
-  };
-
   const onFormChange = (field) => (e) => {
     const setters = { name: setFormName, url: setFormUrl, goal: setFormGoal, desc: setFormDesc };
     setters[field](e.target.value);
     setConfigDirty(true);
   };
 
-  // Run history expand
   const handleToggleRunExpand = async (runId) => {
     if (expandedRunId === runId) {
       setExpandedRunId(null);
@@ -318,7 +210,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
     }
   };
 
-  // Version handlers
   const handleViewVersion = (version) => {
     if (viewingVersionId === version.id) {
       setViewingVersionId(null);
@@ -332,11 +223,11 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
   const handleRestoreVersion = async (versionId) => {
     try {
       setError(null);
-      await restoreTestCaseStepVersion(testCaseId, versionId);
+      const { restoreTestCaseVersion } = await import('../../api');
+      await restoreTestCaseVersion(testCaseId, versionId);
       setViewingVersionId(null);
       setViewedSteps(null);
       await loadTestCase();
-      loadStepVersions();
     } catch (e) {
       setError(e.message);
     }
@@ -347,14 +238,8 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
     setViewedSteps(null);
   };
 
-  const isBusy = isRunning || isGenerating || isSavingSteps;
-  const hasPlan = editedSteps.length > 0;
-  const hasResult = testCase?.latest_result && testCase.latest_result.status;
-  const canPublish = !['pending_review', 'published'].includes(testCase?.status) && !publishing;
-  const latestResult = testCase?.latest_result || {};
-  const resultSteps = latestResult.steps || [];
+  const isBusy = isRunning;
 
-  // Empty state
   if (!testCaseId) {
     return (
       <div className="studio-editor">
@@ -377,7 +262,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
 
   return (
     <div className="studio-editor">
-      {/* Header */}
       <div className="studio-editor-header">
         <div className="studio-editor-header-info">
           <h1 className="studio-editor-name">{testCase?.name || 'Unnamed Test'}</h1>
@@ -393,7 +277,7 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
           {testCase?.status === 'published' && (
             <span className="studio-editor-published-tag">Published</span>
           )}
-          {canPublish && (
+          {testCase?.status !== 'pending_review' && testCase?.status !== 'published' && !publishing && (
             <button
               className="studio-editor-publish-btn"
               onClick={handlePublish}
@@ -405,7 +289,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="studio-editor-tabs">
         {TABS.map(tab => (
           <button
@@ -418,7 +301,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
         ))}
       </div>
 
-      {/* Content */}
       <div className="studio-editor-content">
         {activeTab === 'config' && (
           <TestCaseConfigTab
@@ -432,46 +314,6 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
             savingConfig={savingConfig}
             onFormChange={onFormChange}
             onSaveConfig={handleSaveConfig}
-          />
-        )}
-        {activeTab === 'plan' && (
-          <TestCasePlanTab
-            editedSteps={editedSteps}
-            viewedSteps={viewedSteps}
-            hasPlan={hasPlan}
-            planEdited={planEdited}
-            stepsSaved={stepsSaved}
-            editingCell={editingCell}
-            editDraft={editDraft}
-            startEdit={startEdit}
-            commitEdit={commitEdit}
-            cancelEdit={() => { setEditingCell(null); setEditDraft(''); }}
-            handleEditKeyDown={handleEditKeyDown}
-            setEditDraft={setEditDraft}
-            onGeneratePlan={handleGeneratePlan}
-            onSaveSteps={handleSaveSteps}
-            onRun={handleRun}
-            isBusy={isBusy}
-            isRunning={isRunning}
-            isGenerating={isGenerating}
-            isSavingSteps={isSavingSteps}
-            formGoal={formGoal}
-            runningJobId={runningJobId}
-            progressSteps={progressSteps}
-            progressCurrent={progressCurrent}
-            progressTotal={progressTotal}
-            browserUrl={browserUrl}
-            browserTitle={browserTitle}
-            selectedScreenshot={selectedScreenshot}
-            onSelectScreenshot={setSelectedScreenshot}
-            hasResult={hasResult}
-            resultSteps={resultSteps}
-            latestResult={latestResult}
-            stepVersions={stepVersions}
-            viewingVersionId={viewingVersionId}
-            onViewVersion={handleViewVersion}
-            onRestoreVersion={handleRestoreVersion}
-            onBackToCurrent={handleBackToCurrent}
           />
         )}
         {activeTab === 'script' && (
@@ -491,17 +333,8 @@ export default function TestCaseEditorPanel({ testCaseId, onTestCaseChanged }) {
         {activeTab === 'versions' && (
           <TestCaseVersionTab
             testCaseId={testCaseId}
-            stepVersions={stepVersions}
             viewingVersionId={viewingVersionId}
             viewedSteps={viewedSteps}
-            editedSteps={editedSteps}
-            editingCell={editingCell}
-            editDraft={editDraft}
-            startEdit={startEdit}
-            commitEdit={commitEdit}
-            cancelEdit={() => { setEditingCell(null); setEditDraft(''); }}
-            handleEditKeyDown={handleEditKeyDown}
-            setEditDraft={setEditDraft}
             onViewVersion={handleViewVersion}
             onRestoreVersion={handleRestoreVersion}
             onBackToCurrent={handleBackToCurrent}

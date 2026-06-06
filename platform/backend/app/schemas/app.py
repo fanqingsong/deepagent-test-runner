@@ -28,7 +28,6 @@ class AppUpdate(BaseModel):
     test_context: Optional[Dict[str, Any]] = None
     icon: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, max_length=20)
-    current_plan: Optional[Dict[str, Any]] = None
 
 
 class MessageResponse(BaseModel):
@@ -66,7 +65,6 @@ class AppResponse(BaseModel):
     status: str
     test_goal: Optional[str] = None
     test_context: Dict[str, Any] = Field(default_factory=dict)
-    current_plan: Dict[str, Any] = Field(default_factory=dict)
     test_definition_id: Optional[int] = None
     latest_run_id: Optional[str] = None
     latest_result: Dict[str, Any] = Field(default_factory=dict)
@@ -83,16 +81,7 @@ class AppResponse(BaseModel):
 
 
 class AppRunRequest(BaseModel):
-    force_regenerate: bool = Field(
-        default=False, description="Force regenerate plan even if one exists"
-    )
-    use_existing_plan: bool = Field(
-        default=False, description="Use current_plan as-is without regeneration"
-    )
-
-
-class AppRefineRequest(BaseModel):
-    feedback: str = Field(..., min_length=1, description="User feedback for plan refinement")
+    pass
 
 
 class AppRunResponse(BaseModel):
@@ -106,17 +95,4 @@ class AppPublishResponse(BaseModel):
     test_definition_id: int
     test_id: str
     name: str
-    status: str
-
-
-class AppPlanResponse(BaseModel):
-    app_id: int
-    plan: Dict[str, Any]
-    status: str
-
-
-class AppSaveStepsResponse(BaseModel):
-    app_id: int
-    test_definition_id: int
-    steps_count: int
     status: str

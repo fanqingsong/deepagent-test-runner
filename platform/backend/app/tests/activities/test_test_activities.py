@@ -25,8 +25,6 @@ async def test_prepare_test_success():
     mock_test_def.id = 123
     mock_test_def.url = "https://example.com"
     mock_test_def.test_goal = "Test login functionality"
-    mock_test_def.ai_generated_plan = None
-    mock_test_def.plan_generation_status = None
 
     # Create mock test steps
     mock_step1 = MagicMock()
@@ -118,109 +116,6 @@ async def test_prepare_test_not_found():
         # Execute the activity and expect ValueError
         with pytest.raises(ValueError, match="Test definition 999 not found"):
             await prepare_test(input_data)
-
-
-@pytest.mark.asyncio
-async def test_prepare_test_with_ai_generated_plan():
-    """Test prepare_test activity prioritizes AI-generated plan."""
-    import json
-
-    # Create mock test definition with AI-generated plan
-    mock_test_def = MagicMock()
-    mock_test_def.id = 456
-    mock_test_def.url = "https://example.com"
-    mock_test_def.test_goal = "Test checkout flow"
-    mock_test_def.ai_generated_plan = json.dumps({
-        "steps": [
-            {"description": "Add item to cart"},
-            {"description": "Proceed to checkout"},
-            {"description": "Complete payment"}
-        ]
-    })
-    mock_test_def.plan_generation_status = "approved"
-
-    # Mock database session
-    mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none.return_value = mock_test_def
-
-    async def mock_execute_func(stmt):
-        return mock_result
-
-    mock_db.execute.side_effect = mock_execute_func
-
-    # Mock run_with_session
-    with patch('app.temporal.activities.test_activities.run_with_session') as mock_run_session:
-        async def mock_session_func(db_func):
-            return await db_func(mock_db)
-
-        mock_run_session.side_effect = mock_session_func
-
-        # Create input
-        input_data = PrepareTestInput(
-            test_definition_id="456",
-            run_id="test-run-456",
-            environment={}
-        )
-
-        # Execute the activity
-        result = await prepare_test(input_data)
-
-        # Verify AI-generated steps are used
-        assert result.test_definition_id == "456"
-        assert len(result.test_steps) == 3
-        assert result.test_steps[0]["description"] == "Add item to cart"
-        assert result.test_steps[1]["description"] == "Proceed to checkout"
-        assert result.test_steps[2]["description"] == "Complete payment"
-
-
-@pytest.mark.asyncio
-async def test_prepare_test_full_pipeline_mode():
-    """Test prepare_test activity sets full_pipeline mode when no steps but has goal."""
-    # Create mock test definition with goal but no steps
-    mock_test_def = MagicMock()
-    mock_test_def.id = 789
-    mock_test_def.url = None
-    mock_test_def.test_goal = "Explore and test user dashboard"
-    mock_test_def.ai_generated_plan = None
-    mock_test_def.plan_generation_status = None
-
-    # Mock database session - no test steps found
-    mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none.return_value = mock_test_def
-
-    async def mock_execute_func(stmt):
-        if "TestDefinition" in str(stmt):
-            return mock_result
-        # Test steps query - return empty list
-        result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = []
-        return result_mock
-
-    mock_db.execute.side_effect = mock_execute_func
-
-    # Mock run_with_session
-    with patch('app.temporal.activities.test_activities.run_with_session') as mock_run_session:
-        async def mock_session_func(db_func):
-            return await db_func(mock_db)
-
-        mock_run_session.side_effect = mock_session_func
-
-        # Create input
-        input_data = PrepareTestInput(
-            test_definition_id="789",
-            run_id="test-run-789",
-            environment={}
-        )
-
-        # Execute the activity
-        result = await prepare_test(input_data)
-
-        # Verify full_pipeline mode is set
-        assert result.mode == "full_pipeline"
-        assert result.test_goal == "Explore and test user dashboard"
-        assert len(result.test_steps) == 0
 
 
 @pytest.mark.asyncio
@@ -332,8 +227,6 @@ async def test_prepare_test_with_empty_environment():
     mock_test_def.id = 321
     mock_test_def.url = "https://example.com"
     mock_test_def.test_goal = "Test search functionality"
-    mock_test_def.ai_generated_plan = None
-    mock_test_def.plan_generation_status = None
 
     # Mock test steps
     mock_step = MagicMock()

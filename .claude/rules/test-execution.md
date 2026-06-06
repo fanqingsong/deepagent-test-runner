@@ -2,43 +2,51 @@
 
 ## Pipeline
 
-1. **Schedule Trigger**: Temporal Schedule detects due cron → triggers `ScheduleExecutionWorkflow`
+1. **Schedule Trigger**: Temporal Schedule detects due cron → triggers `TestExecutionWorkflow`
 2. **Job Creation**: Creates TestRun record with status='pending'
-3. **Test Execution**: Workflow calls execution with test_definition_id
-4. **LangGraph Pipeline**: `supervisor_graph.py` routes to planner/executor/reviewer nodes
-5. **Browser Automation**: `executor_agent.py` uses `create_react_agent` with Playwright tools
-6. **Result Saving**: `ExecutionService.save_test_results()` saves:
+3. **Prepare Test**: `prepare_test` activity loads test definition and steps from DB
+4. **Script Execution**: `run_browser_automation` activity executes approved Playwright script
+5. **Result Saving**: `save_results` activity persists:
    - Summary to `test_runs` table
    - Individual step results to `test_cases` table
-7. **Dashboard Update**: Frontend queries PostgreSQL for latest results
+6. **Dashboard Update**: Frontend polls app endpoint → `sync_run_result()` reads job store
 
-## LangGraph Supervisor Graph
+## Test Runner Agent (DeepAgents)
 
 ```mermaid
 flowchart TD
-    START((START)) --> route_from_start{{route_from_start}}
+    START((Request)) --> Mode{{Execution Mode}}
 
-    route_from_start -->|"mode=full_pipeline & goal"| planner_node
-    route_from_start -->|"mode=execute_only"| executor_node
+    Mode -->|"mode=script<br/>& script approved"| DirectExec[Direct Script Execution<br/>run_browser_automation]
+    Mode -->|"mode=nl_steps<br/>(deprecated)"| Error[Error:<br/>nl_steps no longer supported]
 
-    planner_node[Planner Node<br/>generate_test_plan] --> route_after_planner{{route_after_planner}}
-    route_after_planner -->|"plan_error"| error_handler_node
-    route_after_planner -->|"success"| executor_node
+    DirectExec --> Validate[Validate Script<br/>_check_safety]
+    Validate -->|"safe"| Exec[Execute in Sandbox<br/>exec with restricted builtins]
+    Validate -->|"unsafe"| Fail[Return Error]
 
-    executor_node[Executor Node<br/>interpret_and_execute_batch] --> route_after_executor{{route_after_executor}}
-    route_after_executor -->|"execution_error"| error_handler_node
-    route_after_executor -->|"mode=plan_and_execute"| result_builder_node
-    route_after_executor -->|"success"| reviewer_node
+    Exec --> Save[Save Results<br/>save_results activity]
+    Save --> END((END))
+```
 
-    reviewer_node[Reviewer Node<br/>review_test_results] --> result_builder_node
+## Key Modules
 
-    error_handler_node[Error Handler Node<br/>retry or finalize] --> route_after_error{{route_after_error}}
-    route_after_error -->|"retry_count ≤ max<br/>& failed_phase set"| executor_node
-    route_after_error -->|"retry exhausted"| result_builder_node
+| Module | Purpose |
+|--------|---------|
+| `agents/deepagents_test_runner/agent.py` | DeepAgent singleton (plan gen + script gen) |
+| `agents/deepagents_test_runner/planner_agent.py` | Test plan generation and refinement via LLM |
+| `agents/deepagents_test_runner/script_generator.py` | Playwright script generation via LLM |
+| `agents/deepagents_test_runner/script_executor.py` | Sandboxed script execution |
+| `agents/deepagents_test_runner/page_fetcher.py` | DOM extraction for LLM context |
+| `agents/deepagents_test_runner/test_tools.py` | Agent tools (save plan, get results, validate script) |
+| `temporal/activities/test_activities.py` | Temporal activities (prepare, execute, save, fail) |
+| `services/execution_service.py` | Test run creation and result persistence |
 
-    result_builder_node[Result Builder Node<br/>build final_result] --> END((END))
+## Script Lifecycle
 
-    executor_node -.->|"create_react_agent<br/>+ Playwright Tools"| Browser[Browser]
+```
+none → generating → draft → validated → approved
+                  ↘ failed                ↗
+         (validation failed)     (user approves)
 ```
 
 ## Test Execution Verification

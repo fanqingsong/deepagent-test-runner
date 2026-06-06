@@ -285,24 +285,6 @@ export const runTestCase = async (testCaseId, { forceRegenerate, useExistingPlan
   return response.json();
 };
 
-export const generateTestCasePlan = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/generate-plan`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to generate test plan'));
-  return response.json();
-};
-
-export const saveTestCasesSteps = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/save-steps`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to save test steps'));
-  return response.json();
-};
-
 export const getTestCaseRunProgress = async (testCaseId) => {
   const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/run-progress`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to get progress'));
@@ -317,37 +299,12 @@ export const getTestCaseRunHistory = async (testCaseId, { limit = 50, offset = 0
   return response.json();
 };
 
-export const getTestCaseStepVersions = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load version history'));
-  return response.json();
-};
-
-export const restoreTestCaseStepVersion = async (testCaseId, versionId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/restore`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to restore version'));
-  return response.json();
-};
-
 export const submitVersionForReview = async (testCaseId, versionId) => {
   const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to submit version for review'));
-  return response.json();
-};
-
-const refineTestCase = async (testCaseId, feedback) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/refine`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feedback }),
-  });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to refine plan'));
   return response.json();
 };
 

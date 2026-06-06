@@ -12,9 +12,7 @@ from app.api.v1.endpoints import (
     app_permissions,
     apps,
     auth,
-    autonomous_planning,
     charts,
-    conversations,
     data_analysis,
     llm_usage,
     reviews,
@@ -22,7 +20,6 @@ from app.api.v1.endpoints import (
     script_generation,
     tags,
     test_generation,
-    test_steps,
     test_suites,
     test_versions,
     users,
@@ -40,12 +37,6 @@ api_router.include_router(
 api_router.include_router(
     users.router,
     tags=["users"]
-)
-
-api_router.include_router(
-    test_steps.router,
-    prefix="/test-steps",
-    tags=["test-steps"]
 )
 
 api_router.include_router(
@@ -67,21 +58,9 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    autonomous_planning.router,
-    prefix="/autonomous-planning",
-    tags=["autonomous-planning"]
-)
-
-api_router.include_router(
     analytics.router,
     prefix="/analytics",
     tags=["analytics"]
-)
-
-api_router.include_router(
-    conversations.router,
-    prefix="/conversations",
-    tags=["conversations"]
 )
 
 api_router.include_router(

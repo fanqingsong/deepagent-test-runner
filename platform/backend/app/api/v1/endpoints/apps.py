@@ -13,13 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.app import (
     AppCreate,
-    AppPlanResponse,
     AppPublishResponse,
-    AppRefineRequest,
     AppResponse,
     AppRunRequest,
     AppRunResponse,
-    AppSaveStepsResponse,
     AppSummaryResponse,
     AppUpdate,
 )
@@ -125,34 +122,6 @@ async def archive_app(
         raise HTTPException(status_code=404, detail=f"App {app_id} not found")
 
 
-@router.post("/{app_id}/generate-plan", response_model=AppPlanResponse)
-async def generate_plan(
-    app_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(RequirePermission("update:app")),
-):
-    svc = AppService(db)
-    try:
-        result = await svc.generate_plan_only(app_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return AppPlanResponse(**result)
-
-
-@router.post("/{app_id}/save-steps", response_model=AppSaveStepsResponse)
-async def save_steps(
-    app_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(RequirePermission("update:app")),
-):
-    svc = AppService(db)
-    try:
-        result = await svc.save_steps_to_db(app_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return AppSaveStepsResponse(**result)
-
-
 @router.post("/{app_id}/run", response_model=AppRunResponse)
 async def run_app(
     app_id: int,
@@ -162,25 +131,10 @@ async def run_app(
 ):
     svc = AppService(db)
     try:
-        result = await svc.run_app(app_id, force_regenerate=data.force_regenerate, use_existing_plan=data.use_existing_plan)
+        result = await svc.run_app(app_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return AppRunResponse(**result)
-
-
-@router.post("/{app_id}/refine")
-async def refine_app(
-    app_id: int,
-    data: AppRefineRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(RequirePermission("update:app")),
-):
-    svc = AppService(db)
-    try:
-        result = await svc.refine_app(app_id, data.feedback)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return result
 
 
 @router.post("/{app_id}/publish", response_model=AppPublishResponse)
@@ -329,7 +283,6 @@ def _build_response(app) -> dict:
         "status": app.status,
         "test_goal": app.test_goal,
         "test_context": app.test_context or {},
-        "current_plan": app.current_plan or {},
         "test_definition_id": app.test_definition_id,
         "latest_run_id": app.latest_run_id,
         "latest_result": app.latest_result or {},

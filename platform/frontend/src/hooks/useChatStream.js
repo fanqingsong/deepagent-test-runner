@@ -40,8 +40,24 @@ export function useChatStream() {
   useEffect(() => {
     const savedThreadId = sessionStorage.getItem(THREAD_STORAGE_KEY);
     if (savedThreadId && !threadIdRef.current) {
-      threadIdRef.current = savedThreadId;
-      stream.switchThread(savedThreadId);
+      // Verify the thread still exists before reconnecting
+      // Use direct fetch (no SDK retries) to avoid console noise on 404
+      fetch(`${LANGGRAPH_URL}/threads/${savedThreadId}`, {
+        headers: authService.getAuthHeaders(),
+      }).then((res) => {
+        if (res.ok) {
+          threadIdRef.current = savedThreadId;
+          stream.switchThread(savedThreadId);
+        } else {
+          // Thread no longer exists (server restart, etc.) — start fresh
+          sessionStorage.removeItem(THREAD_STORAGE_KEY);
+          threadIdRef.current = null;
+        }
+      }).catch(() => {
+        // Network error — start fresh
+        sessionStorage.removeItem(THREAD_STORAGE_KEY);
+        threadIdRef.current = null;
+      });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

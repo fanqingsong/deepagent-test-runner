@@ -1,6 +1,4 @@
-from pydantic import BaseModel, Field
-from datetime import datetime
-from typing import Optional
+from pydantic import BaseModel
 
 
 class User(BaseModel):
@@ -16,20 +14,3 @@ class User(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class Session(BaseModel):
-    """User session response model"""
-    id: int
-    device: str
-    ip_address: str
-    last_active: datetime
-    is_current: bool
-
-    class Config:
-        from_attributes = True
-
-
-class SessionsListResponse(BaseModel):
-    """List of sessions response"""
-    sessions: list[Session]

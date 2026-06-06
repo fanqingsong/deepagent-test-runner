@@ -10,47 +10,6 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
-class TestStepBase(BaseModel):
-    """Base schema for test step."""
-    step_number: int = Field(..., ge=1, description="Step order number")
-    description: str = Field(..., min_length=1, description="Step description")
-    type: str = Field(..., min_length=1, description="Step type (e.g., 'navigate', 'click', 'fill')")
-    params: dict = Field(default_factory=dict, description="Step parameters")
-    expected_result: Optional[str] = Field(None, description="Expected result of this step")
-
-
-class TestStepCreate(TestStepBase):
-    """Schema for creating a test step."""
-    pass
-
-
-class TestStepUpdate(BaseModel):
-    """Schema for updating a test step."""
-    step_number: Optional[int] = Field(None, ge=1)
-    description: Optional[str] = Field(None, min_length=1)
-    type: Optional[str] = Field(None, min_length=1)
-    params: Optional[dict] = None
-    expected_result: Optional[str] = None
-
-
-class TestStepResponse(TestStepBase):
-    """Schema for test step response."""
-    id: int
-    test_definition_id: int
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
-class TestStepsReplaceRequest(BaseModel):
-    """Schema for replacing all test steps of a test definition."""
-
-    test_steps: List[TestStepCreate] = Field(
-        default_factory=list,
-        description="Full replacement set of test steps (existing steps will be deleted)",
-    )
-
-
 class TestDefinitionBase(BaseModel):
     """Base schema for test definition."""
     name: str = Field(..., min_length=1, max_length=255, description="Test name")
@@ -61,15 +20,12 @@ class TestDefinitionBase(BaseModel):
     tags: List[str] = Field(default_factory=list, description="Test tags")
     test_goal: Optional[str] = Field(None, description="AI planning: Natural language test goal")
     test_context: dict = Field(default_factory=dict, description="AI planning: Additional context")
-    execution_mode: str = Field(default="nl_steps", description="Execution mode: 'nl_steps' or 'script'")
+    execution_mode: str = Field(default="script", description="Execution mode: 'script'")
 
 
 class TestDefinitionCreate(TestDefinitionBase):
     """Schema for creating a test definition."""
-    test_steps: List[TestStepCreate] = Field(
-        default_factory=list,
-        description="Test steps for this definition (optional if using AI planning)"
-    )
+    pass
 
 
 class TestDefinitionUpdate(BaseModel):
@@ -82,7 +38,7 @@ class TestDefinitionUpdate(BaseModel):
     is_active: Optional[bool] = None
     test_goal: Optional[str] = Field(None, description="AI planning: Natural language test goal")
     test_context: Optional[dict] = Field(None, description="AI planning: Additional context")
-    execution_mode: Optional[str] = Field(None, description="Execution mode: 'nl_steps' or 'script'")
+    execution_mode: Optional[str] = Field(None, description="Execution mode: 'script'")
 
     @field_validator("tags")
     @classmethod
@@ -101,7 +57,6 @@ class TestDefinitionResponse(TestDefinitionBase):
     created_by: Optional[int] = None
     version: int
     is_active: bool
-    test_steps: List[TestStepResponse] = []
     playwright_script: Optional[str] = None
     script_status: str = "none"
     script_metadata: dict = {}
@@ -133,7 +88,6 @@ class TestVersionSnapshot(BaseModel):
 
 class ScriptGenerationRequest(BaseModel):
     """Request to generate a Playwright script."""
-    max_retries: int = Field(default=3, ge=1, le=5, description="Max generation attempts")
     force_regenerate: bool = Field(default=False, description="Regenerate even if script exists")
 
 

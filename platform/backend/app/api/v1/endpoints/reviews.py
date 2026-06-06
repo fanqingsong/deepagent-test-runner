@@ -175,7 +175,6 @@ async def approve_version(
         test_def.reviewed_by = current_user.id
         test_def.reviewed_at = datetime.utcnow()
         test_def.is_draft = False
-        test_def.plan_generation_status = "approved"
 
     from app.models.app import App
     app_stmt = select(App).where(App.test_definition_id == version.test_definition_id)
@@ -250,7 +249,6 @@ async def approve_test(
     test_def.reviewed_at = datetime.utcnow()
     test_def.rejection_reason = None
     test_def.is_draft = False
-    test_def.plan_generation_status = "approved"
     await db.commit()
 
     return {"status": "approved", "test_definition_id": test_def.id, "reviewed_by": current_user.id}

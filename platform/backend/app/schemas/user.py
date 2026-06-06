@@ -63,8 +63,3 @@ class Session(BaseModel):
     class Config:
         from_attributes = True
 
-
-class SessionsListResponse(BaseModel):
-    """Sessions list response"""
-    sessions: List[Session]
-    total: int

@@ -1,50 +1,17 @@
 """
-Test management tools for LangGraph agents.
+Database tools for Test Runner agent.
 
-Provides tools for the Planner agent (save plans) and Reviewer agent (read results).
+Tools for reading results and persisting scripts.
 """
 
 import json
 import logging
-from typing import Any, Dict, Optional
 
 from langchain_core.tools import tool
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
-
-
-@tool
-async def save_test_plan(test_definition_id: int, plan_json: str) -> str:
-    """Save a generated test plan to the database.
-
-    Args:
-        test_definition_id: The test definition ID to associate the plan with.
-        plan_json: JSON string with keys: plan_id, steps[], estimated_duration, risk_factors, success_criteria.
-    """
-    from app.core.worker_db import run_with_session
-    from app.models.test_definition import TestDefinition
-
-    plan_data = json.loads(plan_json)
-
-    async def _save(db: AsyncSession):
-        result = await db.execute(
-            select(TestDefinition).where(TestDefinition.id == test_definition_id)
-        )
-        test_def = result.scalar_one_or_none()
-        if not test_def:
-            return f"Test definition {test_definition_id} not found"
-        test_def.ai_generated_plan = plan_data
-        test_def.plan_generation_status = "generated"
-        await db.commit()
-        return f"Plan saved for test definition {test_definition_id}"
-
-    try:
-        return await run_with_session(_save)
-    except Exception as e:
-        logger.error("Failed to save plan: %s", e)
-        return f"Error saving plan: {str(e)}"
 
 
 @tool
@@ -96,4 +63,40 @@ async def get_test_results(run_id: str) -> str:
         return json.dumps({"error": str(e)})
 
 
-TEST_MANAGEMENT_TOOLS = [save_test_plan, get_test_results]
+@tool
+async def save_generated_script(
+    test_definition_id: int,
+    script: str,
+    script_status: str,
+    metadata_json: str = "{}",
+) -> str:
+    """Save generated Playwright script to the test definition in database.
+
+    Args:
+        test_definition_id: The test definition ID to update.
+        script: The generated Playwright script source code.
+        script_status: One of "validated", "draft", or "failed".
+        metadata_json: Optional JSON string with metadata (validation errors etc).
+    """
+    from app.core.worker_db import run_with_session
+    from app.models.test_definition import TestDefinition
+
+    async def _save(db: AsyncSession):
+        result = await db.execute(
+            select(TestDefinition).where(TestDefinition.id == test_definition_id)
+        )
+        test_def = result.scalar_one_or_none()
+        if not test_def:
+            return f"Test definition {test_definition_id} not found"
+        test_def.playwright_script = script
+        test_def.script_status = script_status
+        test_def.script_metadata = json.loads(metadata_json) if metadata_json else {}
+        test_def.execution_mode = "script"
+        await db.commit()
+        return f"Script saved with status '{script_status}'"
+
+    try:
+        return await run_with_session(_save)
+    except Exception as e:
+        logger.error("Failed to save script: %s", e)
+        return f"Error saving script: {str(e)}"

@@ -5,14 +5,12 @@ Generate, validate, and manage Playwright test scripts for test definitions.
 """
 
 import logging
-from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from playwright.async_api import async_playwright
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.test_definition import TestDefinition
@@ -44,9 +42,7 @@ async def generate_script(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate a Playwright script for a test definition."""
-    from app.agents.deepagents_test_runner.page_fetcher import fetch_page_context
-    from app.agents.deepagents_test_runner.script_generator import generate_playwright_script
-    from app.agents.deepagents_test_runner.script_executor import execute_script
+    from app.agents.deepagents_test_runner.runners import run_script_generation
 
     result = await db.execute(
         _get_test_def_or_404(test_definition_id, db, current_user)
@@ -69,69 +65,12 @@ async def generate_script(
     test_def.script_status = "generating"
     await db.commit()
 
-    script = None
-    script_error = None
-
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
-        page = await context.new_page()
-
-        try:
-            page_context = await fetch_page_context(page, test_def.url)
-
-            for attempt in range(body.max_retries):
-                gen_result = await generate_playwright_script(
-                    goal=test_def.test_goal,
-                    url=test_def.url,
-                    page_context=page_context.get("context_text", ""),
-                    previous_error=script_error,
-                    previous_script=script,
-                )
-
-                script = gen_result.get("script")
-                if not script:
-                    script_error = gen_result.get("error", "Script generation failed")
-                    continue
-
-                exec_result = await execute_script(script, page, timeout=60)
-                if exec_result.get("status") == "passed":
-                    test_def.playwright_script = script
-                    test_def.script_status = "validated"
-                    test_def.script_metadata = {
-                        "attempts": attempt + 1,
-                        "last_error": None,
-                    }
-                    await db.commit()
-                    await db.refresh(test_def)
-                    return ScriptResponse(
-                        playwright_script=script,
-                        script_status="validated",
-                        script_metadata=test_def.script_metadata,
-                        execution_mode=test_def.execution_mode,
-                    )
-
-                script_error = exec_result.get("error", "Unknown error")
-                logger.info("Script attempt %d failed: %s", attempt + 1, script_error)
-
-        finally:
-            await browser.close()
-
-    test_def.playwright_script = script
-    test_def.script_status = "draft" if script else "failed"
-    test_def.script_metadata = {
-        "attempts": body.max_retries,
-        "last_error": script_error,
-    }
-    await db.commit()
-    await db.refresh(test_def)
-
-    return ScriptResponse(
-        playwright_script=script,
-        script_status=test_def.script_status,
-        script_metadata=test_def.script_metadata,
-        execution_mode=test_def.execution_mode,
-    )
+    return ScriptResponse(**await run_script_generation(
+        test_definition_id=test_def.id,
+        url=test_def.url,
+        goal=test_def.test_goal,
+        description=test_def.description,
+    ))
 
 
 @router.get("/test-definitions/{test_definition_id}/script", response_model=ScriptResponse)
@@ -191,7 +130,7 @@ async def validate_script(
     db: AsyncSession = Depends(get_db),
 ):
     """Run script validation (execute and report result)."""
-    from app.agents.deepagents_test_runner.script_executor import execute_script
+    from app.agents.deepagents_test_runner.lib import execute_script
 
     result = await db.execute(
         _get_test_def_or_404(test_definition_id, db, current_user)

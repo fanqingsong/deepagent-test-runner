@@ -260,7 +260,7 @@ class RetryTestWorkflow:
                     for idx, step in enumerate(modified_plan["steps"])
                 ]
                 # Force execute_only mode for retries with explicit steps
-                prepare_output.mode = "execute_only"
+                prepare_output.mode = "execute_only"  # retained for retry override
 
             logger.info(
                 f"Retry test prepared: mode={prepare_output.mode}, "

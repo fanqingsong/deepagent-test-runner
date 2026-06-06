@@ -14,7 +14,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.test_step import TestStep
     from app.models.test_version import TestVersion
     from app.models.user import User
 
@@ -42,12 +41,9 @@ class TestDefinition(Base):
     environment: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)
     tags: Mapped[List[str]] = mapped_column(ARRAY(String), default=[], nullable=False)
 
-    # AI Planning fields
-    test_goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # User's natural language goal
-    test_context: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)  # Additional context for planning
-    plan_generation_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)  # pending/generated/approved
-    ai_generated_plan: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)  # Store AI-generated plan
-    plan_metadata: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)  # Plan generation metadata
+    # Test goal and context
+    test_goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    test_context: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(
@@ -81,7 +77,7 @@ class TestDefinition(Base):
     )
 
     # Script generation fields
-    execution_mode: Mapped[str] = mapped_column(String(20), default="nl_steps", nullable=False)
+    execution_mode: Mapped[str] = mapped_column(String(20), default="script", nullable=False)
     playwright_script: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     script_status: Mapped[str] = mapped_column(String(20), default="none", nullable=False)
     script_metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
@@ -98,12 +94,6 @@ class TestDefinition(Base):
     rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationships
-    test_steps: Mapped[List["TestStep"]] = relationship(
-        "TestStep",
-        back_populates="test_definition",
-        cascade="all, delete-orphan",
-        order_by="TestStep.step_number"
-    )
     test_versions: Mapped[List["TestVersion"]] = relationship(
         "TestVersion",
         back_populates="test_definition",

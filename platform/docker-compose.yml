@@ -211,6 +211,7 @@ services:
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Test Cases}
       EMAIL_BACKEND: ${EMAIL_BACKEND:-sync}
       DEBUG: "true"
+      PYTHONPATH: /app
     volumes:
       - ./backend/langgraph.json:/app/langgraph.json:ro
       # Mount shared application code

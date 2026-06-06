@@ -1,7 +1,7 @@
 """
 App Service — orchestration layer for the LLM-APP-style test workspace.
 
-Coordinates planner_agent, ExecutionService, conversation models, and
+Coordinates ExecutionService, conversation models, and
 Temporal workflows to provide the generate → execute → refine/publish workflow.
 """
 
@@ -29,7 +29,7 @@ class AppService:
     # Shared helpers
     # ------------------------------------------------------------------
 
-    async def _ensure_draft_test_definition(self, app: App, plan: dict) -> "TestDefinition":
+    async def _ensure_draft_test_definition(self, app: App) -> "TestDefinition":
         """Return the linked draft TestDefinition, creating one if needed."""
         test_def = None
         if app.test_definition_id:
@@ -47,8 +47,6 @@ class AppService:
                 url=app.url,
                 test_goal=app.test_goal,
                 test_context=app.test_context,
-                ai_generated_plan=plan,
-                plan_generation_status="generated",
                 environment={},
                 tags=["app-generated"],
                 is_active=True,
@@ -60,8 +58,6 @@ class AppService:
             await self.db.flush()
             app.test_definition_id = test_def.id
         else:
-            test_def.ai_generated_plan = plan
-            test_def.plan_generation_status = "generated"
             test_def.test_goal = app.test_goal
             test_def.url = app.url
 
@@ -152,7 +148,7 @@ class AppService:
         app = await self.get_app(app_id)
         if not app:
             return None
-        for key in ("name", "description", "url", "test_goal", "test_context", "icon", "color", "current_plan"):
+        for key in ("name", "description", "url", "test_goal", "test_context", "icon", "color"):
             if key in data and data[key] is not None:
                 setattr(app, key, data[key])
         await self.db.commit()
@@ -193,7 +189,6 @@ class AppService:
             icon=original.icon,
             color=original.color,
             status="draft",
-            current_plan=original.current_plan,
             iteration_count=0,
             created_by=user_id,
             conversation_thread_id=thread.id,
@@ -225,8 +220,6 @@ class AppService:
                     url=app.url,
                     test_goal=app.test_goal,
                     test_context=app.test_context,
-                    ai_generated_plan=app.current_plan,
-                    plan_generation_status="generated" if app.current_plan else "pending",
                     environment={},
                     tags=["app-copied"],
                     is_active=True,
@@ -243,145 +236,36 @@ class AppService:
         return app
 
     # ------------------------------------------------------------------
-    # Generate plan only (no execution)
-    # ------------------------------------------------------------------
-
-    async def generate_plan_only(self, app_id: int) -> dict:
-        app = await self.get_app(app_id)
-        if not app:
-            raise ValueError(f"App {app_id} not found")
-
-        thread = app.conversation_thread
-        if not thread:
-            raise ValueError("App has no conversation thread")
-
-        app.status = "generating"
-        await self.db.flush()
-
-        from app.agents.deepagents_test_runner.planner_agent import generate_test_plan
-
-        plan = await generate_test_plan(
-            goal=app.test_goal,
-            url=app.url,
-            context=app.test_context,
-        )
-        app.current_plan = plan
-
-        await self._ensure_draft_test_definition(app, plan)
-
-        plan_text = self._format_plan_text(plan)
-        ai_msg = ConversationMessage(
-            thread_id=thread.id,
-            role="assistant",
-            content=plan_text,
-            metadata={"type": "plan_generated", "plan": plan},
-        )
-        self.db.add(ai_msg)
-
-        app.status = "draft"
-        await self.db.commit()
-
-        return {"app_id": app.id, "plan": plan, "status": "draft"}
-
-    # ------------------------------------------------------------------
-    # Save steps to test_steps table
+    # Save plan version snapshot
     # ------------------------------------------------------------------
 
     async def _persist_steps(
         self, app: App, test_def: "TestDefinition", run_status: str = "", run_summary: str = ""
     ) -> int:
-        """Write current_plan steps into test_steps rows. Returns count saved.
-
-        Before overwriting, creates a TestVersion snapshot of existing steps.
-        """
-        from app.models.test_step import TestStep
+        """Create a TestVersion snapshot. Returns 1 if saved, 0 if skipped."""
         from app.models.test_version import TestVersion
-        from sqlalchemy import delete as sa_delete
 
-        plan = app.current_plan or {}
-        steps = plan.get("steps", [])
-        if not steps:
-            return 0
-
-        # Snapshot existing steps before overwriting
-        existing = await self.db.execute(
-            select(TestStep)
-            .where(TestStep.test_definition_id == test_def.id)
-            .order_by(TestStep.step_number)
-        )
-        existing_steps = existing.scalars().all()
-
-        if existing_steps:
-            snapshot_data = {
-                "name": app.name,
-                "url": app.url,
-                "test_goal": app.test_goal,
-                "description": app.description,
-                "test_context": app.test_context or {},
-                "steps": [
-                    {
-                        "step_number": s.step_number,
-                        "description": s.description,
-                        "type": s.type,
-                        "params": s.params,
-                        "expected_result": s.expected_result,
-                    }
-                    for s in existing_steps
-                ]
-            }
-            description = run_summary or "Saved before overwrite"
-            version = TestVersion(
-                test_definition_id=test_def.id,
-                version=test_def.version,
-                snapshot=snapshot_data,
-                change_description=description,
-                created_by="system",
-            )
-            self.db.add(version)
-            test_def.version += 1
-
-        await self.db.execute(
-            sa_delete(TestStep).where(
-                TestStep.test_definition_id == test_def.id
-            )
-        )
-        new_steps = [
-            TestStep(
-                test_definition_id=test_def.id,
-                step_number=s.get("step_number", idx + 1),
-                description=s.get("description", ""),
-                type=s.get("type", "action"),
-                params=s.get("params", {}),
-                expected_result=s.get("verification") or s.get("expected_result"),
-                is_ai_generated=True,
-                confidence_score=s.get("confidence"),
-            )
-            for idx, s in enumerate(steps)
-        ]
-        self.db.add_all(new_steps)
-        await self.db.flush()
-        return len(new_steps)
-
-    async def save_steps_to_db(self, app_id: int) -> dict:
-        app = await self.get_app(app_id)
-        if not app:
-            raise ValueError(f"App {app_id} not found")
-
-        plan = app.current_plan or {}
-        steps = plan.get("steps", [])
-        if not steps:
-            raise ValueError("No steps to save — generate a plan first")
-
-        test_def = await self._ensure_draft_test_definition(app, plan)
-        count = await self._persist_steps(app, test_def)
-        await self.db.commit()
-
-        return {
-            "app_id": app.id,
-            "test_definition_id": test_def.id,
-            "steps_count": count,
-            "status": "saved",
+        snapshot_data = {
+            "name": app.name,
+            "url": app.url,
+            "test_goal": app.test_goal,
+            "description": app.description,
+            "test_context": app.test_context or {},
+            "execution_mode": test_def.execution_mode,
+            "script_status": test_def.script_status,
         }
+        description = run_summary or "Version saved"
+        version = TestVersion(
+            test_definition_id=test_def.id,
+            version=test_def.version,
+            snapshot=snapshot_data,
+            change_description=description,
+            created_by="system",
+        )
+        self.db.add(version)
+        test_def.version += 1
+        await self.db.flush()
+        return 1
 
     # ------------------------------------------------------------------
     # Step version history
@@ -448,14 +332,14 @@ class AppService:
         if not version:
             raise ValueError("Version not found")
 
-        # Update current_plan with snapshot steps
-        snapshot_steps = (version.snapshot or {}).get("steps", [])
-        current_plan = app.current_plan or {}
-        current_plan["steps"] = snapshot_steps
-        app.current_plan = current_plan
+        # Restore test definition data from snapshot
+        snapshot = version.snapshot or {}
+        if snapshot.get("test_goal"):
+            test_def.test_goal = snapshot["test_goal"]
+        if snapshot.get("url"):
+            test_def.url = snapshot["url"]
         app.iteration_count += 1
 
-        # Persist (will auto-create version snapshot of current steps before overwriting)
         count = await self._persist_steps(
             app, test_def, run_summary=f"Restored from v{version.version}"
         )
@@ -504,7 +388,7 @@ class AppService:
     # Run — generate plan + execute
     # ------------------------------------------------------------------
 
-    async def run_app(self, app_id: int, force_regenerate: bool = False, use_existing_plan: bool = False) -> dict:
+    async def run_app(self, app_id: int) -> dict:
         app = await self.get_app(app_id)
         if not app:
             raise ValueError(f"App {app_id} not found")
@@ -516,31 +400,10 @@ class AppService:
         app.status = "generating"
         await self.db.flush()
 
-        # Generate plan if needed
-        plan = app.current_plan
-        if not use_existing_plan and (force_regenerate or not plan or not plan.get("steps")):
-            from app.agents.deepagents_test_runner.planner_agent import generate_test_plan
+        # Ensure a draft test_definition exists
+        test_def = await self._ensure_draft_test_definition(app)
 
-            plan = await generate_test_plan(
-                goal=app.test_goal,
-                url=app.url,
-                context=app.test_context,
-            )
-            app.current_plan = plan
-
-            plan_text = self._format_plan_text(plan)
-            ai_msg = ConversationMessage(
-                thread_id=thread.id,
-                role="assistant",
-                content=plan_text,
-                metadata={"type": "plan_generated", "plan": plan},
-            )
-            self.db.add(ai_msg)
-
-        # Ensure a draft test_definition exists and plan is synced
-        test_def = await self._ensure_draft_test_definition(app, plan)
-
-        # Persist steps to test_steps table so executor can access them
+        # Persist version snapshot
         await self._persist_steps(app, test_def)
 
         # Create test run via ExecutionService
@@ -582,7 +445,7 @@ class AppService:
             "environment": app.test_context.get("environment", {}),
             "workflow_id": workflow_result.id,
             "run_id": workflow_result.run_id,
-            "total_steps": len(plan.get("steps", [])),
+            "total_steps": 1,
             "completed_steps": [],
             "current_step": 0,
         })
@@ -593,62 +456,6 @@ class AppService:
         await self.db.commit()
 
         return {"job_id": run_id, "run_id": run_id, "status": "running"}
-
-    # ------------------------------------------------------------------
-    # Refine — user feedback → re-plan
-    # ------------------------------------------------------------------
-
-    async def refine_app(self, app_id: int, feedback: str) -> dict:
-        app = await self.get_app(app_id)
-        if not app:
-            raise ValueError(f"App {app_id} not found")
-
-        thread = app.conversation_thread
-        if not thread:
-            raise ValueError("App has no conversation thread")
-
-        # Add user message
-        user_msg = ConversationMessage(
-            thread_id=thread.id,
-            role="user",
-            content=feedback,
-            metadata={"type": "refine_feedback"},
-        )
-        self.db.add(user_msg)
-        await self.db.flush()
-
-        # Build conversation history for planner
-        history = [
-            {"role": m.role, "content": m.content}
-            for m in thread.messages
-        ]
-
-        # Refine plan
-        from app.agents.deepagents_test_runner.planner_agent import refine_test_plan
-
-        refined = await refine_test_plan(
-            goal=app.test_goal,
-            url=app.url,
-            current_plan=app.current_plan,
-            conversation_history=history,
-            user_feedback=feedback,
-            context=app.test_context,
-        )
-        app.current_plan = refined
-
-        plan_text = self._format_plan_text(refined)
-        ai_msg = ConversationMessage(
-            thread_id=thread.id,
-            role="assistant",
-            content=plan_text,
-            metadata={"type": "plan_refined", "plan": refined},
-        )
-        self.db.add(ai_msg)
-
-        app.status = "draft"
-        await self.db.commit()
-
-        return {"status": "refined", "plan": refined}
 
     # ------------------------------------------------------------------
     # Publish — save as persistent test definition
@@ -678,21 +485,21 @@ class AppService:
                     existing_tags.append(t)
             test_def.tags = existing_tags
         else:
-            test_def = await self._ensure_draft_test_definition(app, app.current_plan or {})
+            test_def = await self._ensure_draft_test_definition(app)
 
         # Persist steps (this also creates a version snapshot)
         await self._persist_steps(app, test_def)
 
         # Create a full-config version snapshot and submit it for review
         from app.models.test_version import TestVersion
-        steps = (app.current_plan or {}).get("steps", [])
         version_snapshot = {
             "name": app.name,
             "url": app.url,
             "test_goal": app.test_goal,
             "description": app.description,
             "test_context": app.test_context or {},
-            "steps": steps,
+            "execution_mode": test_def.execution_mode,
+            "script_status": test_def.script_status,
         }
         review_version = TestVersion(
             test_definition_id=test_def.id,
@@ -845,18 +652,3 @@ class AppService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _format_plan_text(plan: dict) -> str:
-        steps = plan.get("steps", [])
-        lines = ["Generated test plan:\n"]
-        for step in steps:
-            num = step.get("step_number", "?")
-            desc = step.get("description", "")
-            vtype = step.get("type", "")
-            verification = step.get("verification", "")
-            lines.append(f"Step {num}: [{vtype}] {desc}")
-            if verification:
-                lines.append(f"  Verify: {verification}")
-        lines.append(f"\nEstimated duration: {plan.get('estimated_duration', '?')}s")
-        return "\n".join(lines)

@@ -7,20 +7,8 @@ from app.schemas.auth import (
     LoginResponse,
     LogoutResponse,
 )
-from app.schemas.mfa import (
-    MFAVerificationRequest,
-    MFASetupResponse,
-    MFAEnableRequest,
-    MFAEnabledResponse,
-    MFADisableRequest,
-)
-from app.schemas.password import (
-    PasswordResetRequest,
-    PasswordResetConfirmRequest,
-    PasswordChangeRequest,
-)
 from app.schemas.auth_user import User as AuthUser
-from app.schemas.user import Session, SessionsListResponse
+from app.schemas.user import Session
 
 # Backend schemas (original)
 from app.schemas.test_definition import (
@@ -29,10 +17,6 @@ from app.schemas.test_definition import (
     TestDefinitionUpdate,
     TestDefinitionListResponse,
     TestVersionSnapshot,
-    TestStepCreate,
-    TestStepResponse,
-    TestStepUpdate,
-    TestStepsReplaceRequest,
 )
 from app.schemas.test_generation import (
     TestCaseGenerateRequest,
@@ -57,30 +41,15 @@ __all__ = [
     "LoginRequest",
     "LoginResponse",
     "LogoutResponse",
-    # MFA
-    "MFAVerificationRequest",
-    "MFASetupResponse",
-    "MFAEnableRequest",
-    "MFAEnabledResponse",
-    "MFADisableRequest",
-    # Password
-    "PasswordResetRequest",
-    "PasswordResetConfirmRequest",
-    "PasswordChangeRequest",
     # User
     "AuthUser",
     "Session",
-    "SessionsListResponse",
     # Test Definitions
     "TestDefinitionCreate",
     "TestDefinitionResponse",
     "TestDefinitionUpdate",
     "TestDefinitionListResponse",
     "TestVersionSnapshot",
-    "TestStepCreate",
-    "TestStepResponse",
-    "TestStepUpdate",
-    "TestStepsReplaceRequest",
     # Test Generation
     "TestCaseGenerateRequest",
     "TestCaseGenerateResponse",

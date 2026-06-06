@@ -7,7 +7,7 @@ These activities wrap the existing execution service and agent logic.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
@@ -18,7 +18,6 @@ from app.core.langfuse_callback import langfuse_handler
 from app.core.worker_db import run_with_session
 from app.temporal.database import get_worker_session
 from app.models.test_definition import TestDefinition
-from app.models.test_step import TestStep
 from app.services.execution_service import ExecutionService
 from temporalio import activity
 
@@ -55,7 +54,7 @@ class PrepareTestOutput:
     test_steps: List[Dict[str, Any]]
     environment: Dict[str, Any]
     mode: str
-    execution_mode: str = "nl_steps"
+    execution_mode: str = "script"
     playwright_script: Optional[str] = None
     script_status: Optional[str] = None
 
@@ -71,7 +70,7 @@ class BrowserAutomationInput:
     test_steps: List[Dict[str, Any]]
     environment: Dict[str, Any]
     mode: str
-    execution_mode: str = "nl_steps"
+    execution_mode: str = "script"
     playwright_script: Optional[str] = None
     script_status: Optional[str] = None
 
@@ -121,7 +120,7 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
     This activity:
     1. Loads the test definition from database
     2. Loads test steps (prioritizing AI-generated plan if available)
-    3. Determines execution mode (execute_only vs full_pipeline)
+    3. Determines execution mode
     4. Returns prepared data for browser automation
 
     Args:
@@ -155,67 +154,8 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
         test_url = test_def.url
         test_goal = getattr(test_def, "test_goal", None)
 
-        # Prioritize AI-generated plan if available
-        test_steps: List[Dict[str, Any]] = []
-
-        if test_def.ai_generated_plan and test_def.plan_generation_status in ("approved", "generated"):
-            logger.info(
-                f"Using AI-generated plan for test {test_definition_id} (status: {test_def.plan_generation_status})"
-            )
-            try:
-                import json
-
-                plan_data = test_def.ai_generated_plan
-                if isinstance(plan_data, str):
-                    plan_data = json.loads(plan_data)
-
-                ai_steps = plan_data.get("steps", [])
-                for idx, step in enumerate(ai_steps):
-                    test_steps.append({
-                        "step_number": idx + 1,
-                        "description": step.get("description", ""),
-                    })
-
-                logger.info(f"Loaded {len(test_steps)} steps from AI-generated plan")
-            except (json.JSONDecodeError, KeyError, TypeError) as e:
-                logger.warning(f"Failed to parse AI-generated plan: {e}. Falling back to traditional steps.")
-                test_steps = []
-
-        # Fall back to traditional test_steps if no AI plan
-        if not test_steps:
-            logger.info(f"Using traditional test_steps for test {test_definition_id}")
-            steps_result = await db.execute(
-                select(TestStep)
-                .where(TestStep.test_definition_id == test_definition_id)
-                .order_by(TestStep.step_number)
-            )
-            steps = steps_result.scalars().all()
-
-            for step in steps:
-                description = (step.description or "").strip()
-                if not description:
-                    description = step.type
-                    params = step.params or {}
-                    if params.get("selector"):
-                        description += f" selector '{params['selector']}'"
-                    if params.get("value"):
-                        description += f" with value '{params['value']}'"
-                    if params.get("url"):
-                        description += f" to '{params['url']}'"
-                test_steps.append({
-                    "step_number": step.step_number,
-                    "description": description,
-                })
-
-            logger.info(f"Loaded {len(test_steps)} traditional steps")
-
-        # Determine execution mode
         mode = "execute_only"
-        if not test_steps and test_goal:
-            mode = "full_pipeline"
-
-        # Script mode fields
-        execution_mode = getattr(test_def, "execution_mode", "nl_steps")
+        execution_mode = getattr(test_def, "execution_mode", "script")
         playwright_script = getattr(test_def, "playwright_script", None)
         script_status = getattr(test_def, "script_status", None)
 
@@ -224,7 +164,7 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
             run_id=run_id,
             url=test_url,
             test_goal=test_goal,
-            test_steps=test_steps,
+            test_steps=[],
             environment=environment,
             mode=mode,
             execution_mode=execution_mode,
@@ -238,9 +178,7 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
 @activity.defn
 async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutomationOutput:
     """
-    Execute browser automation using Playwright and Deep Agents framework.
-
-    This activity delegates to the Deep Agents implementation for all test execution.
+    Execute browser automation using Playwright.
 
     Args:
         input: BrowserAutomationInput with all execution parameters
@@ -248,9 +186,78 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
     Returns:
         BrowserAutomationOutput with execution results
     """
-    logger.info(f"Using Deep Agents for run {input.run_id}")
-    from app.temporal.activities.deepagents_activities import run_deepagents_automation
-    return await run_deepagents_automation(input)
+    start_time = int(datetime.utcnow().timestamp() * 1000)
+    run_id = input.run_id
+
+    from playwright.async_api import async_playwright
+    from app.core.config import settings
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=settings.PLAYWRIGHT_HEADLESS)
+        context = await browser.new_context()
+        page = await context.new_page()
+
+        try:
+            page.set_default_timeout(settings.TEST_TIMEOUT)
+
+            if input.url:
+                await page.goto(input.url, wait_until="domcontentloaded", timeout=30000)
+
+            if input.execution_mode == "script" and input.playwright_script and input.script_status == "approved":
+                from app.agents.deepagents_test_runner.lib import execute_script
+                exec_result = await execute_script(input.playwright_script, page, timeout=120)
+
+                end_time = int(datetime.utcnow().timestamp() * 1000)
+                return BrowserAutomationOutput(
+                    run_id=run_id,
+                    test_definition_id=input.test_definition_id,
+                    status=exec_result.get("status", "failed"),
+                    test_cases=exec_result.get("step_results", []),
+                    error=exec_result.get("error"),
+                    start_time=start_time,
+                    end_time=end_time,
+                    total_duration=end_time - start_time,
+                    total_tests=1,
+                    passed=1 if exec_result.get("status") == "passed" else 0,
+                    failed=1 if exec_result.get("status") != "passed" else 0,
+                    skipped=0,
+                )
+
+            end_time = int(datetime.utcnow().timestamp() * 1000)
+            return BrowserAutomationOutput(
+                run_id=run_id,
+                test_definition_id=input.test_definition_id,
+                status="error",
+                test_cases=[],
+                error="No approved script found for execution",
+                start_time=start_time,
+                end_time=end_time,
+                total_duration=end_time - start_time,
+                total_tests=0,
+                passed=0,
+                failed=0,
+                skipped=0,
+            )
+
+        except Exception as e:
+            logger.error(f"Browser automation failed for run {run_id}: {e}")
+            end_time = int(datetime.utcnow().timestamp() * 1000)
+            return BrowserAutomationOutput(
+                run_id=run_id,
+                test_definition_id=input.test_definition_id,
+                status="error",
+                test_cases=[],
+                error=str(e),
+                start_time=start_time,
+                end_time=end_time,
+                total_duration=end_time - start_time,
+                total_tests=0,
+                passed=0,
+                failed=0,
+                skipped=0,
+            )
+        finally:
+            await browser.close()
 
 
 @activity.defn

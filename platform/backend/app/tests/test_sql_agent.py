@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from app.agents.sql_agent.sql_tools import (
+from app.agents.chat_assistant.sql_tools import (
     _is_read_only,
     _ensure_limit,
     MAX_RESULT_ROWS,
@@ -125,7 +125,7 @@ class TestEnsureLimit:
 class TestSqlDbListTables:
     """Tests for the sql_db_list_tables tool."""
 
-    @patch("app.agents.sql_agent.sql_tools.sql_db_list_tables")
+    @patch("app.agents.chat_assistant.sql_tools.sql_db_list_tables")
     def test_returns_comma_separated_tables(self, mock_tool):
         # The @tool decorator wraps the function, so we test via direct call
         # by mocking sync_session_maker
@@ -189,7 +189,7 @@ class TestSqlDbQuery:
         result = sql_db_query.invoke("TRUNCATE TABLE test_runs")
         assert "Error" in result
 
-    @patch("app.agents.sql_agent.sql_tools.sync_session_maker", create=True)
+    @patch("app.agents.chat_assistant.sql_tools.sync_session_maker", create=True)
     def test_executes_select(self, mock_sm):
         """Mock DB session to verify a SELECT query is executed."""
         mock_session = MagicMock()
@@ -201,7 +201,7 @@ class TestSqlDbQuery:
         mock_session.rollback = MagicMock()
         mock_session.close = MagicMock()
 
-        with patch("app.agents.sql_agent.sql_tools.sync_session_maker", mock_sm, create=True):
+        with patch("app.agents.chat_assistant.sql_tools.sync_session_maker", mock_sm, create=True):
             with patch.dict("sys.modules", {"app.core.database": MagicMock(sync_session_maker=mock_sm)}):
                 result = sql_db_query.invoke("SELECT id, status FROM test_runs LIMIT 10")
 
@@ -227,7 +227,7 @@ class TestSqlDbQueryChecker:
         assert sql_db_query_checker.description
         assert "check" in sql_db_query_checker.description.lower()
 
-    @patch("app.agents.sql_agent.sql_tools.get_llm")
+    @patch("app.agents.chat_assistant.sql_tools.get_llm")
     def test_returns_llm_response(self, mock_get_llm):
         mock_llm = MagicMock()
         mock_llm.invoke.return_value = MagicMock(
@@ -239,7 +239,7 @@ class TestSqlDbQueryChecker:
         assert "SELECT" in result
         assert "LIMIT" in result
 
-    @patch("app.agents.sql_agent.sql_tools.get_llm")
+    @patch("app.agents.chat_assistant.sql_tools.get_llm")
     def test_passes_query_to_llm(self, mock_get_llm):
         mock_llm = MagicMock()
         mock_llm.invoke.return_value = MagicMock(content="SELECT 1")
@@ -250,7 +250,7 @@ class TestSqlDbQueryChecker:
         call_arg = mock_llm.invoke.call_args[0][0]
         assert "SELECT * FROM test_runs" in call_arg
 
-    @patch("app.agents.sql_agent.sql_tools.get_llm")
+    @patch("app.agents.chat_assistant.sql_tools.get_llm")
     def test_uses_temperature_zero(self, mock_get_llm):
         mock_llm = MagicMock()
         mock_llm.invoke.return_value = MagicMock(content="SELECT 1")

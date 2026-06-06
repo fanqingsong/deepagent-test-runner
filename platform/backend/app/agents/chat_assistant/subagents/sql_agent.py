@@ -8,7 +8,7 @@ and return results. Read-only access only.
 from deepagents import CompiledSubAgent
 from langchain.agents import create_agent
 
-from app.agents.sql_agent.sql_tools import (
+from app.agents.chat_assistant.sql_tools import (
     sql_db_list_tables,
     sql_db_schema,
     sql_db_query,

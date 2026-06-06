@@ -36,7 +36,6 @@ class App(Base):
 
     test_goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     test_context: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)
-    current_plan: Mapped[dict] = mapped_column(JSONB, default={}, nullable=False)
 
     conversation_thread_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("conversation_threads.id", ondelete="SET NULL"), nullable=True,

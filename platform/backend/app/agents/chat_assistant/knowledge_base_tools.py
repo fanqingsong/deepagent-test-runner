@@ -160,7 +160,7 @@ async def _query_db(sub_query: str) -> tuple[str, str]:
         Tuple of (source_name, result_text)
     """
     try:
-        from app.agents.sql_agent.sql_tools import _ensure_limit, _is_read_only
+        from app.agents.chat_assistant.sql_tools import _ensure_limit, _is_read_only
 
         # Generate SQL using LLM
         sql_gen_prompt = f"""Convert the following natural language query into a PostgreSQL SQL query.
@@ -215,7 +215,7 @@ def _execute_sync_query(sql_query: str) -> str:
     Returns:
         Formatted result text
     """
-    from app.agents.sql_agent.sql_tools import MAX_RESULT_ROWS
+    from app.agents.chat_assistant.sql_tools import MAX_RESULT_ROWS
 
     db = sync_session_maker()
     try:

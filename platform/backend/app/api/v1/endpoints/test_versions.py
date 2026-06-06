@@ -9,12 +9,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.permissions import RequirePermission
 from app.core.security import get_current_user
-from app.models import TestDefinition, TestStep, TestVersion
+from app.models import TestDefinition, TestVersion
 from app.models.user import User
 from app.schemas import TestDefinitionResponse, TestVersionSnapshot
 
@@ -27,12 +26,7 @@ async def list_test_versions(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    List all versions of a test definition.
-
-    - **test_definition_id**: Test definition internal ID
-    """
-    # Verify test definition exists
+    """List all versions of a test definition."""
     result = await db.execute(
         select(TestDefinition).where(TestDefinition.id == test_definition_id)
     )
@@ -44,7 +38,6 @@ async def list_test_versions(
             detail=f"Test definition with id {test_definition_id} not found"
         )
 
-    # Get versions
     result = await db.execute(
         select(TestVersion)
         .where(TestVersion.test_definition_id == test_definition_id)
@@ -61,11 +54,7 @@ async def get_test_version(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Get a specific test version snapshot.
-
-    - **version_id**: Test version internal ID
-    """
+    """Get a specific test version snapshot."""
     result = await db.execute(select(TestVersion).where(TestVersion.id == version_id))
     version = result.scalar_one_or_none()
 
@@ -85,19 +74,9 @@ async def restore_test_version(
     current_user: User = Depends(RequirePermission("update:test")),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Restore a test definition to a specific version.
-
-    Creates a new version snapshot before restoring.
-
-    - **test_definition_id**: Test definition internal ID
-    - **version_id**: Version to restore
-    """
-    # Get test definition
+    """Restore a test definition to a specific version."""
     result = await db.execute(
-        select(TestDefinition)
-        .options(selectinload(TestDefinition.test_steps))
-        .where(TestDefinition.id == test_definition_id)
+        select(TestDefinition).where(TestDefinition.id == test_definition_id)
     )
     test_def = result.scalar_one_or_none()
 
@@ -107,7 +86,6 @@ async def restore_test_version(
             detail=f"Test definition with id {test_definition_id} not found"
         )
 
-    # Get version to restore
     result = await db.execute(select(TestVersion).where(TestVersion.id == version_id))
     version = result.scalar_one_or_none()
 
@@ -124,14 +102,12 @@ async def restore_test_version(
         version=test_def.version,
         snapshot=current_snapshot,
         change_description="Pre-restore snapshot",
-        created_by="system"  # TODO: Get from JWT token in Task 5
+        created_by="system",
     )
     db.add(pre_restore_version)
 
     # Restore from version snapshot
     snapshot_data = version.snapshot
-
-    # Update test definition fields
     test_def.name = snapshot_data.get("name", test_def.name)
     test_def.description = snapshot_data.get("description")
     test_def.url = snapshot_data.get("url")
@@ -139,30 +115,10 @@ async def restore_test_version(
     test_def.tags = snapshot_data.get("tags", [])
     test_def.version += 1
 
-    # Restore test steps
-    # Delete existing steps
-    for step in test_def.test_steps:
-        await db.delete(step)
-
-    # Add steps from snapshot
-    for step_data in snapshot_data.get("test_steps", []):
-        new_step = TestStep(
-            test_definition_id=test_definition_id,
-            step_number=step_data.get("step_number"),
-            description=step_data.get("description"),
-            type=step_data.get("type"),
-            params=step_data.get("params", {}),
-            expected_result=step_data.get("expected_result")
-        )
-        db.add(new_step)
-
     await db.commit()
     await db.refresh(test_def)
 
-    # Reload with test steps
     result = await db.execute(
-        select(TestDefinition)
-        .options(selectinload(TestDefinition.test_steps))
-        .where(TestDefinition.id == test_definition_id)
+        select(TestDefinition).where(TestDefinition.id == test_definition_id)
     )
     return result.scalar_one()

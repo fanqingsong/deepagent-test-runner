@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-AI-powered E2E testing framework using GLM LLM + LangGraph + Playwright for browser automation.
+AI-powered E2E testing framework using GLM LLM + DeepAgents + Playwright for browser automation.
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ Detailed guidance is organized in `.claude/rules/`:
 | `frontend.md` | Design system, routing, state management |
 | `i18n.md` | Internationalization requirements |
 | `backend.md` | API structure, LLM integration, services |
-| `test-execution.md` | LangGraph pipeline, execution flow |
+| `test-execution.md` | DeepAgents test runner pipeline, execution flow |
 | `troubleshooting.md` | Common issues and solutions |
 | `config.md` | Environment variables, port mappings |
 | `performance.md` | Query optimization, worker scaling |

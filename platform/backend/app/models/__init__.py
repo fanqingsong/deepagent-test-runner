@@ -7,7 +7,6 @@ Export all ORM models for convenient importing.
 from app.models.role import Role, Permission, role_permissions
 from app.models.user import User
 from app.models.test_definition import TestDefinition
-from app.models.test_step import TestStep
 from app.models.test_version import TestVersion
 from app.models.schedule import Schedule
 from app.models.test_run import TestRun
@@ -27,7 +26,6 @@ __all__ = [
     "role_permissions",
     "User",
     "TestDefinition",
-    "TestStep",
     "TestVersion",
     "Schedule",
     "TestRun",
