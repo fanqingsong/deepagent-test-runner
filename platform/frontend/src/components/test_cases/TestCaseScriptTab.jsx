@@ -80,6 +80,7 @@ export default function TestCaseScriptTab({ testCaseId, appId, onRunComplete, re
       await stream.generate({ force_regenerate: scriptStatus !== 'none' });
     } catch (e) {
       setError(e.message);
+      setScriptStatus('none');
     }
   };
 
@@ -176,6 +177,13 @@ export default function TestCaseScriptTab({ testCaseId, appId, onRunComplete, re
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   };
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const statusColor = STATUS_COLORS[scriptStatus] || '#a0a0a0';
   const generating = stream.active;
