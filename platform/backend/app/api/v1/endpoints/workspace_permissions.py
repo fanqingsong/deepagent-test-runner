@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models.app import App
+from app.models.test_workspace import TestWorkspace
 from app.models.user import User
 from app.services.permission_service import PermissionService
 from app.core.security import get_current_user
@@ -33,7 +33,7 @@ class PermissionUpdateRequest(BaseModel):
 
 class PermissionResponse(BaseModel):
     id: int
-    app_id: int
+    workspace_id: int
     user_id: int
     username: Optional[str] = None
     email: Optional[str] = None
@@ -42,34 +42,34 @@ class PermissionResponse(BaseModel):
     created_at: Optional[str] = None
 
 
-@router.get("/{app_id}/permissions", response_model=List[PermissionResponse])
+@router.get("/{workspace_id}/permissions", response_model=List[PermissionResponse])
 async def list_permissions(
-    app_id: int,
+    workspace_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(RequirePermission("read:app")),
+    current_user: User = Depends(RequirePermission("read:test-case")),
 ):
-    stmt = select(App).where(App.id == app_id)
+    stmt = select(TestWorkspace).where(TestWorkspace.id == workspace_id)
     result = await db.execute(stmt)
-    app = result.scalar_one_or_none()
-    if not app:
-        raise HTTPException(status_code=404, detail="App not found")
+    workspace = result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="TestWorkspace not found")
 
     svc = PermissionService(db)
-    return await svc.list_permissions(app_id)
+    return await svc.list_permissions(workspace_id)
 
 
-@router.post("/{app_id}/permissions", response_model=PermissionResponse, status_code=201)
+@router.post("/{workspace_id}/permissions", response_model=PermissionResponse, status_code=201)
 async def add_permission(
-    app_id: int,
+    workspace_id: int,
     req: PermissionCreateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(RequirePermission("update:app")),
+    current_user: User = Depends(RequirePermission("update:test-case")),
 ):
-    stmt = select(App).where(App.id == app_id)
+    stmt = select(TestWorkspace).where(TestWorkspace.id == workspace_id)
     result = await db.execute(stmt)
-    app = result.scalar_one_or_none()
-    if not app:
-        raise HTTPException(status_code=404, detail="App not found")
+    workspace = result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="TestWorkspace not found")
 
     stmt = select(User).where(User.id == req.user_id)
     result = await db.execute(stmt)
@@ -80,7 +80,7 @@ async def add_permission(
     try:
         svc = PermissionService(db)
         perm = await svc.add_permission(
-            app_id=app_id,
+            workspace_id=workspace_id,
             user_id=req.user_id,
             permission_type=req.permission_type,
         )
@@ -91,18 +91,18 @@ async def add_permission(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.put("/{app_id}/permissions/{user_id}", response_model=PermissionResponse)
+@router.put("/{workspace_id}/permissions/{user_id}", response_model=PermissionResponse)
 async def update_permission(
-    app_id: int,
+    workspace_id: int,
     user_id: int,
     req: PermissionUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(RequirePermission("update:app")),
+    current_user: User = Depends(RequirePermission("update:test-case")),
 ):
     try:
         svc = PermissionService(db)
         perm = await svc.update_permission(
-            app_id=app_id,
+            workspace_id=workspace_id,
             user_id=user_id,
             permission_type=req.permission_type,
         )
@@ -118,14 +118,14 @@ async def update_permission(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/{app_id}/permissions/{user_id}", status_code=204)
+@router.delete("/{workspace_id}/permissions/{user_id}", status_code=204)
 async def remove_permission(
-    app_id: int,
+    workspace_id: int,
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(RequirePermission("update:app")),
+    current_user: User = Depends(RequirePermission("update:test-case")),
 ):
     svc = PermissionService(db)
-    removed = await svc.remove_permission(app_id=app_id, user_id=user_id)
+    removed = await svc.remove_permission(workspace_id=workspace_id, user_id=user_id)
     if not removed:
         raise HTTPException(status_code=404, detail="Permission not found")

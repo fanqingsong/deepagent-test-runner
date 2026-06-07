@@ -1,0 +1,667 @@
+/* Suite Composer Workspace - Split-Pane Layout */
+
+.composer-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f4f4f4;
+}
+
+/* ── Header Bar ─────────────────────────────────────── */
+
+.composer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 48px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.composer-header-name {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.composer-header-separator {
+  width: 1px;
+  height: 20px;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+
+/* Draft mode toggle */
+.composer-draft-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #525252;
+  background: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.composer-draft-toggle:hover {
+  background: #e8e8e8;
+}
+
+.composer-draft-toggle--active {
+  background: #edf5ff;
+  color: #0f62fe;
+  border-color: #0f62fe;
+}
+
+.composer-draft-toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8d8d8d;
+  flex-shrink: 0;
+}
+
+.composer-draft-toggle--active .composer-draft-toggle-dot {
+  background: #0f62fe;
+}
+
+/* Status badge */
+.composer-status-badge {
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.composer-status-badge.status-draft { background: #f4f4f4; color: #525252; }
+.composer-status-badge.status-pending_review { background: '#f1c21b20'; color: '#8a6914'; }
+.composer-status-badge.status-approved { background: #defbe6; color: '#198038'; }
+.composer-status-badge.status-rejected { background: '#fff1f1'; color: '#da1e28'; }
+
+/* Header actions */
+.composer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.composer-run-btn {
+  padding: 6px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #fff;
+  background: #0f62fe;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.composer-run-btn:hover:not(:disabled) { background: #0353e9; }
+.composer-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.composer-delete-btn {
+  padding: 6px 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #da1e28;
+  background: none;
+  border: 1px solid #da1e28;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.composer-delete-btn:hover { background: #fff1f1; }
+
+.composer-submit-btn {
+  padding: 6px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #fff;
+  background: #0f62fe;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.composer-submit-btn:hover { background: #0353e9; }
+.composer-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Split Pane ─────────────────────────────────────── */
+
+.composer-split-pane {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left Pane */
+.composer-left-pane {
+  width: 50%;
+  min-width: 360px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Draggable divider */
+.composer-divider {
+  width: 4px;
+  background: #e0e0e0;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.composer-divider:hover,
+.composer-divider--dragging {
+  background: #0f62fe;
+}
+
+/* Right Pane */
+.composer-right-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f4f4f4;
+}
+
+/* ── Config Section ─────────────────────────────────── */
+
+.composer-config-section {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* ── Entries Section ─────────────────────────────────── */
+
+.composer-script-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.composer-script-section-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.composer-script-section-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composer-script-section-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Shared Styles ──────────────────────────────────── */
+
+.composer-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #525252;
+}
+
+.composer-empty-icon {
+  font-size: 32px;
+  margin-bottom: 16px;
+  color: #8d8d8d;
+}
+
+.composer-empty h3 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.composer-empty p {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  color: #8d8d8d;
+  margin: 0;
+}
+
+.composer-error-bar {
+  padding: 8px 16px;
+  background: #fff1f1;
+  color: #da1e28;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.composer-config-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #f4f4f4;
+  cursor: pointer;
+  user-select: none;
+}
+
+.composer-config-section-header:hover {
+  background: #e8e8e8;
+}
+
+.composer-config-section-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composer-config-collapse-icon {
+  font-size: 10px;
+  color: #8d8d8d;
+  transition: transform 0.15s;
+}
+
+.composer-config-collapse-icon--collapsed {
+  transform: rotate(-90deg);
+}
+
+.composer-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.composer-section-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composer-section-count {
+  font-weight: 400;
+  color: #8d8d8d;
+  margin-left: 8px;
+}
+
+.composer-section-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Permissions Section (collapsible) ─────────────────────────────────── */
+
+.composer-permissions-wrapper {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.composer-permissions-body {
+  padding: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.composer-permissions-body--collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* ── Suite Config Tab Fields ─────────────────────────────────────────── */
+
+.composer-config-body {
+  padding: 16px;
+  background: #fff;
+  overflow: hidden;
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.composer-config-body--collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Field group container */
+.studio-workspace-field-group {
+  margin-bottom: 16px;
+}
+
+.studio-workspace-field-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Field label */
+.studio-workspace-field-label {
+  display: block;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #525252;
+  letter-spacing: 0.32px;
+  margin-bottom: 8px;
+}
+
+/* Text input */
+.studio-workspace-field-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #161616;
+  background: #f4f4f4;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.studio-workspace-field-input:hover {
+  background: #f4f4f4;
+}
+
+.studio-workspace-field-input:focus {
+  background: #f4f4f4;
+  border-bottom-color: #0f62fe;
+}
+
+.studio-workspace-field-input::placeholder {
+  color: #6f6f6f;
+}
+
+.studio-workspace-field-input:disabled {
+  background: #e8e8e8;
+  color: #525252;
+  cursor: not-allowed;
+}
+
+/* Select dropdown */
+.studio-workspace-field-input[type="select"],
+select.studio-workspace-field-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236f6f6f' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+/* Textarea */
+.studio-workspace-field-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #161616;
+  background: #f4f4f4;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+
+.studio-workspace-field-textarea:hover {
+  background: #f4f4f4;
+}
+
+.studio-workspace-field-textarea:focus {
+  background: #f4f4f4;
+  border-bottom-color: #0f62fe;
+}
+
+.studio-workspace-field-textarea::placeholder {
+  color: #6f6f6f;
+}
+
+.studio-workspace-field-textarea:disabled {
+  background: #e8e8e8;
+  color: #525252;
+  cursor: not-allowed;
+}
+
+/* Secondary button */
+.studio-workspace-secondary-btn {
+  height: 40px;
+  padding: 0 48px 0 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #fff;
+  background: #393939;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.studio-workspace-secondary-btn:hover:not(:disabled) {
+  background: #4c4c4c;
+}
+
+.studio-workspace-secondary-btn:active:not(:disabled) {
+  background: #6f6f6f;
+}
+
+.studio-workspace-secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Schedule section divider */
+.studio-workspace-schedule-divider {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Checkbox label */
+.studio-workspace-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #161616;
+  cursor: pointer;
+  user-select: none;
+}
+
+.studio-workspace-checkbox-label--disabled {
+  color: #525252;
+  cursor: not-allowed;
+}
+
+.studio-workspace-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.studio-workspace-checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+/* Advanced options details/summary */
+.studio-workspace-details {
+  margin-top: 16px;
+}
+
+.studio-workspace-details summary {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #0f62fe;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.studio-workspace-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.studio-workspace-details summary:hover {
+  color: #0043ce;
+}
+
+.studio-workspace-details-content {
+  margin-top: 16px;
+  padding-left: 16px;
+}
+
+/* Schedule status info */
+.studio-workspace-schedule-status {
+  display: flex;
+  gap: 24px;
+  margin-top: 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6f6f6f;
+  letter-spacing: 0.16px;
+}
+
+/* Helper text */
+.studio-workspace-helper-text {
+  display: block;
+  margin-top: 4px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6f6f6f;
+  letter-spacing: 0.32px;
+}
+
+/* ── Layout Containers ───────────────────────────────────────────── */
+
+.suite-config-container {
+  padding: 16px;
+  max-width: 600px;
+}
+
+/* Field row for side-by-side fields */
+.studio-workspace-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Inline field group variant */
+.studio-workspace-field-group--inline {
+  margin-bottom: 0;
+}
+
+/* Preset select with spacing */
+.studio-workspace-field-input--preset {
+  margin-bottom: 8px;
+}
+
+/* Schedule header row */
+.studio-workspace-schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.studio-workspace-schedule-header .studio-workspace-field-label {
+  margin-bottom: 0;
+}
+
+/* Action buttons container */
+.studio-workspace-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+/* ── Versions Section ─────────────────────────────────── */
+
+.composer-version-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Run History Section ─────────────────────────────────── */
+
+.composer-run-history-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .composer-split-pane {
+    flex-direction: column;
+  }
+
+  .composer-left-pane {
+    width: 100%;
+    min-width: 0;
+    max-height: 50vh;
+  }
+
+  .composer-divider {
+    width: 100%;
+    height: 4px;
+    cursor: row-resize;
+  }
+
+  .composer-right-pane {
+    flex: 1;
+  }
+}

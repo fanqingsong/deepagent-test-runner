@@ -318,7 +318,7 @@ export default function TestCaseScriptTab({ testCaseId, appId, onRunComplete, re
         <div style={{ padding: '40px', textAlign: 'center', color: '#6f6f6f' }}>
           Loading...
         </div>
-      ) : generating || stream.active || (!stream.isComplete && stream.currentStep) ? (
+      ) : stream.active || (!stream.isComplete && stream.currentStep) ? (
         <ScriptGenProgressPanel
           active={stream.active}
           currentStep={stream.currentStep}

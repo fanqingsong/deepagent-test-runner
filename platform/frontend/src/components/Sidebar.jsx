@@ -21,7 +21,7 @@ const menuItems = [
     id: 'test-cases',
     label: 'Test Cases',
     icon: TestCasesIcon,
-    permission: 'read:app',
+    permission: 'read:test-case',
     children: [
       {
         id: 'test-cases-marketplace',
@@ -91,17 +91,20 @@ const menuItems = [
 
 function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, expandedSubmenus }) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [showSubmenuPopup, setShowSubmenuPopup] = useState(false);
   const itemRef = useRef(null);
+  const popupRef = useRef(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0 });
+  const [popupPosition, setPopupPosition] = useState({ top: 0 });
 
   const hasChildren = item.children && item.children.length > 0;
   const isSubmenuExpanded = expandedSubmenus.has(item.id);
 
   const handleClick = (e) => {
     e.preventDefault();
-    if (hasChildren) {
+    if (hasChildren && isExpanded) {
       onSubmenuToggle(item.id);
-    } else {
+    } else if (!hasChildren) {
       onClick(item.path);
     }
   };
@@ -110,12 +113,29 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
     if (!isExpanded && itemRef.current) {
       const rect = itemRef.current.getBoundingClientRect();
       setTooltipPosition({ top: rect.top + rect.height / 2 - 12 });
-      setShowTooltip(true);
+      if (hasChildren) {
+        setPopupPosition({ top: rect.top });
+        setShowSubmenuPopup(true);
+      } else {
+        setShowTooltip(true);
+      }
     }
   };
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (e) => {
+    const relatedTarget = e.relatedTarget;
+    const popup = popupRef.current;
+
+    if (popup && popup.contains(relatedTarget)) {
+      return;
+    }
+
     setShowTooltip(false);
+    setShowSubmenuPopup(false);
+  };
+
+  const handlePopupMouseLeave = () => {
+    setShowSubmenuPopup(false);
   };
 
   const IconComponent = item.icon;
@@ -153,7 +173,7 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
         >
           {wrappedContent}
         </a>
-        {showTooltip && !isExpanded && (
+        {showTooltip && !isExpanded && !hasChildren && (
           <div
             className="tooltip visible"
             style={{ top: `${tooltipPosition.top}px` }}
@@ -162,7 +182,7 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
           </div>
         )}
       </li>
-      {hasChildren && (
+      {isExpanded && hasChildren && (
         <ul className={`sidebar-submenu ${isSubmenuExpanded ? 'expanded' : ''}`}>
           {item.children.map((child) => (
             <li key={child.id} className="sidebar-submenu-item">
@@ -181,6 +201,35 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
             </li>
           ))}
         </ul>
+      )}
+      {!isExpanded && hasChildren && showSubmenuPopup && (
+        <div
+          ref={popupRef}
+          className="submenu-popup"
+          style={{ top: `${popupPosition.top}px` }}
+          onMouseLeave={handlePopupMouseLeave}
+        >
+          <div className="submenu-popup-header">{item.label}</div>
+          <ul className="submenu-popup-list">
+            {item.children.map((child) => (
+              <li key={child.id}>
+                <PermissionGate permission={child.permission} anyPermission={child.anyPermission}>
+                  <a
+                    href={child.path}
+                    className={`submenu-popup-item ${child.path === `#${window.location.hash.slice(1)}` ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onClick(child.path);
+                      setShowSubmenuPopup(false);
+                    }}
+                  >
+                    {child.label}
+                  </a>
+                </PermissionGate>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </>
   );

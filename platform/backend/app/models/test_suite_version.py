@@ -1,7 +1,7 @@
 """
-Test Version ORM Model
+Test Suite Version ORM Model
 
-Represents historical snapshots of test definitions for versioning.
+Represents historical snapshots of test suites for versioning.
 """
 
 from datetime import datetime
@@ -14,28 +14,28 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.test_definition import TestDefinition
+    from app.models.test_suite import TestSuite
     from app.models.user import User
 
 
-class TestVersion(Base):
+class TestSuiteVersion(Base):
     """
-    Test Version Model
+    Test Suite Version Model
 
-    Stores snapshots of test definitions for version history and rollback.
-    The snapshot field contains the complete test definition as JSON.
+    Stores snapshots of test suites for version history and rollback.
+    The snapshot field contains the complete test suite configuration as JSON.
     Each version can be independently submitted for review.
     """
 
-    __tablename__ = "test_versions"
+    __tablename__ = "test_suite_versions"
 
     # Primary key
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign key
-    test_definition_id: Mapped[int] = mapped_column(
+    test_suite_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("test_definitions.id", ondelete="CASCADE"),
+        ForeignKey("test_suites.id", ondelete="CASCADE"),
         nullable=False
     )
 
@@ -65,13 +65,13 @@ class TestVersion(Base):
     created_by: Mapped[str] = mapped_column(String(100), default="system", nullable=False)
 
     # Relationships
-    test_definition: Mapped["TestDefinition"] = relationship(
-        "TestDefinition",
-        back_populates="test_versions"
+    test_suite: Mapped["TestSuite"] = relationship(
+        "TestSuite",
+        back_populates="suite_versions"
     )
     reviewer: Mapped[Optional["User"]] = relationship(
         "User", foreign_keys=[reviewed_by],
     )
 
     def __repr__(self) -> str:
-        return f"<TestVersion(id={self.id}, version={self.version}, review_status='{self.review_status}')>"
+        return f"<TestSuiteVersion(id={self.id}, version={self.version}, review_status='{self.review_status}')>"

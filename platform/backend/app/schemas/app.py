@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
-class AppCreate(BaseModel):
+class TestWorkspaceCreate(BaseModel):
     name: Optional[str] = Field("未命名测试", max_length=255, description="APP name")
     description: Optional[str] = Field(None, description="APP description")
     url: Optional[str] = Field(None, max_length=500, description="Target URL")
@@ -20,7 +20,7 @@ class AppCreate(BaseModel):
     color: str = Field(default="#0f62fe", max_length=20, description="APP accent color")
 
 
-class AppUpdate(BaseModel):
+class TestWorkspaceUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     url: Optional[str] = Field(None, min_length=1, max_length=500)
@@ -40,7 +40,7 @@ class MessageResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class AppSummaryResponse(BaseModel):
+class TestWorkspaceSummaryResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
@@ -57,7 +57,7 @@ class AppSummaryResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class AppResponse(BaseModel):
+class TestWorkspaceResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
@@ -80,17 +80,17 @@ class AppResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class AppRunRequest(BaseModel):
+class TestWorkspaceRunRequest(BaseModel):
     pass
 
 
-class AppRunResponse(BaseModel):
+class TestWorkspaceRunResponse(BaseModel):
     job_id: str
     run_id: str
     status: str
 
 
-class AppPublishResponse(BaseModel):
+class TestWorkspacePublishResponse(BaseModel):
     app_id: int
     test_definition_id: int
     test_id: str

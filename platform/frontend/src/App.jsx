@@ -43,18 +43,19 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(() => {
     const hash = window.location.hash.slice(1);
-    if (['dashboard', 'users', 'roles', 'suites', 'reviews', 'profile', 'test-cases-marketplace', 'suites-marketplace', 'chat-monitor'].includes(hash) || hash.startsWith('test-cases')) {
-      if (hash.startsWith('test-cases')) {
-        return hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases';
-      }
+    if (['dashboard', 'users', 'roles', 'reviews', 'profile', 'chat-monitor'].includes(hash)) {
       return hash;
+    } else if (hash.startsWith('test-cases')) {
+      return hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases';
+    } else if (hash.startsWith('suites')) {
+      return hash === 'suites-marketplace' ? 'suites-marketplace' : 'suites';
     }
     return 'dashboard';
   });
 
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1056);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -64,7 +65,9 @@ function AppContent() {
       const hash = window.location.hash.slice(1);
       if (hash.startsWith('test-cases')) {
         setCurrentView(hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases');
-      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'suites' || hash === 'reviews' || hash === 'profile' || hash === 'test-cases-marketplace' || hash === 'suites-marketplace') {
+      } else if (hash.startsWith('suites')) {
+        setCurrentView(hash === 'suites-marketplace' ? 'suites-marketplace' : 'suites');
+      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'reviews' || hash === 'profile' || hash === 'chat-monitor') {
         setCurrentView(hash);
       }
     };

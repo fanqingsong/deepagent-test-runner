@@ -47,7 +47,7 @@ export default function TestCaseListPanel({
         )}
       </div>
 
-      <PermissionGate permission="create:app">
+      <PermissionGate permission="create:test-case">
         <div className="test-case-list-create">
           <button className="test-case-list-create-btn" onClick={onCreateClick}>
             + New Test

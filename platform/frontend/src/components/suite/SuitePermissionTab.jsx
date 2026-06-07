@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  getTestCasePermissions, addTestCasePermission,
-  updateTestCasePermission, removeTestCasePermission,
+  getSuitePermissions, addSuitePermission,
+  updateSuitePermission, removeSuitePermission,
   searchUsers,
 } from '../../api';
 import PermissionGate from '../PermissionGate';
-import './test-cases-shared.css';
+import '../test_cases/test-cases-shared.css';
 
 const PERMISSION_LABELS = {
   view: 'View',
@@ -16,7 +16,7 @@ const PERMISSION_LABELS = {
 
 const PERMISSION_TYPES = ['view', 'edit', 'execute', 'admin'];
 
-export default function TestCasePermissionTab({ testCaseId }) {
+export default function SuitePermissionTab({ suiteId }) {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,18 +35,18 @@ export default function TestCasePermissionTab({ testCaseId }) {
   const debounceRef = useRef(null);
 
   const loadPermissions = useCallback(async () => {
-    if (!testCaseId) return;
+    if (!suiteId) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await getTestCasePermissions(testCaseId);
+      const data = await getSuitePermissions(suiteId);
       setPermissions(data);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [testCaseId]);
+  }, [suiteId]);
 
   useEffect(() => { loadPermissions(); }, [loadPermissions]);
 
@@ -102,7 +102,7 @@ export default function TestCasePermissionTab({ testCaseId }) {
     try {
       setAdding(true);
       setError(null);
-      await addTestCasePermission(testCaseId, {
+      await addSuitePermission(suiteId, {
         userId: selectedUser.id,
         permissionType: addPermType,
       });
@@ -121,7 +121,7 @@ export default function TestCasePermissionTab({ testCaseId }) {
   const handleUpdate = async (userId, newType) => {
     try {
       setError(null);
-      await updateTestCasePermission(testCaseId, userId, { permissionType: newType });
+      await updateSuitePermission(suiteId, userId, { permissionType: newType });
       await loadPermissions();
     } catch (e) {
       setError(e.message);
@@ -131,7 +131,7 @@ export default function TestCasePermissionTab({ testCaseId }) {
   const handleRemove = async (userId) => {
     try {
       setError(null);
-      await removeTestCasePermission(testCaseId, userId);
+      await removeSuitePermission(suiteId, userId);
       await loadPermissions();
     } catch (e) {
       setError(e.message);
@@ -153,7 +153,7 @@ export default function TestCasePermissionTab({ testCaseId }) {
       )}
 
       {/* Add permission */}
-      <PermissionGate permission="update:test-case">
+      <PermissionGate permission="update:suite">
         <div className="test-case-section">
           <h3 className="test-case-section-title">Add Collaborator</h3>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
@@ -286,7 +286,7 @@ export default function TestCasePermissionTab({ testCaseId }) {
                     <div style={{ fontSize: '11px', color: '#8d8d8d' }}>{perm.email || ''}</div>
                   </td>
                   <td className="td-type">
-                    <PermissionGate permission="update:test-case" fallback={
+                    <PermissionGate permission="update:suite" fallback={
                       <span style={{ fontSize: '13px', color: '#525252' }}>{PERMISSION_LABELS[perm.permission_type]}</span>
                     }>
                       <select
@@ -308,7 +308,7 @@ export default function TestCasePermissionTab({ testCaseId }) {
                     </PermissionGate>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <PermissionGate permission="update:test-case">
+                    <PermissionGate permission="update:suite">
                       <button
                         className="test-case-workspace-secondary-btn"
                         onClick={() => handleRemove(perm.user_id)}

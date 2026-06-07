@@ -74,7 +74,7 @@ async def restore_test_version(
     current_user: User = Depends(RequirePermission("update:test")),
     db: AsyncSession = Depends(get_db)
 ):
-    """Restore a test definition to a specific version."""
+    """Restore a test definition to a specific version by updating the draft snapshot."""
     result = await db.execute(
         select(TestDefinition).where(TestDefinition.id == test_definition_id)
     )
@@ -95,25 +95,38 @@ async def restore_test_version(
             detail=f"Test version with id {version_id} not found for this test definition"
         )
 
-    # Create snapshot before restoring
-    current_snapshot = TestDefinitionResponse.model_validate(test_def).model_dump()
-    pre_restore_version = TestVersion(
-        test_definition_id=test_definition_id,
-        version=test_def.version,
-        snapshot=current_snapshot,
-        change_description="Pre-restore snapshot",
-        created_by="system",
-    )
-    db.add(pre_restore_version)
-
-    # Restore from version snapshot
-    snapshot_data = version.snapshot
+    # Restore test definition fields from snapshot
+    snapshot_data = version.snapshot or {}
     test_def.name = snapshot_data.get("name", test_def.name)
     test_def.description = snapshot_data.get("description")
     test_def.url = snapshot_data.get("url")
     test_def.environment = snapshot_data.get("environment", {})
     test_def.tags = snapshot_data.get("tags", [])
-    test_def.version += 1
+
+    # Update the existing draft version in-place (or create one)
+    draft_stmt = (
+        select(TestVersion)
+        .where(
+            TestVersion.test_definition_id == test_definition_id,
+            TestVersion.review_status == "draft",
+        )
+        .order_by(TestVersion.id.desc())
+        .limit(1)
+    )
+    draft = (await db.execute(draft_stmt)).scalar_one_or_none()
+    if draft:
+        draft.snapshot = TestDefinitionResponse.model_validate(test_def).model_dump()
+        draft.change_description = f"Restored from v{version.version}"
+    else:
+        new_draft = TestVersion(
+            test_definition_id=test_definition_id,
+            version=0,
+            snapshot=TestDefinitionResponse.model_validate(test_def).model_dump(),
+            change_description=f"Restored from v{version.version}",
+            review_status="draft",
+            created_by="system",
+        )
+        db.add(new_draft)
 
     await db.commit()
     await db.refresh(test_def)

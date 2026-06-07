@@ -18,6 +18,8 @@ from app.schemas.test_definition import (
     TestDefinitionListResponse,
     TestVersionSnapshot,
 )
+from app.schemas.test_suites import TestSuiteResponse
+from app.schemas.suite_versions import TestSuiteVersionSnapshot
 from app.schemas.test_generation import (
     TestCaseGenerateRequest,
     TestCaseGenerateResponse,
@@ -50,6 +52,10 @@ __all__ = [
     "TestDefinitionUpdate",
     "TestDefinitionListResponse",
     "TestVersionSnapshot",
+    # Test Suites
+    "TestSuiteResponse",
+    # Suite Versions
+    "TestSuiteVersionSnapshot",
     # Test Generation
     "TestCaseGenerateRequest",
     "TestCaseGenerateResponse",

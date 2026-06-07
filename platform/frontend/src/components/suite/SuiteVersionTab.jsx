@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getStepVersions, restoreTestCaseVersion, submitVersionForReview } from '../../api';
-import './test-cases-shared.css';
+import { getSuiteVersions, restoreSuiteVersion, submitSuiteVersionForReview } from '../../api';
+import '../test_cases/test-cases-shared.css';
 
 const REVIEW_STATUS_LABELS = {
   draft: 'Draft',
@@ -20,8 +20,8 @@ const REVIEW_STATUS_COLORS = {
 
 const PERMISSION_LABELS = { view: 'View', edit: 'Edit', execute: 'Execute', admin: 'Admin' };
 
-export default function TestCaseVersionTab({
-  testCaseId,
+export default function SuiteVersionTab({
+  suiteId,
   onVersionRestored,
   onVersionSubmitted,
   refreshKey,
@@ -32,18 +32,18 @@ export default function TestCaseVersionTab({
   const [restoring, setRestoring] = useState(false);
   const [submittingId, setSubmittingId] = useState(null);
   const [error, setError] = useState(null);
-  const [snapshotSection, setSnapshotSection] = useState('all'); // all, config, script, permissions
+  const [snapshotSection, setSnapshotSection] = useState('all');
 
   const loadVersions = useCallback(async () => {
-    if (!testCaseId) return;
+    if (!suiteId) return;
     try {
       setLoading(true);
-      const data = await getStepVersions(testCaseId);
+      const data = await getSuiteVersions(suiteId);
       setVersions(data);
     } catch { /* non-critical */ } finally {
       setLoading(false);
     }
-  }, [testCaseId]);
+  }, [suiteId]);
 
   useEffect(() => { loadVersions(); }, [loadVersions, refreshKey]);
 
@@ -51,7 +51,7 @@ export default function TestCaseVersionTab({
     try {
       setRestoring(true);
       setError(null);
-      await restoreTestCaseVersion(testCaseId, versionId);
+      await restoreSuiteVersion(suiteId, versionId);
       onVersionRestored?.();
       loadVersions();
       setViewingId(null);
@@ -66,7 +66,7 @@ export default function TestCaseVersionTab({
     try {
       setSubmittingId(version.id);
       setError(null);
-      await submitVersionForReview(testCaseId, version.id);
+      await submitSuiteVersionForReview(version.id);
       onVersionSubmitted?.();
       loadVersions();
     } catch (e) {
@@ -78,7 +78,7 @@ export default function TestCaseVersionTab({
 
   const handleViewSnapshot = (versionId) => {
     setViewingId(viewingId === versionId ? null : versionId);
-    setSnapshotSection('all'); // Reset to show all when opening new version
+    setSnapshotSection('all');
   };
 
   const formatDate = (dateStr) => {
@@ -107,7 +107,7 @@ export default function TestCaseVersionTab({
   if (versions.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '48px', color: '#8d8d8d' }}>
-        No versions yet. Run a test or save changes to create version snapshots.
+        No versions yet. Save changes to create version snapshots.
       </div>
     );
   }
@@ -128,7 +128,6 @@ export default function TestCaseVersionTab({
           </div>
         )}
 
-        {/* Versions Table */}
         <table className="composer-versions-table">
           <thead>
             <tr>
@@ -187,7 +186,6 @@ export default function TestCaseVersionTab({
           </tbody>
         </table>
 
-        {/* Snapshot Viewer with Triad: Configuration + Script + Permissions */}
         {viewingId && viewed && (
           <div className="version-snapshot-viewer">
             <div className="version-snapshot-header">
@@ -218,7 +216,6 @@ export default function TestCaseVersionTab({
               </div>
             </div>
 
-            {/* Section Tabs */}
             <div className="version-snapshot-tabs">
               <button
                 className={`version-tab-btn ${snapshotSection === 'all' ? 'version-tab-btn--active' : ''}`}
@@ -233,10 +230,10 @@ export default function TestCaseVersionTab({
                 Configuration
               </button>
               <button
-                className={`version-tab-btn ${snapshotSection === 'script' ? 'version-tab-btn--active' : ''}`}
-                onClick={() => setSnapshotSection('script')}
+                className={`version-tab-btn ${snapshotSection === 'entries' ? 'version-tab-btn--active' : ''}`}
+                onClick={() => setSnapshotSection('entries')}
               >
-                Script
+                Test Entries
               </button>
               <button
                 className={`version-tab-btn ${snapshotSection === 'permissions' ? 'version-tab-btn--active' : ''}`}
@@ -246,7 +243,6 @@ export default function TestCaseVersionTab({
               </button>
             </div>
 
-            {/* Content Sections */}
             <div className="version-snapshot-content">
               {(snapshotSection === 'all' || snapshotSection === 'config') && (
                 <div className="version-section-block">
@@ -257,43 +253,59 @@ export default function TestCaseVersionTab({
                       <span className="version-config-value">{snapshot.name || '-'}</span>
                     </div>
                     <div className="version-config-item">
-                      <span className="version-config-label">URL:</span>
-                      <span className="version-config-value">{snapshot.url || '-'}</span>
+                      <span className="version-config-label">Execution Mode:</span>
+                      <span className="version-config-value">{snapshot.execution_mode || '-'}</span>
                     </div>
-                    <div className="version-config-item full">
-                      <span className="version-config-label">Test Goal:</span>
-                      <span className="version-config-value">{snapshot.test_goal || '-'}</span>
+                    <div className="version-config-item">
+                      <span className="version-config-label">Fail Strategy:</span>
+                      <span className="version-config-value">{snapshot.fail_strategy || '-'}</span>
                     </div>
                     <div className="version-config-item full">
                       <span className="version-config-label">Description:</span>
                       <span className="version-config-value">{snapshot.description || '-'}</span>
                     </div>
-                    <div className="version-config-item full">
-                      <span className="version-config-label">Test Context:</span>
-                      <span className="version-config-value">
-                        {snapshot.test_context ? JSON.stringify(snapshot.test_context, null, 2) : '-'}
-                      </span>
-                    </div>
-                    {snapshot.execution_mode && (
+                    {snapshot.is_dynamic && (
                       <div className="version-config-item">
-                        <span className="version-config-label">Execution Mode:</span>
-                        <span className="version-config-value">{snapshot.execution_mode}</span>
-                    </div>
+                        <span className="version-config-label">Dynamic Suite:</span>
+                        <span className="version-config-value">Yes</span>
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {(snapshotSection === 'all' || snapshotSection === 'script') && (
+              {(snapshotSection === 'all' || snapshotSection === 'entries') && (
                 <div className="version-section-block">
-                  <h5 className="version-section-title">Playwright Script</h5>
-                  {snapshot.playwright_script ? (
-                    <pre className="version-snapshot-script">
-                      {snapshot.playwright_script}
-                    </pre>
+                  <h5 className="version-section-title">
+                    Test Entries
+                    <span style={{ fontWeight: 400, color: '#525252', fontSize: '12px', marginLeft: '8px' }}>
+                      ({snapshot.suite_entries?.length || snapshot.test_definition_ids?.length || 0} tests)
+                    </span>
+                  </h5>
+                  {snapshot.suite_entries && snapshot.suite_entries.length > 0 ? (
+                    <table className="version-entries-table">
+                      <thead>
+                        <tr>
+                          <th>Order</th>
+                          <th>Test ID</th>
+                          <th>Condition</th>
+                          <th>Enabled</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {snapshot.suite_entries.map((entry, idx) => (
+                          <tr key={idx}>
+                            <td>{entry.order || idx + 1}</td>
+                            <td>{entry.test_definition_id}</td>
+                            <td>{entry.condition || 'always'}</td>
+                            <td>{entry.enabled !== false ? 'Yes' : 'No'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   ) : (
                     <div className="version-empty-state">
-                      No script in this version.
+                      No test entries in this version.
                     </div>
                   )}
                 </div>
@@ -305,9 +317,9 @@ export default function TestCaseVersionTab({
                     Permissions
                     {snapshot.permissions && (
                       <span style={{ fontWeight: 400, color: '#525252', fontSize: '12px', marginLeft: '8px' }}>
-                          ({snapshot.permissions.length} members)
-                        </span>
-                      )}
+                        ({snapshot.permissions.length} members)
+                      </span>
+                    )}
                   </h5>
                   {snapshot.permissions && snapshot.permissions.length > 0 ? (
                     <table className="version-permissions-table">

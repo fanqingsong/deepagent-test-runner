@@ -40,7 +40,7 @@ export default function TestCaseListItem({ testCase, isSelected, onSelect, onArc
       </div>
       <span className="test-case-list-item-dot" style={{ background: statusColor }} title={testCase.status} />
       {isSelected && testCase.status !== 'archived' && (
-        <PermissionGate permission="delete:app">
+        <PermissionGate permission="delete:test-case">
           <button
             className="test-case-list-item-archive"
             onClick={handleArchive}

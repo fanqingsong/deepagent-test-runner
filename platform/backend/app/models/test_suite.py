@@ -6,13 +6,17 @@ that can be scheduled and run together.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ARRAY, Boolean, DateTime, func, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.test_suite_version import TestSuiteVersion
+    from app.models.test_suite_permission import TestSuitePermission
 
 
 class TestSuite(Base):
@@ -86,6 +90,17 @@ class TestSuite(Base):
         onupdate=datetime.utcnow, server_default=func.now()
     )
     created_by: Mapped[str] = mapped_column(String(100), default="system", nullable=False)
+
+    # Relationships
+    suite_versions: Mapped[List["TestSuiteVersion"]] = relationship(
+        "TestSuiteVersion",
+        back_populates="test_suite",
+        cascade="all, delete-orphan"
+    )
+    suite_permissions: Mapped[List["TestSuitePermission"]] = relationship(
+        "TestSuitePermission",
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<TestSuite(id={self.id}, name='{self.name}', tests={len(self.test_definition_ids)})>"

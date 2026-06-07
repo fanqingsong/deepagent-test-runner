@@ -52,18 +52,18 @@ PERMISSIONS = [
     {"name": "read:suite", "resource": "suite", "action": "read", "description": "View test suites"},
     {"name": "update:suite", "resource": "suite", "action": "update", "description": "Update test suites"},
     {"name": "delete:suite", "resource": "suite", "action": "delete", "description": "Delete test suites"},
-    # App workspace
-    {"name": "create:app", "resource": "app", "action": "create", "description": "Create app workspaces"},
-    {"name": "read:app", "resource": "app", "action": "read", "description": "View app workspaces"},
-    {"name": "update:app", "resource": "app", "action": "update", "description": "Update app workspaces"},
-    {"name": "delete:app", "resource": "app", "action": "delete", "description": "Delete app workspaces"},
+    # Test workspace
+    {"name": "create:test-case", "resource": "test-case", "action": "create", "description": "Create test workspaces"},
+    {"name": "read:test-case", "resource": "test-case", "action": "read", "description": "View test workspaces"},
+    {"name": "update:test-case", "resource": "test-case", "action": "update", "description": "Update test workspaces"},
+    {"name": "delete:test-case", "resource": "test-case", "action": "delete", "description": "Delete test workspaces"},
     # Review/approval
     {"name": "review:test", "resource": "test", "action": "review", "description": "Review and approve/reject test definitions"},
     {"name": "review:suite", "resource": "suite", "action": "review", "description": "Review and approve/reject test suites"},
 ]
 
 # Resources that testers can manage (everything except user/role admin)
-TESTER_RESOURCES = {"test", "schedule", "job", "conversation", "suite", "app", "analytics"}
+TESTER_RESOURCES = {"test", "schedule", "job", "conversation", "suite", "test-case", "analytics"}
 
 ROLES = {
     "admin": {

@@ -231,7 +231,7 @@ const getRegressionTests = async () => {
 
 // Test Cases Workspace
 export const createTestCase = async (data) => {
-  const response = await apiFetch(`${TEST_API}/apps`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -244,19 +244,19 @@ export const listTestCases = async (params = {}) => {
   const qs = new URLSearchParams();
   if (params.status) qs.set('status', params.status);
   if (params.search) qs.set('search', params.search);
-  const response = await apiFetch(`${TEST_API}/apps/?${qs.toString()}`);
+  const response = await apiFetch(`${TEST_API}/test-workspaces/?${qs.toString()}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load Test Case list'));
   return response.json();
 };
 
 export const getTestCase = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}`);
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load Test Case'));
   return response.json();
 };
 
 export const updateTestCase = async (testCaseId, data) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -266,14 +266,14 @@ export const updateTestCase = async (testCaseId, data) => {
 };
 
 export const archiveTestCase = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}`, { method: 'DELETE' });
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}`, { method: 'DELETE' });
   if (!response.ok && response.status !== 204) {
     throw new Error(await parseApiError(response, 'Failed to delete Test Case'));
   }
 };
 
 export const runTestCase = async (testCaseId, { forceRegenerate, useExistingPlan } = {}) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/run`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -286,27 +286,27 @@ export const runTestCase = async (testCaseId, { forceRegenerate, useExistingPlan
 };
 
 export const getTestCaseRunProgress = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/run-progress`);
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/run-progress`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to get progress'));
   return response.json();
 };
 
 export const getTestCaseRunHistory = async (testCaseId, { limit = 50, offset = 0 } = {}) => {
   const response = await apiFetch(
-    `${TEST_API}/apps/${testCaseId}/runs?limit=${limit}&offset=${offset}`
+    `${TEST_API}/test-workspaces/${testCaseId}/runs?limit=${limit}&offset=${offset}`
   );
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load run history'));
   return response.json();
 };
 
 export const getStepVersions = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions`);
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/step-versions`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load versions'));
   return response.json();
 };
 
 export const restoreTestCaseVersion = async (testCaseId, versionId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/restore`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/step-versions/${versionId}/restore`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -315,7 +315,7 @@ export const restoreTestCaseVersion = async (testCaseId, versionId) => {
 };
 
 export const submitVersionForReview = async (testCaseId, versionId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/step-versions/${versionId}/submit`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/step-versions/${versionId}/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -323,8 +323,18 @@ export const submitVersionForReview = async (testCaseId, versionId) => {
   return response.json();
 };
 
+export const createDraftFromVersion = async (workspaceId, fromVersionId) => {
+  const qs = fromVersionId ? `?from_version_id=${fromVersionId}` : '';
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${workspaceId}/create-draft${qs}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to create draft'));
+  return response.json();
+};
+
 export const publishTestCase = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/publish`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -341,13 +351,13 @@ export const searchUsers = async (query) => {
 
 // Test Case Permissions
 export const getTestCasePermissions = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions`);
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/permissions`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load permission list'));
   return response.json();
 };
 
 export const addTestCasePermission = async (testCaseId, { userId, permissionType }) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/permissions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId, permission_type: permissionType }),
@@ -357,7 +367,7 @@ export const addTestCasePermission = async (testCaseId, { userId, permissionType
 };
 
 export const updateTestCasePermission = async (testCaseId, userId, { permissionType }) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions/${userId}`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/permissions/${userId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ permission_type: permissionType }),
@@ -367,7 +377,7 @@ export const updateTestCasePermission = async (testCaseId, userId, { permissionT
 };
 
 export const removeTestCasePermission = async (testCaseId, userId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/permissions/${userId}`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/permissions/${userId}`, {
     method: 'DELETE',
   });
   if (!response.ok && response.status !== 204) {
@@ -573,7 +583,7 @@ export const removeUserRole = async (userId, roleId) => {
 // --- Test Definitions (for suite builder) ---
 
 const getTestDefinitions = async (skip = 0, limit = 200) => {
-  const response = await apiFetch(`${TEST_API}/apps/?skip=${skip}&limit=${limit}`);
+  const response = await apiFetch(`${TEST_API}/test-workspaces/?skip=${skip}&limit=${limit}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load test definitions'));
   return response.json();
 };
@@ -583,6 +593,20 @@ const getTestDefinitions = async (skip = 0, limit = 200) => {
 export const getPendingReviews = async () => {
   const response = await apiFetch(`${TEST_API}/reviews/pending`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load review list'));
+  return response.json();
+};
+
+export const getReviewDetail = async (type, id) => {
+  let endpoint;
+  if (type === 'suite') {
+    endpoint = `${TEST_API}/reviews/suites/${id}/detail`;
+  } else if (type === 'suite_version') {
+    endpoint = `${TEST_API}/reviews/suite-versions/${id}/detail`;
+  } else {
+    endpoint = `${TEST_API}/reviews/versions/${id}/detail`;
+  }
+  const response = await apiFetch(endpoint);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load review details'));
   return response.json();
 };
 
@@ -636,6 +660,21 @@ export const rejectVersion = async (versionId, reason) => {
   return response.json();
 };
 
+export const publishVersion = async (versionId) => {
+  const response = await apiFetch(`${TEST_API}/reviews/versions/${versionId}/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to publish version'));
+  return response.json();
+};
+
+export const getApprovedItems = async () => {
+  const response = await apiFetch(`${TEST_API}/reviews/approved`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load approved items'));
+  return response.json();
+};
+
 export const approveSuite = async (suiteId) => {
   const response = await apiFetch(`${TEST_API}/reviews/suites/${suiteId}/approve`, {
     method: 'POST',
@@ -655,6 +694,34 @@ export const rejectSuite = async (suiteId, reason) => {
   return response.json();
 };
 
+export const approveSuiteVersion = async (versionId) => {
+  const response = await apiFetch(`${TEST_API}/reviews/suite-versions/${versionId}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to approve suite version'));
+  return response.json();
+};
+
+export const rejectSuiteVersion = async (versionId, reason) => {
+  const response = await apiFetch(`${TEST_API}/reviews/suite-versions/${versionId}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to reject suite version'));
+  return response.json();
+};
+
+export const publishSuiteVersion = async (versionId) => {
+  const response = await apiFetch(`${TEST_API}/reviews/suite-versions/${versionId}/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to publish suite version'));
+  return response.json();
+};
+
 export const submitSuiteForReview = async (suiteId) => {
   const response = await apiFetch(`${TEST_API}/test-suites/${suiteId}/submit`, {
     method: 'POST',
@@ -662,6 +729,77 @@ export const submitSuiteForReview = async (suiteId) => {
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to submit for review'));
   return response.json();
+};
+
+// --- Suite Versions ---
+
+export const getSuiteVersions = async (suiteId) => {
+  const response = await apiFetch(`${TEST_API}/suite-versions/test-suite/${suiteId}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load suite versions'));
+  return response.json();
+};
+
+export const restoreSuiteVersion = async (suiteId, versionId) => {
+  const response = await apiFetch(`${TEST_API}/suite-versions/test-suite/${suiteId}/restore/${versionId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to restore suite version'));
+  return response.json();
+};
+
+export const submitSuiteVersionForReview = async (versionId) => {
+  const response = await apiFetch(`${TEST_API}/suite-versions/${versionId}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to submit suite version for review'));
+  return response.json();
+};
+
+export const createDraftFromSuiteVersion = async (suiteId, fromVersionId) => {
+  const qs = fromVersionId ? `?from_version_id=${fromVersionId}` : '';
+  const response = await apiFetch(`${TEST_API}/suite-versions/test-suite/${suiteId}/create-draft${qs}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to create draft'));
+  return response.json();
+};
+
+// --- Suite Permissions ---
+
+export const getSuitePermissions = async (suiteId) => {
+  const response = await apiFetch(`${TEST_API}/suite-permissions/${suiteId}/permissions`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load suite permission list'));
+  return response.json();
+};
+
+export const addSuitePermission = async (suiteId, { userId, permissionType }) => {
+  const response = await apiFetch(`${TEST_API}/suite-permissions/${suiteId}/permissions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, permission_type: permissionType }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to add suite permission'));
+  return response.json();
+};
+
+export const updateSuitePermission = async (suiteId, userId, { permissionType }) => {
+  const response = await apiFetch(`${TEST_API}/suite-permissions/${suiteId}/permissions/${userId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ permission_type: permissionType }),
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to update suite permission'));
+  return response.json();
+};
+
+export const removeSuitePermission = async (suiteId, userId) => {
+  const response = await apiFetch(`${TEST_API}/suite-permissions/${suiteId}/permissions/${userId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to remove suite permission'));
 };
 
 // --- Marketplace ---
@@ -672,7 +810,7 @@ export const listPublishedTestCases = async (params = {}) => {
   if (params.search) qs.set('search', params.search);
   if (params.skip !== undefined) qs.set('skip', params.skip);
   if (params.limit !== undefined) qs.set('limit', params.limit);
-  const response = await apiFetch(`${TEST_API}/apps/marketplace?${qs.toString()}`);
+  const response = await apiFetch(`${TEST_API}/test-workspaces/marketplace?${qs.toString()}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load published test cases'));
   return response.json();
 };
@@ -688,11 +826,17 @@ export const listPublishedSuites = async (params = {}) => {
 };
 
 export const copyTestCaseToWorkspace = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/apps/${testCaseId}/copy`, {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/copy`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to copy test case'));
+  return response.json();
+};
+
+export const getPublishedVersions = async (testCaseId) => {
+  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/published-versions`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load published versions'));
   return response.json();
 };
 

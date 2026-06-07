@@ -5,7 +5,7 @@ import {
   deleteTestSuite,
 } from '../../api';
 import SuiteListPanel from './SuiteListPanel';
-import SuiteEditorPanel from './SuiteEditorPanel';
+import SuiteComposerWorkspace from './SuiteComposerWorkspace';
 import Toast from '../Toast';
 import './SuiteIDE.css';
 
@@ -113,7 +113,7 @@ export default function SuiteIDE() {
       </div>
 
       <div className="suite-ide-main">
-        <SuiteEditorPanel
+        <SuiteComposerWorkspace
           suiteId={selectedSuiteId}
           onSuiteChanged={loadSuites}
           onDelete={handleDelete}

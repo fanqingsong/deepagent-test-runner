@@ -440,7 +440,7 @@ class AnalyticsService:
         """
         Get all test runs for a specific app/studio.
 
-        Uses TestDefinition.source_app_id to find all definitions
+        Uses TestDefinition.source_workspace_id to find all definitions
         belonging to the app, then returns all runs for those definitions.
         """
         from app.models.test_run import TestRun
@@ -448,7 +448,7 @@ class AnalyticsService:
 
         td_ids = (
             select(TestDefinition.id)
-            .where(TestDefinition.source_app_id == app_id)
+            .where(TestDefinition.source_workspace_id == app_id)
         )
 
         query = (

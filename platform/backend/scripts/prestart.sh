@@ -35,10 +35,9 @@ from app.core.database import engine, Base
 # Import all models to ensure they're registered with Base.metadata
 from app.models.user import User
 from app.models.role import Role, Permission
-from app.models.app import App
-from app.models.app_permission import AppPermission
+from app.models.test_workspace import TestWorkspace
+from app.models.test_workspace_permission import TestWorkspacePermission
 from app.models.test_definition import TestDefinition
-from app.models.test_step import TestStep
 from app.models.test_version import TestVersion
 from app.models.test_suite import TestSuite
 from app.models.schedule import Schedule

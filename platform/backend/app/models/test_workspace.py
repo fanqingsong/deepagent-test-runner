@@ -1,7 +1,7 @@
 """
-App Model — LLM-APP-style test workspace.
+TestWorkspace Model — LLM-APP-style test workspace.
 
-Each App represents a single test case that the user iteratively creates
+Each TestWorkspace represents a single test case that the user iteratively creates
 through a conversational interface: goal → plan → execute → refine/publish.
 """
 
@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class App(Base):
-    __tablename__ = "apps"
+class TestWorkspace(Base):
+    __tablename__ = "test_workspace"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
@@ -31,7 +31,7 @@ class App(Base):
 
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="draft",
-        comment="draft|generating|testing|passed|pending_review|published|archived",
+        comment="draft|generating|testing|passed|pending_review|approved|published|archived",
     )
 
     test_goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -73,4 +73,4 @@ class App(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<App(id={self.id}, name='{self.name}', status='{self.status}')>"
+        return f"<TestWorkspace(id={self.id}, name='{self.name}', status='{self.status}')>"

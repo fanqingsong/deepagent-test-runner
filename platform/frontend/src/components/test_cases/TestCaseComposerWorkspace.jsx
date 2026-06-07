@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getTestCase, updateTestCase, publishTestCase,
   getTestCaseRunHistory, getTestRunDetails,
+  getStepVersions, createDraftFromVersion,
 } from '../../api';
-import Modal from '../Modal';
 import TestCaseConfigTab from './TestCaseConfigTab';
 import TestCaseScriptTab from './TestCaseScriptTab';
 import TestCaseRunHistoryTab from './TestCaseRunHistoryTab';
 import TestCaseVersionTab from './TestCaseVersionTab';
-import TestCasePermissionTab from './TestCasePermissionTab';
+import TestCasePermissionsSection from './TestCasePermissionsSection';
 import './TestCaseComposerWorkspace.css';
 import './test-cases-shared.css';
 
@@ -18,7 +18,9 @@ const STATUS_LABELS = {
   testing: 'Testing',
   passed: 'Passed',
   pending_review: 'Pending Review',
+  approved: 'Approved',
   published: 'Published',
+  rejected: 'Rejected',
 };
 
 export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChanged }) {
@@ -41,6 +43,7 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
 
   // Config collapse
   const [configCollapsed, setConfigCollapsed] = useState(false);
+  const [permissionsCollapsed, setPermissionsCollapsed] = useState(false);
 
   // Run history
   const [runHistory, setRunHistory] = useState([]);
@@ -49,8 +52,9 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
   const [expandedRunCases, setExpandedRunCases] = useState([]);
   const [expandedRunLoading, setExpandedRunLoading] = useState(false);
 
-  // Permissions modal
-  const [permissionOpen, setPermissionOpen] = useState(false);
+  // Versions for draft creation
+  const [versions, setVersions] = useState([]);
+  const [versionRefreshKey, setVersionRefreshKey] = useState(0);
 
   // Draggable divider
   const leftPaneRef = useRef(null);
@@ -151,6 +155,32 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
     }
   };
 
+  const handleDraftModeToggle = async () => {
+    if (!draftMode) {
+      // Switching TO draft mode - create draft if needed
+      try {
+        setError(null);
+        // Load versions to check for existing draft
+        const vers = await getStepVersions(testCaseId);
+        setVersions(vers);
+        const currentVersion = vers.find(v => v.review_status === 'draft');
+        if (!currentVersion && vers.length > 0) {
+          // Create draft from latest version
+          const latest = vers[0]; // versions are sorted desc
+          await createDraftFromVersion(testCaseId, latest.id);
+          // Trigger version list refresh
+          setVersionRefreshKey(prev => prev + 1);
+        }
+        setDraftMode(true);
+      } catch (e) {
+        setError(e.message);
+      }
+    } else {
+      // Switching to read-only - just toggle
+      setDraftMode(false);
+    }
+  };
+
   // ── Divider Drag ──────────────────────────────────
 
   useEffect(() => {
@@ -223,7 +253,7 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
       <div className="composer-header">
         <button
           className={`composer-draft-toggle ${draftMode ? 'composer-draft-toggle--active' : ''}`}
-          onClick={() => setDraftMode(!draftMode)}
+          onClick={handleDraftModeToggle}
         >
           <span className="composer-draft-toggle-dot" />
           {draftMode ? 'Draft Mode' : 'Read-only'}
@@ -249,14 +279,7 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
         )}
 
         <div className="composer-header-actions">
-          <button
-            className="composer-permissions-btn"
-            onClick={() => setPermissionOpen(true)}
-          >
-            Permissions
-          </button>
-
-          {testCase?.status !== 'pending_review' && testCase?.status !== 'published' && (
+          {testCase?.status !== 'pending_review' && testCase?.status !== 'published' && testCase?.status !== 'approved' && (
             <button
               className="composer-submit-btn"
               onClick={handlePublish}
@@ -327,12 +350,12 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
                   disabled={readOnly || savingConfig || publishing}
                 />
               </div>
-              {!readOnly && configDirty && (
+              {!readOnly && (
                 <div className="composer-config-actions">
                   <button
                     className="composer-config-save-btn"
                     onClick={handleSaveConfig}
-                    disabled={savingConfig}
+                    disabled={!configDirty || savingConfig}
                   >
                     {savingConfig ? 'Saving...' : 'Save'}
                   </button>
@@ -360,8 +383,46 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
         {/* Divider */}
         <div className="composer-divider" ref={dividerRef} />
 
-        {/* Right Pane: Run History + Versions */}
+        {/* Right Pane: Permissions + Run History + Versions */}
         <div className="composer-right-pane">
+          {/* Permissions Section (collapsible) */}
+          <div className="composer-permissions-wrapper">
+            <div
+              className="composer-config-section-header"
+              onClick={() => setPermissionsCollapsed(!permissionsCollapsed)}
+            >
+              <span className="composer-config-section-title">Permissions</span>
+              <span className={`composer-config-collapse-icon ${permissionsCollapsed ? 'composer-config-collapse-icon--collapsed' : ''}`}>
+                &#9660;
+              </span>
+            </div>
+            <div className={`composer-permissions-body ${permissionsCollapsed ? 'composer-permissions-body--collapsed' : ''}`}>
+              <TestCasePermissionsSection
+                workspaceId={testCaseId}
+                readOnly={readOnly}
+                onPermissionsChange={(perms) => {
+                  // Track that permissions changed (for save indicator if needed)
+                }}
+                initialPermissions={[]}
+              />
+            </div>
+          </div>
+
+          {/* Versions */}
+          <div className="composer-version-section">
+            <div className="composer-section-header">
+              <span className="composer-section-title">Versions</span>
+            </div>
+            <div className="composer-section-body">
+              <TestCaseVersionTab
+                testCaseId={testCaseId}
+                onVersionRestored={loadTestCase}
+                onVersionSubmitted={loadTestCase}
+                refreshKey={versionRefreshKey}
+              />
+            </div>
+          </div>
+
           {/* Run History */}
           <div className="composer-run-history-section">
             <div className="composer-section-header">
@@ -381,31 +442,8 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
               />
             </div>
           </div>
-
-          {/* Versions */}
-          <div className="composer-version-section">
-            <div className="composer-section-header">
-              <span className="composer-section-title">Versions</span>
-            </div>
-            <div className="composer-section-body">
-              <TestCaseVersionTab
-                testCaseId={testCaseId}
-                onVersionRestored={loadTestCase}
-                onVersionSubmitted={loadTestCase}
-              />
-            </div>
-          </div>
         </div>
       </div>
-
-      {/* Permissions Modal */}
-      <Modal
-        isOpen={permissionOpen}
-        onClose={() => setPermissionOpen(false)}
-        title="Permissions"
-      >
-        <TestCasePermissionTab testCaseId={testCaseId} />
-      </Modal>
     </div>
   );
 }

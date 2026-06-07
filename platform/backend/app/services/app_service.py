@@ -14,7 +14,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.app import App
+from app.models.test_workspace import TestWorkspace
 from app.models.conversation import ConversationMessage, ConversationThread
 from app.models.test_definition import TestDefinition
 
@@ -29,7 +29,7 @@ class AppService:
     # Shared helpers
     # ------------------------------------------------------------------
 
-    async def _ensure_draft_test_definition(self, app: App) -> "TestDefinition":
+    async def _ensure_draft_test_definition(self, workspace: TestWorkspace) -> "TestDefinition":
         """Return the linked draft TestDefinition, creating one if needed."""
         test_def = None
         if app.test_definition_id:
@@ -68,7 +68,7 @@ class AppService:
     # CRUD
     # ------------------------------------------------------------------
 
-    async def create_app(self, user_id: int, data: dict) -> App:
+    async def create_app(self, user_id: int, data: dict) -> TestWorkspace:
         thread = ConversationThread(
             thread_type="planning",
             status="active",
@@ -78,7 +78,7 @@ class AppService:
         self.db.add(thread)
         await self.db.flush()
 
-        app = App(
+        app = TestWorkspace(
             name=data.get("name") or "未命名测试",
             description=data.get("description"),
             url=data.get("url") or "",
@@ -103,16 +103,16 @@ class AppService:
         await self.db.commit()
         return await self.get_app(app.id)
 
-    async def get_app(self, app_id: int) -> Optional[App]:
+    async def get_app(self, workspace_id: int) -> Optional[TestWorkspace]:
         stmt = (
-            select(App)
+            select(TestWorkspace)
             .options(
-                selectinload(App.conversation_thread).selectinload(
+                selectinload(TestWorkspace.conversation_thread).selectinload(
                     ConversationThread.messages
                 ),
-                selectinload(App.test_definition),
+                selectinload(TestWorkspace.test_definition),
             )
-            .where(App.id == app_id)
+            .where(TestWorkspace.id == workspace_id)
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -124,63 +124,126 @@ class AppService:
         search: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> List[App]:
-        conditions = [App.status != "archived"]
+    ) -> List[dict]:
+        conditions = [TestWorkspace.status != "archived"]
         if user_id is not None:
-            conditions.append(App.created_by == user_id)
+            conditions.append(TestWorkspace.created_by == user_id)
         if status:
             status_list = [s.strip() for s in status.split(",")]
-            conditions.append(App.status.in_(status_list))
+            conditions.append(TestWorkspace.status.in_(status_list))
         if search:
-            conditions.append(App.name.ilike(f"%{search}%"))
+            conditions.append(TestWorkspace.name.ilike(f"%{search}%"))
 
         stmt = (
-            select(App)
+            select(TestWorkspace)
             .where(and_(*conditions))
-            .order_by(App.updated_at.desc())
+            .order_by(TestWorkspace.updated_at.desc())
             .offset(skip)
             .limit(limit)
         )
         result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        workspaces = list(result.scalars().all())
 
-    async def update_app(self, app_id: int, data: dict) -> Optional[App]:
-        app = await self.get_app(app_id)
+        # For published items, fetch the latest published version number
+        output = []
+        for workspace in workspaces:
+            workspace_dict = {
+                "id": workspace.id,
+                "name": workspace.name,
+                "description": workspace.description,
+                "url": workspace.url,
+                "status": workspace.status,
+                "test_goal": workspace.test_goal,
+                "icon": workspace.icon,
+                "color": workspace.color,
+                "iteration_count": workspace.iteration_count,
+                "latest_result": workspace.latest_result or {},
+                "created_at": workspace.created_at,
+                "updated_at": workspace.updated_at,
+            }
+
+            # If this is a published marketplace item, get the latest published version
+            if workspace.status == "published" and workspace.test_definition_id:
+                from app.models.test_version import TestVersion
+                ver_stmt = (
+                    select(TestVersion)
+                    .where(
+                        TestVersion.test_definition_id == workspace.test_definition_id,
+                        TestVersion.review_status == "published",
+                    )
+                    .order_by(TestVersion.version.desc())
+                    .limit(1)
+                )
+                ver_result = await self.db.execute(ver_stmt)
+                published_version = ver_result.scalar_one_or_none()
+                if published_version:
+                    workspace_dict["iteration_count"] = published_version.version
+
+            output.append(workspace_dict)
+
+        return output
+
+    async def update_app(self, workspace_id: int, data: dict) -> Optional[TestWorkspace]:
+        app = await self.get_app(workspace_id)
         if not app:
             return None
         for key in ("name", "description", "url", "test_goal", "test_context", "icon", "color"):
             if key in data and data[key] is not None:
                 setattr(app, key, data[key])
+
+        # Sync config changes to the draft version snapshot
+        if app.test_definition_id:
+            from app.models.test_version import TestVersion
+            stmt = (
+                select(TestVersion)
+                .where(
+                    TestVersion.test_definition_id == app.test_definition_id,
+                    TestVersion.review_status == "draft",
+                )
+                .order_by(TestVersion.id.desc())
+                .limit(1)
+            )
+            result = await self.db.execute(stmt)
+            draft_version = result.scalar_one_or_none()
+            if draft_version:
+                td_stmt = select(TestDefinition).where(
+                    TestDefinition.id == app.test_definition_id
+                )
+                td_result = await self.db.execute(td_stmt)
+                test_def = td_result.scalar_one_or_none()
+                if test_def:
+                    draft_version.snapshot = await self._build_snapshot(app, test_def)
+
         await self.db.commit()
         await self.db.refresh(app)
         return app
 
-    async def archive_app(self, app_id: int) -> Optional[App]:
-        app = await self.get_app(app_id)
+    async def archive_app(self, workspace_id: int) -> Optional[TestWorkspace]:
+        app = await self.get_app(workspace_id)
         if not app:
             return None
         app.status = "archived"
         await self.db.commit()
         return app
 
-    async def copy_app(self, app_id: int, user_id: int) -> App:
+    async def copy_app(self, workspace_id: int, user_id: int) -> TestWorkspace:
         """Copy an existing app to create a new one for the user."""
-        original = await self.get_app(app_id)
+        original = await self.get_app(workspace_id)
         if not original:
-            raise ValueError(f"App {app_id} not found")
+            raise ValueError(f"App {workspace_id} not found")
 
         # Create new conversation thread for the copy
         thread = ConversationThread(
             thread_type="planning",
             status="active",
             created_by=user_id,
-            metadata={"source": "app_copy", "original_app_id": app_id},
+            metadata={"source": "app_copy", "original_app_id": workspace_id},
         )
         self.db.add(thread)
         await self.db.flush()
 
         # Create the copy with modified metadata
-        app = App(
+        app = TestWorkspace(
             name=f"{original.name} (Copy)",
             description=original.description,
             url=original.url,
@@ -201,7 +264,7 @@ class AppService:
             thread_id=thread.id,
             role="system",
             content=f"Copied from: {original.name}\nTarget: {app.url}\nGoal: {app.test_goal}",
-            metadata={"type": "app_copied", "original_app_id": app_id, "app_id": app.id},
+            metadata={"type": "app_copied", "original_app_id": workspace_id, "app_id": app.id},
         )
         self.db.add(system_msg)
 
@@ -236,16 +299,30 @@ class AppService:
         return app
 
     # ------------------------------------------------------------------
-    # Save plan version snapshot
+    # Version snapshot helpers
     # ------------------------------------------------------------------
 
-    async def _persist_steps(
-        self, app: App, test_def: "TestDefinition", run_status: str = "", run_summary: str = ""
-    ) -> int:
-        """Create a TestVersion snapshot. Returns 1 if saved, 0 if skipped."""
-        from app.models.test_version import TestVersion
+    async def _build_snapshot(self, app: TestWorkspace, test_def: "TestDefinition") -> dict:
+        """Build snapshot for version storage, including permissions."""
+        from app.models.test_workspace_permission import TestWorkspacePermission
+        from app.models.user import User
 
-        snapshot_data = {
+        # Load current permissions for this workspace
+        stmt = select(TestWorkspacePermission, User).join(
+            User, TestWorkspacePermission.user_id == User.id
+        ).where(TestWorkspacePermission.workspace_id == app.id)
+        result = await self.db.execute(stmt)
+        permissions = [
+            {
+                "user_id": perm.user_id,
+                "username": user.username,
+                "email": user.email,
+                "permission_type": perm.permission_type,
+            }
+            for perm, user in result.all()
+        ]
+
+        return {
             "name": app.name,
             "url": app.url,
             "test_goal": app.test_goal,
@@ -255,17 +332,79 @@ class AppService:
             "script_status": test_def.script_status,
             "playwright_script": test_def.playwright_script,
             "script_metadata": test_def.script_metadata or {},
+            "permissions": permissions,
         }
-        description = run_summary or "Version saved"
-        version = TestVersion(
+
+    async def _apply_permissions_to_workspace(
+        self, workspace_id: int, permissions: list
+    ) -> None:
+        """Apply permissions from snapshot to workspace permissions table."""
+        from app.models.test_workspace_permission import TestWorkspacePermission
+
+        # Clear existing permissions
+        stmt = select(TestWorkspacePermission).where(
+            TestWorkspacePermission.workspace_id == workspace_id
+        )
+        result = await self.db.execute(stmt)
+        existing = result.scalars().all()
+        for perm in existing:
+            await self.db.delete(perm)
+
+        # Apply new permissions from snapshot
+        for perm_data in permissions:
+            perm = TestWorkspacePermission(
+                workspace_id=workspace_id,
+                user_id=perm_data["user_id"],
+                permission_type=perm_data["permission_type"],
+                granted_by=None,  # From version restore
+            )
+            self.db.add(perm)
+
+        await self.db.flush()
+
+    async def _get_or_create_draft_version(
+        self, workspace: TestWorkspace, test_def: "TestDefinition"
+    ) -> "TestVersion":
+        """Return the single active draft TestVersion, creating one if needed."""
+        from app.models.test_version import TestVersion
+
+        stmt = (
+            select(TestVersion)
+            .where(
+                TestVersion.test_definition_id == test_def.id,
+                TestVersion.review_status == "draft",
+            )
+            .order_by(TestVersion.id.desc())
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        existing = result.scalar_one_or_none()
+        if existing:
+            return existing
+
+        draft = TestVersion(
             test_definition_id=test_def.id,
-            version=test_def.version,
-            snapshot=snapshot_data,
-            change_description=description,
+            version=0,  # Will be assigned next version number on submit
+            snapshot=await self._build_snapshot(app, test_def),
+            change_description="Initial draft",
+            review_status="draft",
             created_by="system",
         )
-        self.db.add(version)
-        test_def.version += 1
+        self.db.add(draft)
+        await self.db.flush()
+        return draft
+
+    # ------------------------------------------------------------------
+    # Save plan version snapshot (in-place update for draft)
+    # ------------------------------------------------------------------
+
+    async def _persist_steps(
+        self, workspace: TestWorkspace, test_def: "TestDefinition", run_status: str = "", run_summary: str = ""
+    ) -> int:
+        """Update the existing draft version's snapshot in-place."""
+        draft_version = await self._get_or_create_draft_version(workspace, test_def)
+        draft_version.snapshot = await self._build_snapshot(workspace, test_def)
+        draft_version.change_description = run_summary or "Draft updated"
         await self.db.flush()
         return 1
 
@@ -309,6 +448,35 @@ class AppService:
             })
         return out
 
+    async def get_published_versions(self, app_id: int) -> list:
+        """Return all approved/published versions for marketplace browsing."""
+        from app.models.test_version import TestVersion
+
+        app = await self.get_app(app_id)
+        if not app or not app.test_definition_id:
+            return []
+
+        result = await self.db.execute(
+            select(TestVersion)
+            .where(
+                TestVersion.test_definition_id == app.test_definition_id,
+                TestVersion.review_status.in_(["approved", "published"]),
+            )
+            .order_by(TestVersion.version.desc())
+        )
+        versions = result.scalars().all()
+        return [
+            {
+                "id": v.id,
+                "version": v.version,
+                "snapshot": v.snapshot,
+                "change_description": v.change_description,
+                "review_status": v.review_status,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+            }
+            for v in versions
+        ]
+
     async def restore_step_version(self, app_id: int, version_id: int) -> dict:
         """Restore steps from a previous version snapshot."""
         from app.models.test_version import TestVersion
@@ -346,6 +514,12 @@ class AppService:
             test_def.script_metadata = snapshot["script_metadata"]
         app.iteration_count += 1
 
+        # Apply permissions from snapshot
+        if "permissions" in snapshot:
+            await self._apply_permissions_to_workspace(
+                app.id, snapshot["permissions"]
+            )
+
         count = await self._persist_steps(
             app, test_def, run_summary=f"Restored from v{version.version}"
         )
@@ -377,6 +551,19 @@ class AppService:
 
         if version.review_status not in ("draft", "rejected"):
             raise ValueError(f"Cannot submit version with status '{version.review_status}'")
+
+        # Lock in version number on submit
+        td_stmt = select(TestDefinition).where(
+            TestDefinition.id == app.test_definition_id
+        )
+        test_def = (await self.db.execute(td_stmt)).scalar_one_or_none()
+        if test_def and version.version == 0:
+            # Legacy support: if draft still uses version=0, assign now
+            test_def.version += 1
+            version.version = test_def.version
+        elif test_def and version.version > test_def.version:
+            # Draft already has a version number, update test_definition.version to match
+            test_def.version = version.version
 
         version.review_status = "pending_review"
         version.rejection_reason = None
@@ -468,6 +655,7 @@ class AppService:
     # ------------------------------------------------------------------
 
     async def publish_app(self, app_id: int) -> dict:
+        """Submit the current draft version for admin review."""
         app = await self.get_app(app_id)
         if not app:
             raise ValueError(f"App {app_id} not found")
@@ -493,30 +681,22 @@ class AppService:
         else:
             test_def = await self._ensure_draft_test_definition(app)
 
-        # Persist steps (this also creates a version snapshot)
-        await self._persist_steps(app, test_def)
+        # Get or create the draft version, update snapshot one final time
+        draft_version = await self._get_or_create_draft_version(app, test_def)
+        draft_version.snapshot = await self._build_snapshot(app, test_def)
+        draft_version.change_description = "Submitted for review"
 
-        # Create a full-config version snapshot and submit it for review
-        from app.models.test_version import TestVersion
-        version_snapshot = {
-            "name": app.name,
-            "url": app.url,
-            "test_goal": app.test_goal,
-            "description": app.description,
-            "test_context": app.test_context or {},
-            "execution_mode": test_def.execution_mode,
-            "script_status": test_def.script_status,
-        }
-        review_version = TestVersion(
-            test_definition_id=test_def.id,
-            version=test_def.version,
-            snapshot=version_snapshot,
-            change_description="Submitted for review",
-            review_status="pending_review",
-            created_by="user",
-        )
-        self.db.add(review_version)
-        test_def.version += 1
+        # Lock in version number and transition to pending_review
+        if draft_version.version == 0:
+            # Legacy support: if draft still uses version=0, assign now
+            test_def.version += 1
+            draft_version.version = test_def.version
+        elif draft_version.version > test_def.version:
+            # Draft already has a version number, update test_definition.version to match
+            test_def.version = draft_version.version
+        draft_version.review_status = "pending_review"
+        draft_version.rejection_reason = None
+        draft_version.created_by = "user"
 
         test_def.review_status = "pending_review"
         app.status = "pending_review"
@@ -529,15 +709,15 @@ class AppService:
             "test_id": test_def.test_id,
             "name": test_def.name,
             "status": "pending_review",
-            "version_id": review_version.id,
-            "version": review_version.version,
+            "version_id": draft_version.id,
+            "version": draft_version.version,
         }
 
     # ------------------------------------------------------------------
     # Sync run result into app state (called on GET app after run)
     # ------------------------------------------------------------------
 
-    async def sync_run_result(self, app_id: int) -> Optional[App]:
+    async def sync_run_result(self, app_id: int) -> Optional[TestWorkspace]:
         app = await self.get_app(app_id)
         if not app or not app.latest_run_id or app.status != "testing":
             return app

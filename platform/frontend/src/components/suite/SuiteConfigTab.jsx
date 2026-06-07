@@ -1,6 +1,6 @@
 export default function SuiteConfigTab({
   formName, formDesc, formMode, formConcurrency, formFailStrategy,
-  configDirty, savingConfig,
+  configDirty, savingConfig, readOnly,
   onChangeName, onChangeDesc, onChangeMode, onChangeConcurrency, onChangeFailStrategy,
   onSaveConfig,
   // Schedule props
@@ -28,7 +28,7 @@ export default function SuiteConfigTab({
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '600px' }}>
+    <div className="suite-config-container">
       <div className="studio-workspace-field-group">
         <label className="studio-workspace-field-label">Name</label>
         <input
@@ -36,10 +36,11 @@ export default function SuiteConfigTab({
           value={formName}
           onChange={onChangeName}
           placeholder="Test suite name"
+          disabled={readOnly}
         />
       </div>
 
-      <div className="studio-workspace-field-group" style={{ marginTop: '16px' }}>
+      <div className="studio-workspace-field-group">
         <label className="studio-workspace-field-label">Description</label>
         <textarea
           className="studio-workspace-field-textarea"
@@ -47,28 +48,31 @@ export default function SuiteConfigTab({
           onChange={onChangeDesc}
           placeholder="Optional description..."
           rows={2}
+          disabled={readOnly}
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
-        <div className="studio-workspace-field-group">
+      <div className="studio-workspace-field-row">
+        <div className="studio-workspace-field-group studio-workspace-field-group--inline">
           <label className="studio-workspace-field-label">Execution Mode</label>
           <select
             className="studio-workspace-field-input"
             value={formMode}
             onChange={onChangeMode}
+            disabled={readOnly}
           >
             <option value="sequential">Sequential</option>
             <option value="parallel">Parallel</option>
           </select>
         </div>
 
-        <div className="studio-workspace-field-group">
+        <div className="studio-workspace-field-group studio-workspace-field-group--inline">
           <label className="studio-workspace-field-label">Failure Strategy</label>
           <select
             className="studio-workspace-field-input"
             value={formFailStrategy}
             onChange={onChangeFailStrategy}
+            disabled={readOnly}
           >
             <option value="continue">Continue</option>
             <option value="fail_fast">Fail fast</option>
@@ -77,7 +81,7 @@ export default function SuiteConfigTab({
       </div>
 
       {formMode === 'parallel' && (
-        <div className="studio-workspace-field-group" style={{ marginTop: '16px' }}>
+        <div className="studio-workspace-field-group">
           <label className="studio-workspace-field-label">Max Concurrency</label>
           <input
             className="studio-workspace-field-input"
@@ -86,19 +90,21 @@ export default function SuiteConfigTab({
             max={10}
             value={formConcurrency}
             onChange={onChangeConcurrency}
+            disabled={readOnly}
           />
         </div>
       )}
 
       {/* Schedule Section */}
-      <div style={{ marginTop: '24px', borderTop: '1px solid #e0e0e0', paddingTop: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <label className="studio-workspace-field-label" style={{ marginBottom: 0 }}>Scheduled Run</label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+      <div className="studio-workspace-schedule-divider">
+        <div className="studio-workspace-schedule-header">
+          <label className="studio-workspace-field-label">Scheduled Run</label>
+          <label className={`studio-workspace-checkbox-label ${readOnly ? 'studio-workspace-checkbox-label--disabled' : ''}`}>
             <input
               type="checkbox"
               checked={formScheduleEnabled}
               onChange={(e) => onChangeScheduleEnabled(e.target.checked)}
+              disabled={readOnly}
             />
             Enable
           </label>
@@ -106,15 +112,15 @@ export default function SuiteConfigTab({
 
         {formScheduleEnabled && (
           <>
-            <div className="studio-workspace-field-group" style={{ marginTop: '12px' }}>
+            <div className="studio-workspace-field-group">
               <label className="studio-workspace-field-label">Cron Expression</label>
               <select
-                className="studio-workspace-field-input"
+                className="studio-workspace-field-input studio-workspace-field-input--preset"
                 value=""
                 onChange={(e) => {
                   if (e.target.value) onChangeCronExpression(e.target.value);
                 }}
-                style={{ marginBottom: '8px' }}
+                disabled={readOnly}
               >
                 <option value="">Select preset...</option>
                 {cronPresets.map((p) => (
@@ -128,18 +134,20 @@ export default function SuiteConfigTab({
                 value={formCronExpression || ''}
                 onChange={(e) => onChangeCronExpression(e.target.value)}
                 placeholder="0 2 * * * (min hour day month weekday)"
+                disabled={readOnly}
               />
-              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              <span className="studio-workspace-helper-text">
                 Format: minute hour day month weekday
-              </div>
+              </span>
             </div>
 
-            <div className="studio-workspace-field-group" style={{ marginTop: '16px' }}>
+            <div className="studio-workspace-field-group">
               <label className="studio-workspace-field-label">Timezone</label>
               <select
                 className="studio-workspace-field-input"
                 value={formTimezone}
                 onChange={(e) => onChangeTimezone(e.target.value)}
+                disabled={readOnly}
               >
                 <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
                 <option value="UTC">UTC</option>
@@ -149,21 +157,20 @@ export default function SuiteConfigTab({
             </div>
 
             {/* Advanced schedule options */}
-            <details style={{ marginTop: '16px' }}>
-              <summary style={{ fontSize: '13px', color: '#0f62fe', cursor: 'pointer', userSelect: 'none' }}>
-                Advanced Options
-              </summary>
-              <div style={{ marginTop: '12px', paddingLeft: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '12px' }}>
+            <details className="studio-workspace-details">
+              <summary>Advanced Options</summary>
+              <div className="studio-workspace-details-content">
+                <label className="studio-workspace-checkbox-label">
                   <input
                     type="checkbox"
                     checked={formScheduleAllowConcurrent}
                     onChange={(e) => onChangeScheduleAllowConcurrent(e.target.checked)}
+                    disabled={readOnly}
                   />
                   Allow concurrent execution
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="studio-workspace-field-row">
                   <div className="studio-workspace-field-group">
                     <label className="studio-workspace-field-label">Max Retries</label>
                     <input
@@ -173,6 +180,7 @@ export default function SuiteConfigTab({
                       max={10}
                       value={formScheduleMaxRetries}
                       onChange={(e) => onChangeScheduleMaxRetries(parseInt(e.target.value) || 0)}
+                      disabled={readOnly}
                     />
                   </div>
                   <div className="studio-workspace-field-group">
@@ -184,6 +192,7 @@ export default function SuiteConfigTab({
                       max={3600}
                       value={formScheduleRetryInterval}
                       onChange={(e) => onChangeScheduleRetryInterval(parseInt(e.target.value) || 60)}
+                      disabled={readOnly}
                     />
                   </div>
                 </div>
@@ -191,7 +200,7 @@ export default function SuiteConfigTab({
             </details>
 
             {/* Schedule status */}
-            <div style={{ marginTop: '16px', fontSize: '12px', color: '#6b7280', display: 'flex', gap: '24px' }}>
+            <div className="studio-workspace-schedule-status">
               <span>Next run: {formatTime(nextRunTime)}</span>
               <span>Last run: {formatTime(lastRunTime)}</span>
             </div>
@@ -199,7 +208,7 @@ export default function SuiteConfigTab({
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+      <div className="studio-workspace-actions">
         <button
           className="studio-workspace-secondary-btn"
           onClick={onSaveConfig}

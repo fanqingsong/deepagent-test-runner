@@ -70,10 +70,10 @@ class TestDefinition(Base):
     is_regression: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     regression_source_run_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    # App workspace fields
+    # TestWorkspace reference
     is_draft: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    source_app_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("apps.id"), nullable=True,
+    source_workspace_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("test_workspace.id"), nullable=True,
     )
 
     # Script generation fields

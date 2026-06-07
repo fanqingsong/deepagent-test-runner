@@ -9,8 +9,10 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin_chat,
     analytics,
-    app_permissions,
-    apps,
+    suite_permissions,
+    suite_versions,
+    workspace_permissions,
+    workspaces,
     auth,
     charts,
     data_analysis,
@@ -46,6 +48,18 @@ api_router.include_router(
 )
 
 api_router.include_router(
+    suite_versions.router,
+    prefix="/suite-versions",
+    tags=["suite-versions"]
+)
+
+api_router.include_router(
+    suite_permissions.router,
+    prefix="/suite-permissions",
+    tags=["suite-permissions"]
+)
+
+api_router.include_router(
     test_suites.router,
     prefix="/test-suites",
     tags=["test-suites"]
@@ -70,15 +84,15 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    apps.router,
-    prefix="/apps",
-    tags=["apps"]
+    workspaces.router,
+    prefix="/test-workspaces",
+    tags=["workspaces"]
 )
 
 api_router.include_router(
-    app_permissions.router,
-    prefix="/apps",
-    tags=["app-permissions"]
+    workspace_permissions.router,
+    prefix="/test-workspaces",
+    tags=["workspace-permissions"]
 )
 
 api_router.include_router(
