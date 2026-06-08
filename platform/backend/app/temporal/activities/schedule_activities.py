@@ -18,6 +18,7 @@ from app.temporal.activities import get_default_retry_policy
 from app.core.worker_db import run_with_session
 from app.models.schedule import Schedule
 from app.models.test_run import TestRun
+from app.models.suite_run import SuiteRun
 from app.services.execution_service import ExecutionService
 from temporalio import activity
 
@@ -299,14 +300,32 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
         # Build environment
         environment = exec_service.build_environment(schedule)
 
-        # Create test run record
-        await exec_service.create_test_run(
-            run_id=run_id,
-            test_definition_ids=test_definition_ids,
-            environment=environment,
-            db=db,
-            schedule_id=schedule_id
-        )
+        # Create run record based on schedule type
+        if schedule.schedule_type == "suite" and schedule.test_suite_id:
+            # Create suite_run record for test suite schedules
+            suite_run = SuiteRun(
+                suite_id=schedule.test_suite_id,
+                run_id=run_id,
+                status="pending",
+                execution_mode="sequential",  # Default, will be updated from suite config
+                total_tests=len(test_definition_ids),
+                passed=0,
+                failed=0,
+                skipped=0,
+                triggered_by="schedule",
+            )
+            db.add(suite_run)
+            logger.info(f"Created suite_run {run_id} for suite {schedule.test_suite_id}")
+        else:
+            # Create test_run record for single test schedules
+            await exec_service.create_test_run(
+                run_id=run_id,
+                test_definition_ids=test_definition_ids,
+                environment=environment,
+                db=db,
+                schedule_id=schedule_id
+            )
+            logger.info(f"Created test_run {run_id} for test definitions {test_definition_ids}")
 
         await db.commit()
 
