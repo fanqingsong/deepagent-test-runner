@@ -11,6 +11,7 @@ export default function SuiteConfigTab({
   onChangeScheduleAllowConcurrent, onChangeScheduleMaxRetries, onChangeScheduleRetryInterval,
 }) {
   const cronPresets = [
+    { label: 'Every minute', value: '* * * * *' },
     { label: 'Hourly', value: '0 * * * *' },
     { label: 'Daily at 2 AM', value: '0 2 * * *' },
     { label: 'Weekly on Monday 9 AM', value: '0 9 * * 1' },
