@@ -91,11 +91,10 @@ export default function SuiteEntriesTab({ suite, onUpdateEntries }) {
 
   return (
     <div style={{ padding: '20px' }}>
-      <div className="studio-section">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <h3 className="studio-section-title" style={{ margin: 0 }}>
-            Test Entries ({items.length})
-          </h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#161616' }}>
+          Test Entries ({items.length})
+        </h3>
           <button
             style={{
               background: '#0f62fe',
@@ -192,7 +191,7 @@ export default function SuiteEntriesTab({ suite, onUpdateEntries }) {
             No test entries yet, click "Add Test Case" to start
           </div>
         ) : (
-          <table className="studio-workspace-steps-table">
+          <table className="composer-table">
             <thead>
               <tr>
                 <th style={{ width: '32px', textAlign: 'center' }}>#</th>
@@ -244,7 +243,6 @@ export default function SuiteEntriesTab({ suite, onUpdateEntries }) {
             </tbody>
           </table>
         )}
-      </div>
     </div>
   );
 }

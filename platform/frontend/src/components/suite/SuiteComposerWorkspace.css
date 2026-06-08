@@ -222,6 +222,14 @@
 .composer-script-section-body {
   flex: 1;
   overflow-y: auto;
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.composer-script-section-body--collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 
 /* ── Shared Styles ──────────────────────────────────── */
@@ -325,6 +333,14 @@
 .composer-section-body {
   flex: 1;
   overflow-y: auto;
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.composer-section-body--collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 
 /* ── Permissions Section (collapsible) ─────────────────────────────────── */
@@ -640,6 +656,50 @@ select.studio-workspace-field-input {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* ── Unified Table Styles ─────────────────────────────────── */
+
+.composer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+}
+
+.composer-table thead {
+  background: #f4f4f4;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.composer-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #525252;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.composer-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f4f4f4;
+  vertical-align: middle;
+  color: #161616;
+}
+
+.composer-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.composer-table tbody tr.composer-table-row--active {
+  background: #edf5ff;
+}
+
+.composer-table tbody tr.composer-table-row--active:hover {
+  background: #d0e2ff;
 }
 
 /* ── Responsive ─────────────────────────────────────── */

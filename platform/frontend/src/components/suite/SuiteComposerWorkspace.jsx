@@ -66,6 +66,9 @@ export default function SuiteComposerWorkspace({ suiteId, onSuiteChanged, onDele
   // Config collapse
   const [configCollapsed, setConfigCollapsed] = useState(false);
   const [permissionsCollapsed, setPermissionsCollapsed] = useState(false);
+  const [entriesCollapsed, setEntriesCollapsed] = useState(false);
+  const [versionsCollapsed, setVersionsCollapsed] = useState(false);
+  const [runHistoryCollapsed, setRunHistoryCollapsed] = useState(false);
 
   // Draggable divider
   const leftPaneRef = useRef(null);
@@ -429,10 +432,17 @@ export default function SuiteComposerWorkspace({ suiteId, onSuiteChanged, onDele
 
           {/* Test Entries Section */}
           <div className="composer-script-section">
-            <div className="composer-script-section-header">
+            <div
+              className="composer-script-section-header"
+              onClick={() => setEntriesCollapsed(!entriesCollapsed)}
+              style={{ cursor: 'pointer' }}
+            >
               <span className="composer-script-section-title">Test Entries</span>
+              <span className={`composer-config-collapse-icon ${entriesCollapsed ? 'composer-config-collapse-icon--collapsed' : ''}`}>
+                &#9660;
+              </span>
             </div>
-            <div className="composer-script-section-body">
+            <div className={`composer-script-section-body ${entriesCollapsed ? 'composer-section-body--collapsed' : ''}`}>
               <SuiteEntriesTab
                 suite={suite}
                 onUpdateEntries={handleUpdateEntries}
@@ -464,10 +474,17 @@ export default function SuiteComposerWorkspace({ suiteId, onSuiteChanged, onDele
 
           {/* Versions */}
           <div className="composer-version-section">
-            <div className="composer-section-header">
+            <div
+              className="composer-section-header"
+              onClick={() => setVersionsCollapsed(!versionsCollapsed)}
+              style={{ cursor: 'pointer' }}
+            >
               <span className="composer-section-title">Versions</span>
+              <span className={`composer-config-collapse-icon ${versionsCollapsed ? 'composer-config-collapse-icon--collapsed' : ''}`}>
+                &#9660;
+              </span>
             </div>
-            <div className="composer-section-body">
+            <div className={`composer-section-body ${versionsCollapsed ? 'composer-section-body--collapsed' : ''}`}>
               <SuiteVersionTab
                 suiteId={suiteId}
                 onVersionRestored={() => {
@@ -485,13 +502,20 @@ export default function SuiteComposerWorkspace({ suiteId, onSuiteChanged, onDele
 
           {/* Run History */}
           <div className="composer-run-history-section">
-            <div className="composer-section-header">
+            <div
+              className="composer-section-header"
+              onClick={() => setRunHistoryCollapsed(!runHistoryCollapsed)}
+              style={{ cursor: 'pointer' }}
+            >
               <span className="composer-section-title">
                 Run History
                 <span className="composer-section-count">({runs.length})</span>
               </span>
+              <span className={`composer-config-collapse-icon ${runHistoryCollapsed ? 'composer-config-collapse-icon--collapsed' : ''}`}>
+                &#9660;
+              </span>
             </div>
-            <div className="composer-section-body">
+            <div className={`composer-section-body ${runHistoryCollapsed ? 'composer-section-body--collapsed' : ''}`}>
               <SuiteRunHistoryTab
                 runs={runs}
                 loading={runsLoading}

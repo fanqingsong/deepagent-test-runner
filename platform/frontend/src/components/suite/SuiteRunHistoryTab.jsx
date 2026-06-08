@@ -121,7 +121,7 @@ function DetailPanel({ detail, onClose }) {
 
       {/* Entry list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <table className="studio-workspace-steps-table" style={{ fontSize: '13px' }}>
+        <table className="composer-table" style={{ fontSize: '13px' }}>
           <thead>
             <tr>
               <th style={{ width: '32px', textAlign: 'center' }}>#</th>
@@ -223,10 +223,7 @@ export default function SuiteRunHistoryTab({ runs, loading }) {
   return (
     <>
       <div style={{ padding: '20px' }}>
-        <div className="studio-section">
-          <h3 className="studio-section-title">Run History ({runs.length})</h3>
-
-          <table className="studio-workspace-steps-table">
+        <table className="composer-table">
             <thead>
               <tr>
                 <th>Run ID</th>
@@ -241,8 +238,7 @@ export default function SuiteRunHistoryTab({ runs, loading }) {
               {runs.map((run) => (
                 <tr
                   key={run.id}
-                  className="run-history-row"
-                  style={selectedRunId === run.run_id ? { background: '#e8f0fe' } : undefined}
+                  className={selectedRunId === run.run_id ? 'composer-table-row--active' : ''}
                 >
                   <td style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '12px' }}>
                     {run.run_id?.slice(0, 12)}...
@@ -284,9 +280,8 @@ export default function SuiteRunHistoryTab({ runs, loading }) {
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* Detail side panel */}
+        {/* Detail side panel */}
       {(selectedRunId || detailLoading) && (
         <DetailPanel
           detail={detail}
