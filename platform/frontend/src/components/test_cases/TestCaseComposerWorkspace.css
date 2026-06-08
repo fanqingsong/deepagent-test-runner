@@ -1000,6 +1000,36 @@
   word-break: break-word;
 }
 
+/* Entries Table */
+.version-entries-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.version-entries-table thead {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.version-entries-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #525252;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.version-entries-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f4f4f4;
+}
+
+.version-entries-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 /* Permissions Table */
 .version-permissions-table {
   width: 100%;
@@ -1056,6 +1086,85 @@
 .version-snapshot-actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
+/* ========================================
+   Version Right Sidebar
+   ======================================== */
+
+/* Sidebar Overlay */
+.version-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+}
+
+.version-sidebar-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.version-sidebar-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Sidebar Container */
+.version-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 500px;
+  max-width: 90vw;
+  background-color: #ffffff;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10000;
+}
+
+.version-sidebar.visible {
+  transform: translateX(0);
+}
+
+.version-sidebar.hidden {
+  transform: translateX(100%);
+}
+
+/* Sidebar Header */
+.version-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f4f4f4;
+  flex-shrink: 0;
+}
+
+/* Sidebar Content Area */
+.version-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 672px) {
+  .version-sidebar {
+    width: 100%;
+    max-width: 100vw;
+  }
+}
 
