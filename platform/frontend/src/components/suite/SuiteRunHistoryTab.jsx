@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getSuiteRunDetail } from '../../api';
 
 const STATUS_MAP = {
@@ -36,49 +36,65 @@ function DetailPanel({ detail, onClose }) {
   if (!detail) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0, right: 0, bottom: 0,
-      width: '520px',
-      background: '#fff',
-      borderLeft: '1px solid #e0e0e0',
-      boxShadow: '-4px 0 12px rgba(0,0,0,0.08)',
-      zIndex: 1000,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-    }}>
-      {/* Header */}
+    <>
+      {/* Background overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.3)',
+          zIndex: 999,
+        }}
+      />
+      {/* Side panel */}
       <div style={{
-        padding: '12px 16px',
-        borderBottom: '1px solid #e0e0e0',
+        position: 'fixed',
+        top: 0, right: 0, bottom: 0,
+        width: '520px',
+        background: '#fff',
+        borderLeft: '1px solid #e0e0e0',
+        boxShadow: '-4px 0 12px rgba(0,0,0,0.08)',
+        zIndex: 1000,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexShrink: 0,
+        flexDirection: 'column',
+        overflow: 'hidden',
       }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#161616' }}>
-            Run Details
-          </h3>
-          <span style={{ fontSize: '11px', color: '#8d8d8d', fontFamily: '"IBM Plex Mono", monospace' }}>
-            {detail.run_id}
-          </span>
+        {/* Header */}
+        <div style={{
+          padding: '12px 16px',
+          borderBottom: '1px solid #e0e0e0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
+        }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#161616' }}>
+              Run Details
+            </h3>
+            <span style={{ fontSize: '11px', color: '#8d8d8d', fontFamily: '"IBM Plex Mono", monospace' }}>
+              {detail.run_id}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: '#f4f4f4',
+              border: 'none',
+              fontSize: '16px',
+              cursor: 'pointer',
+              color: '#161616',
+              padding: '6px 12px',
+              borderRadius: '0',
+              fontWeight: 600,
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#e0e0e0'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#f4f4f4'}
+          >
+            Close
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '18px',
-            cursor: 'pointer',
-            color: '#525252',
-            padding: '4px 8px',
-          }}
-        >
-          &times;
-        </button>
-      </div>
 
       {/* Summary */}
       <div style={{
@@ -149,6 +165,7 @@ function DetailPanel({ detail, onClose }) {
         </table>
       </div>
     </div>
+    </>
   );
 }
 
@@ -175,6 +192,17 @@ export default function SuiteRunHistoryTab({ runs, loading }) {
     setSelectedRunId(null);
     setDetail(null);
   };
+
+  // ESC key to close detail panel
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && (selectedRunId || detailLoading)) {
+        handleCloseDetail();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedRunId, detailLoading]);
 
   if (loading) {
     return (
