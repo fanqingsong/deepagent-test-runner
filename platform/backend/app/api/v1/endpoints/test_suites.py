@@ -36,6 +36,8 @@ router = APIRouter()
 
 async def _sync_suite_schedule(db: AsyncSession, suite: TestSuite) -> None:
     """Create, update, or deactivate the linked Schedule record for a suite."""
+    from app.services.temporal_schedule_service import create, update, pause
+
     if suite.schedule_enabled and suite.cron_expression:
         # Only schedule approved suites
         if getattr(suite, "review_status", "approved") != "approved":
@@ -47,6 +49,7 @@ async def _sync_suite_schedule(db: AsyncSession, suite: TestSuite) -> None:
                 schedule = result.scalar_one_or_none()
                 if schedule:
                     schedule.is_active = False
+                    await pause(suite.schedule_id)
             return
         # Validate cron
         try:
@@ -76,11 +79,16 @@ async def _sync_suite_schedule(db: AsyncSession, suite: TestSuite) -> None:
                 allow_concurrent=suite.schedule_allow_concurrent,
                 max_retries=suite.schedule_max_retries,
                 retry_interval_seconds=suite.schedule_retry_interval,
-                created_by=suite.created_by,
+                created_by=int(suite.created_by) if suite.created_by else None,
             )
             db.add(schedule)
             await db.flush()
             suite.schedule_id = schedule.id
+
+            # Sync to Temporal
+            test_def_ids = suite.test_definition_ids or []
+            if test_def_ids:
+                await create(suite.schedule_id, suite.cron_expression, str(test_def_ids[0]), True)
         else:
             schedule.name = f"{suite.name} (自动)"
             schedule.test_definition_ids = suite.test_definition_ids or []
@@ -90,6 +98,11 @@ async def _sync_suite_schedule(db: AsyncSession, suite: TestSuite) -> None:
             schedule.allow_concurrent = suite.schedule_allow_concurrent
             schedule.max_retries = suite.schedule_max_retries
             schedule.retry_interval_seconds = suite.schedule_retry_interval
+
+            # Sync to Temporal
+            test_def_ids = suite.test_definition_ids or []
+            if test_def_ids:
+                await update(suite.schedule_id, suite.cron_expression, str(test_def_ids[0]), True)
 
         # Calculate next run time
         try:
@@ -112,6 +125,7 @@ async def _sync_suite_schedule(db: AsyncSession, suite: TestSuite) -> None:
             schedule = result.scalar_one_or_none()
             if schedule:
                 schedule.is_active = False
+                await pause(suite.schedule_id)
         suite.next_run_time = None
 
 

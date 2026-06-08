@@ -61,7 +61,7 @@ async def create(
                     id=f"schedule-exec-{schedule_id}",
                     task_queue=TASK_QUEUE,
                 ),
-                spec=ScheduleSpec(cron=[cron_expression]),
+                spec=ScheduleSpec(cron_expressions=[cron_expression]),
                 state=ScheduleState(paused=not is_active),
             ),
         )
@@ -95,7 +95,7 @@ async def update(
                         id=f"schedule-exec-{schedule_id}",
                         task_queue=TASK_QUEUE,
                     ),
-                    spec=ScheduleSpec(cron=[cron_expression]),
+                    spec=ScheduleSpec(cron_expressions=[cron_expression]),
                     state=ScheduleState(paused=not is_active),
                 ),
             )

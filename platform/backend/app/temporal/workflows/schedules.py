@@ -109,12 +109,9 @@ class ScheduleExecutionWorkflow:
 
                     test_result = await workflow.execute_child_workflow(
                         TestExecutionWorkflow.run,
-                        args=[],
-                        kwargs={
-                            "test_definition_id": test_def_id,
-                            "run_id": execute_output.run_id,
-                            "environment": environment,
-                        },
+                        args=[test_def_id],
+                        id=f"test-exec-{test_def_id}-{run_id}",
+                        task_queue="unified-backend-task-queue",
                         execution_timeout=DEFAULT_EXECUTION_TIMEOUT,
                     )
 

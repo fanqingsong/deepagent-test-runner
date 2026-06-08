@@ -248,6 +248,39 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
 
         await db.commit()
 
+        # Resolve test definition IDs based on schedule type
+        if schedule.schedule_type == "suite" and schedule.test_definition_ids:
+            # For test suites, use the test_definition_ids array
+            test_definition_ids = schedule.test_definition_ids
+        elif schedule.test_definition_id:
+            # For single test schedules, use test_definition_id
+            try:
+                test_def_id_int = int(schedule.test_definition_id) if isinstance(schedule.test_definition_id, str) else schedule.test_definition_id
+                test_definition_ids = [test_def_id_int]
+            except (ValueError, TypeError) as e:
+                logger.error(f"Invalid test_definition_id {schedule.test_definition_id}: {e}")
+                return ExecuteScheduledTestOutput(
+                    schedule_id=schedule_id,
+                    run_id=None,
+                    success=False,
+                    message=f"Invalid test_definition_id: {str(e)}",
+                    tests_queued=0
+                )
+        else:
+            # Fallback to provided test_definition_id (for backward compatibility)
+            try:
+                test_def_id_int = int(test_definition_id) if isinstance(test_definition_id, str) else test_definition_id
+                test_definition_ids = [test_def_id_int]
+            except (ValueError, TypeError) as e:
+                logger.error(f"Invalid test_definition_id {test_definition_id}: {e}")
+                return ExecuteScheduledTestOutput(
+                    schedule_id=schedule_id,
+                    run_id=None,
+                    success=False,
+                    message=f"Invalid test_definition_id: {str(e)}",
+                    tests_queued=0
+                )
+
         # Check execution limits
         exec_service = ExecutionService(db)
         can_execute = await exec_service.check_execution_limit(schedule, db)
@@ -258,21 +291,6 @@ async def execute_scheduled_test(input: ExecuteScheduledTestInput) -> ExecuteSch
                 run_id=None,
                 success=False,
                 message="Execution limit reached",
-                tests_queued=0
-            )
-
-        # Use the provided test_definition_id directly
-        # Convert to int if it's a string, since the workflow passes it as str
-        try:
-            test_def_id_int = int(test_definition_id) if isinstance(test_definition_id, str) else test_definition_id
-            test_definition_ids = [test_def_id_int]
-        except (ValueError, TypeError) as e:
-            logger.error(f"Invalid test_definition_id {test_definition_id}: {e}")
-            return ExecuteScheduledTestOutput(
-                schedule_id=schedule_id,
-                run_id=None,
-                success=False,
-                message=f"Invalid test_definition_id: {str(e)}",
                 tests_queued=0
             )
 
