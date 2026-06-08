@@ -24,10 +24,10 @@ def upgrade() -> None:
     # Import models directly from their modules to avoid import issues
     from app.models.user import User
     from app.models.role import Role, Permission
-    from app.models.app import App
+    from app.models.test_workspace import TestWorkspace
     # Note: app_permissions is created by migration a1b2c3d4e5f6
     from app.models.test_definition import TestDefinition
-    from app.models.test_step import TestStep
+    # Note: TestStep model removed - test_steps table created for backwards compatibility
     from app.models.test_version import TestVersion
     from app.models.test_suite import TestSuite
     from app.models.schedule import Schedule
