@@ -33,6 +33,18 @@ export default function SuiteVersionTab({
   const [submittingId, setSubmittingId] = useState(null);
   const [error, setError] = useState(null);
   const [snapshotSection, setSnapshotSection] = useState('all');
+  const [collapsedSections, setCollapsedSections] = useState({
+    config: false,
+    entries: false,
+    permissions: false,
+  });
+
+  const toggleSection = (section) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
 
   const loadVersions = useCallback(async () => {
     if (!suiteId) return;
@@ -253,108 +265,142 @@ export default function SuiteVersionTab({
                 <div className="version-snapshot-content">
                   {(snapshotSection === 'all' || snapshotSection === 'config') && (
                     <div className="version-section-block">
-                      <h5 className="version-section-title">Configuration</h5>
-                      <div className="version-config-grid">
-                        <div className="version-config-item">
-                          <span className="version-config-label">Name:</span>
-                          <span className="version-config-value">{snapshot.name || '-'}</span>
-                        </div>
-                        <div className="version-config-item">
-                          <span className="version-config-label">Execution Mode:</span>
-                          <span className="version-config-value">{snapshot.execution_mode || '-'}</span>
-                        </div>
-                        <div className="version-config-item">
-                          <span className="version-config-label">Fail Strategy:</span>
-                          <span className="version-config-value">{snapshot.fail_strategy || '-'}</span>
-                        </div>
-                        <div className="version-config-item full">
-                          <span className="version-config-label">Description:</span>
-                          <span className="version-config-value">{snapshot.description || '-'}</span>
-                        </div>
-                        {snapshot.is_dynamic && (
+                      <button
+                        className="version-section-header"
+                        onClick={() => toggleSection('config')}
+                      >
+                        <span className="version-section-title">Configuration</span>
+                        <span className={`version-section-chevron ${collapsedSections.config ? 'collapsed' : ''}`}>
+                          ▼
+                        </span>
+                      </button>
+                      {!collapsedSections.config && (
+                        <div className="version-config-grid">
                           <div className="version-config-item">
-                            <span className="version-config-label">Dynamic Suite:</span>
-                            <span className="version-config-value">Yes</span>
+                            <span className="version-config-label">Name:</span>
+                            <span className="version-config-value">{snapshot.name || '-'}</span>
                           </div>
-                        )}
-                      </div>
+                          <div className="version-config-item">
+                            <span className="version-config-label">Execution Mode:</span>
+                            <span className="version-config-value">{snapshot.execution_mode || '-'}</span>
+                          </div>
+                          <div className="version-config-item">
+                            <span className="version-config-label">Fail Strategy:</span>
+                            <span className="version-config-value">{snapshot.fail_strategy || '-'}</span>
+                          </div>
+                          <div className="version-config-item full">
+                            <span className="version-config-label">Description:</span>
+                            <span className="version-config-value">{snapshot.description || '-'}</span>
+                          </div>
+                          {snapshot.is_dynamic && (
+                            <div className="version-config-item">
+                              <span className="version-config-label">Dynamic Suite:</span>
+                              <span className="version-config-value">Yes</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {(snapshotSection === 'all' || snapshotSection === 'entries') && (
                     <div className="version-section-block">
-                      <h5 className="version-section-title">
-                        Test Entries
-                        <span style={{ fontWeight: 400, color: '#525252', fontSize: '12px', marginLeft: '8px' }}>
-                          ({snapshot.suite_entries?.length || snapshot.test_definition_ids?.length || 0} tests)
+                      <button
+                        className="version-section-header"
+                        onClick={() => toggleSection('entries')}
+                      >
+                        <span className="version-section-title">
+                          Test Entries
+                          <span style={{ fontWeight: 400, color: '#525252', fontSize: '12px', marginLeft: '8px' }}>
+                            ({snapshot.suite_entries?.length || snapshot.test_definition_ids?.length || 0} tests)
+                          </span>
                         </span>
-                      </h5>
-                      {snapshot.suite_entries && snapshot.suite_entries.length > 0 ? (
-                        <table className="version-entries-table">
-                          <thead>
-                            <tr>
-                              <th>Order</th>
-                              <th>Test ID</th>
-                              <th>Condition</th>
-                              <th>Enabled</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {snapshot.suite_entries.map((entry, idx) => (
-                              <tr key={idx}>
-                                <td>{entry.order || idx + 1}</td>
-                                <td>{entry.test_definition_id}</td>
-                                <td>{entry.condition || 'always'}</td>
-                                <td>{entry.enabled !== false ? 'Yes' : 'No'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <div className="version-empty-state">
-                          No test entries in this version.
-                        </div>
+                        <span className={`version-section-chevron ${collapsedSections.entries ? 'collapsed' : ''}`}>
+                          ▼
+                        </span>
+                      </button>
+                      {!collapsedSections.entries && (
+                        <>
+                          {snapshot.suite_entries && snapshot.suite_entries.length > 0 ? (
+                            <table className="version-entries-table">
+                              <thead>
+                                <tr>
+                                  <th>Order</th>
+                                  <th>Test ID</th>
+                                  <th>Condition</th>
+                                  <th>Enabled</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {snapshot.suite_entries.map((entry, idx) => (
+                                  <tr key={idx}>
+                                    <td>{entry.order || idx + 1}</td>
+                                    <td>{entry.test_definition_id}</td>
+                                    <td>{entry.condition || 'always'}</td>
+                                    <td>{entry.enabled !== false ? 'Yes' : 'No'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className="version-empty-state">
+                              No test entries in this version.
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
 
                   {(snapshotSection === 'all' || snapshotSection === 'permissions') && (
                     <div className="version-section-block">
-                      <h5 className="version-section-title">
-                        Permissions
-                        {snapshot.permissions && (
-                          <span style={{ fontWeight: 400, color: '#525252', fontSize: '12px', marginLeft: '8px' }}>
-                            ({snapshot.permissions.length} members)
-                          </span>
-                        )}
-                      </h5>
-                      {snapshot.permissions && snapshot.permissions.length > 0 ? (
-                        <table className="version-permissions-table">
-                          <thead>
-                            <tr>
-                              <th>User</th>
-                              <th>Email</th>
-                              <th>Permission</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {snapshot.permissions.map((perm, idx) => (
-                              <tr key={idx}>
-                                <td>{perm.username || `User ${perm.user_id}`}</td>
-                                <td style={{ color: '#8d8d8d', fontSize: '12px' }}>{perm.email || '-'}</td>
-                                <td>
-                                  <span className="version-permission-badge">
-                                    {PERMISSION_LABELS[perm.permission_type] || perm.permission_type}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <div className="version-empty-state">
-                          No permissions in this version.
-                        </div>
+                      <button
+                        className="version-section-header"
+                        onClick={() => toggleSection('permissions')}
+                      >
+                        <span className="version-section-title">
+                          Permissions
+                          {snapshot.permissions && (
+                            <span style={{ fontWeight: 400, color: '#525252', fontSize: '12px', marginLeft: '8px' }}>
+                              ({snapshot.permissions.length} members)
+                            </span>
+                          )}
+                        </span>
+                        <span className={`version-section-chevron ${collapsedSections.permissions ? 'collapsed' : ''}`}>
+                          ▼
+                        </span>
+                      </button>
+                      {!collapsedSections.permissions && (
+                        <>
+                          {snapshot.permissions && snapshot.permissions.length > 0 ? (
+                            <table className="version-permissions-table">
+                              <thead>
+                                <tr>
+                                  <th>User</th>
+                                  <th>Email</th>
+                                  <th>Permission</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {snapshot.permissions.map((perm, idx) => (
+                                  <tr key={idx}>
+                                    <td>{perm.username || `User ${perm.user_id}`}</td>
+                                    <td style={{ color: '#8d8d8d', fontSize: '12px' }}>{perm.email || '-'}</td>
+                                    <td>
+                                      <span className="version-permission-badge">
+                                        {PERMISSION_LABELS[perm.permission_type] || perm.permission_type}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className="version-empty-state">
+                              No permissions in this version.
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}

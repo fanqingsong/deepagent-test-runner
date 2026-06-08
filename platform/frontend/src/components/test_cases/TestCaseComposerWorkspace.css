@@ -954,11 +954,50 @@
 }
 
 .version-section-block {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
 }
 
 .version-section-block:last-child {
   margin-bottom: 0;
+}
+
+/* Collapsible Section Header */
+.version-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f4f4f4;
+  border: none;
+  border-bottom: 1px solid #e0e0e0;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  text-align: left;
+}
+
+.version-section-header:hover {
+  background: #e8e8e8;
+}
+
+.version-section-header .version-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+}
+
+.version-section-chevron {
+  font-size: 12px;
+  color: #525252;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+}
+
+.version-section-chevron.collapsed {
+  transform: rotate(-90deg);
 }
 
 .version-section-title {
@@ -974,6 +1013,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px 16px;
+  padding: 16px;
 }
 
 .version-config-item {
@@ -1012,6 +1052,25 @@
 }
 
 .version-entries-table th {
+  padding: 8px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #525252;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.version-entries-table td {
+  padding: 8px 16px;
+  border-bottom: 1px solid #f4f4f4;
+}
+
+.version-entries-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.version-entries-table th {
   padding: 8px 12px;
   text-align: left;
   font-weight: 600;
@@ -1042,7 +1101,7 @@
 }
 
 .version-permissions-table th {
-  padding: 8px 12px;
+  padding: 8px 16px;
   text-align: left;
   font-weight: 600;
   color: #525252;
@@ -1052,7 +1111,7 @@
 }
 
 .version-permissions-table td {
-  padding: 8px 12px;
+  padding: 8px 16px;
   border-bottom: 1px solid #f4f4f4;
 }
 
@@ -1073,13 +1132,12 @@
 
 /* Empty State */
 .version-empty-state {
-  padding: 24px;
+  padding: 16px;
   color: #8d8d8d;
   font-size: 13px;
-  background: #f4f4f4;
-  border: 1px solid #e0e0e0;
   text-align: center;
-  border-radius: 0;
+  background: #f9f9f9;
+  border-top: 1px solid #f4f4f4;
 }
 
 /* Snapshot Actions */
