@@ -19,10 +19,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
+# Configure CORS - SECURITY: Use specific origins from settings, not wildcard
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=settings.CORS_ORIGINS,  # Specific origins only (security fix)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

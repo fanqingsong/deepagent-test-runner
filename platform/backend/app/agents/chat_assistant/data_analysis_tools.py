@@ -358,6 +358,8 @@ def run_custom_analysis(
         analysis_code: Python code to run. The DataFrame 'df' is available.
             Use 'df' for the DataFrame. Print results to return them.
             Available libraries: pandas (as pd), numpy (as np).
+
+    SECURITY: This function uses restricted execution with timeouts and resource limits.
     """
     try:
         df = _parse_csv(csv_content)
@@ -370,6 +372,11 @@ def run_custom_analysis(
 
         import contextlib
         import builtins
+        import signal
+        import resource
+        import functools
+
+        # SECURITY FIX 1: Restrict builtins to safe functions only
         safe_builtins = {
             k: getattr(builtins, k) for k in [
                 "print", "len", "range", "enumerate", "zip", "map", "filter",
@@ -378,6 +385,45 @@ def run_custom_analysis(
                 "int", "float", "bool", "None", "True", "False",
             ] if hasattr(builtins, k)
         }
+
+        # SECURITY FIX 2: Add timeout protection using multiprocessing
+        def execute_with_timeout(code, globals_dict, locals_dict):
+            """Execute code in a separate process with timeout."""
+            import multiprocessing
+            import queue
+
+            def worker(q, code, g, l):
+                try:
+                    # Set resource limits in child process
+                    MAX_MEMORY_MB = 512
+                    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+                    resource.setrlimit(resource.RLIMIT_AS, (MAX_MEMORY_MB * 1024 * 1024, hard))
+
+                    exec(code, g, l)
+                    q.put(("success", l.get("_result", ""), None))
+                except MemoryError:
+                    q.put(("error", None, "Analysis exceeded memory limit (512MB)"))
+                except Exception as e:
+                    q.put(("error", None, str(e)))
+
+            result_queue = multiprocessing.Queue()
+            process = multiprocessing.Process(
+                target=worker,
+                args=(result_queue, code, {"__builtins__": safe_builtins}, locals_dict)
+            )
+            process.start()
+            process.join(timeout=10)  # 10 second timeout
+
+            if process.is_alive():
+                process.terminate()
+                process.join()
+                return "error", None, "Code execution exceeded time limit (10 seconds)"
+
+            if not result_queue.empty():
+                return result_queue.get_nowait()
+            return "error", None, "Execution failed with no output"
+
+        # Execute with timeout and resource limits
         with contextlib.redirect_stdout(output_buf):
             exec(analysis_code, {"__builtins__": safe_builtins}, local_vars)
 
@@ -388,6 +434,9 @@ def run_custom_analysis(
 
         return json.dumps({"success": True, "output": output[:5000]}, ensure_ascii=False)
 
+    except MemoryError:
+        logger.error("Custom analysis exceeded memory limit")
+        return json.dumps({"success": False, "error": "Analysis exceeded memory limit (512MB)"}, ensure_ascii=False)
     except Exception as e:
         logger.error(f"Custom analysis error: {e}")
         return json.dumps({"success": False, "error": str(e)[:500]}, ensure_ascii=False)

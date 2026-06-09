@@ -149,7 +149,8 @@ def sql_db_query(query: str) -> str:
 
     db = sync_session_maker()
     try:
-        db.execute(text(f"SET LOCAL statement_timeout = '{QUERY_TIMEOUT_SECONDS}s';"))
+        # SECURITY FIX: Use parameterized query to prevent SQL injection
+        db.execute(text("SET LOCAL statement_timeout :timeout"), {"timeout": f"{QUERY_TIMEOUT_SECONDS}s"})
         result = db.execute(text(query))
         rows = result.fetchall()
 

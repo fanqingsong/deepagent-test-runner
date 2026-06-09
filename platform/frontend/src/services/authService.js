@@ -1,7 +1,8 @@
 /**
  * Authentication Service
  *
- * Handles authentication with local JWT tokens.
+ * SECURITY: Now uses httpOnly cookies for JWT tokens instead of localStorage.
+ * Tokens are automatically sent with requests and cannot be accessed via JavaScript.
  */
 
 // Use the current origin (protocol + hostname + port) to work in all environments
@@ -9,8 +10,6 @@ const BASE_URL = window.location.origin;
 
 const API_BASE_URL = `${BASE_URL}/api/v1`;
 
-const TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
 const PROVIDER_KEY = 'auth_provider';
 const USER_KEY = 'user_info';
 
@@ -30,7 +29,8 @@ class AuthService {
     try {
       const response = await fetch(url, {
         ...options,
-        signal: controller.signal
+        signal: controller.signal,
+        credentials: 'include',  // SECURITY: Include cookies in CORS requests
       });
       clearTimeout(timeoutId);
       return response;
@@ -45,37 +45,39 @@ class AuthService {
 
   /**
    * Check if user is authenticated
+   * SECURITY: Check if user info exists (tokens are in httpOnly cookies)
    */
   isAuthenticated() {
-    const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
-    return !!token;
+    const userStr = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
+    return !!userStr;
   }
 
   /**
    * Get access token
+   * SECURITY: This is no longer accessible - tokens are in httpOnly cookies
+   * This method returns null to indicate tokens are handled by browser
    */
   getAccessToken() {
-    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+    // Tokens are now in httpOnly cookies - not accessible via JavaScript
+    return null;
   }
 
   /**
    * Get auth headers for API requests
+   * SECURITY: No longer needed - cookies are sent automatically
    */
   getAuthHeaders() {
-    const token = this.getAccessToken();
-    if (!token) {
-      return {};
-    }
-    return {
-      'Authorization': `Bearer ${token}`
-    };
+    // Cookies are sent automatically - no manual headers needed
+    return {};
   }
 
   /**
    * Get refresh token
+   * SECURITY: This is no longer accessible - tokens are in httpOnly cookies
    */
   getRefreshToken() {
-    return localStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_TOKEN_KEY);
+    // Tokens are now in httpOnly cookies - not accessible via JavaScript
+    return null;
   }
 
   /**
@@ -94,17 +96,13 @@ class AuthService {
   }
 
   /**
-   * Set tokens and user info
+   * Set user info (tokens are handled by httpOnly cookies)
    */
-  setAuthData(token, refreshToken, provider, user) {
-    const rememberMe = localStorage.getItem('remember_me') === '1' || sessionStorage.getItem('remember_me') === '1';
+  setAuthData(provider, user, rememberMe = false) {
     const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem(TOKEN_KEY, token);
-    if (refreshToken) {
-      storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    }
     storage.setItem(PROVIDER_KEY, provider);
     storage.setItem(USER_KEY, JSON.stringify(user));
+    storage.setItem('remember_me', rememberMe ? '1' : '0');
     this.notifyAuthChange();
   }
 
@@ -123,12 +121,9 @@ class AuthService {
    */
   clearAuthData() {
     [localStorage, sessionStorage].forEach(storage => {
-      storage.removeItem(TOKEN_KEY);
-      storage.removeItem(REFRESH_TOKEN_KEY);
       storage.removeItem(PROVIDER_KEY);
       storage.removeItem(USER_KEY);
       storage.removeItem('remember_me');
-      storage.removeItem('session_token');
     });
     this.notifyAuthChange();
   }
@@ -170,16 +165,19 @@ class AuthService {
 
   /**
    * Local password login
+   * SECURITY: Tokens are set in httpOnly cookies by backend
    */
-  async loginLocal(email, password) {
+  async loginLocal(email, password, rememberMe = false) {
     const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',  // SECURITY: Include cookies in response
       body: JSON.stringify({
         email,
         password,
+        remember_me: rememberMe,
       }),
     });
 
@@ -189,24 +187,21 @@ class AuthService {
     }
 
     const data = await response.json();
-    this.setAuthData(data.access_token, null, 'local', data.user);
+    // Store user info locally (tokens are in httpOnly cookies)
+    this.setAuthData('local', data.user, rememberMe);
     return data;
   }
 
   /**
    * Logout
+   * SECURITY: Backend clears httpOnly cookies
    */
   async logout() {
     try {
-      const token = this.getAccessToken();
-      if (token) {
-        await this.fetchWithTimeout(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-      }
+      await this.fetchWithTimeout(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',  // SECURITY: Include cookies for logout
+      });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -216,51 +211,35 @@ class AuthService {
 
   /**
    * Get current user info
+   * SECURITY: Cookies are sent automatically
    */
   async getCurrentUser() {
-    const token = this.getAccessToken();
-    if (!token) {
-      throw new Error('No token found');
-    }
-
     const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      credentials: 'include',  // SECURITY: Include cookies
     });
 
     if (!response.ok) {
       throw new Error('Failed to get user info');
     }
 
-    return response.json();
+    const user = await response.json();
+    this.updateStoredUser(user);
+    return user;
   }
 
   /**
    * Refresh access token
+   * SECURITY: Cookies are handled automatically by browser
    */
   async refreshToken() {
-    const refreshTokenValue = this.getRefreshToken();
     const provider = this.getProvider();
 
-    if (!refreshTokenValue) {
-      throw new Error('No refresh token');
-    }
-
-    const url = `${API_BASE_URL}/auth/refresh`;
-
-    const headers = { 'Content-Type': 'application/json' };
-
-    // Include session token if available
-    const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
-    if (sessionToken) {
-      headers['X-Session-Token'] = sessionToken;
-    }
-
-    const response = await this.fetchWithTimeout(url, {
+    const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify({ refresh_token: refreshTokenValue }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',  // SECURITY: Include cookies
     });
 
     if (!response.ok) {
@@ -268,43 +247,36 @@ class AuthService {
       throw new Error('Token refresh failed');
     }
 
-    const data = await response.json();
-    const user = this.getUser();
-    this.setAuthData(data.access_token, data.refresh_token, provider, user);
-
-    return data;
+    return response.json();
   }
 
   /**
    * Check if token is expired
+   * SECURITY: We cannot check token expiry directly since tokens are in httpOnly cookies
+   * Instead, we'll try a request and handle 401 responses
    */
   isTokenExpired() {
-    const token = this.getAccessToken();
-    if (!token) return true;
-
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const exp = payload.exp;
-      return Date.now() >= exp * 1000;
-    } catch {
-      return true;
-    }
+    // Cannot directly check - tokens are in httpOnly cookies
+    // This method now returns false (assume valid until API says otherwise)
+    return false;
   }
 
   /**
    * Ensure valid token, refresh if needed
+   * SECURITY: Try making a request and handle 401 responses
    */
   async ensureValidToken() {
-    const provider = this.getProvider();
-
-    if (!this.isTokenExpired()) {
-      return this.getAccessToken();
-    }
-
-    // Token expired - try to refresh
+    // Tokens are in httpOnly cookies - browser handles refresh automatically
+    // Just verify we can make authenticated requests
     try {
-      await this.refreshToken();
-      return this.getAccessToken();
+      const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
+        credentials: 'include',
+      });
+      if (response.status === 401) {
+        // Token is invalid - try refresh
+        await this.refreshToken();
+      }
+      return true;
     } catch (error) {
       this.clearAuthData();
       throw error;
