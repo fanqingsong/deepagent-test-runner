@@ -18,6 +18,7 @@ import AppHeader from './components/AppHeader';
 import Profile from './pages/Profile';
 import TestCasesMarketplacePage from './pages/TestCasesMarketplacePage';
 import SuiteMarketplacePage from './pages/SuiteMarketplacePage';
+import NanjingWeatherPage from './pages/NanjingWeatherPage';
 import ChatFab from './components/ChatFab';
 import ChatModal from './components/ChatModal';
 
@@ -43,7 +44,7 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(() => {
     const hash = window.location.hash.slice(1);
-    if (['dashboard', 'users', 'roles', 'reviews', 'profile', 'chat-monitor'].includes(hash)) {
+    if (['dashboard', 'users', 'roles', 'reviews', 'profile', 'chat-monitor', 'nanjing-weather'].includes(hash)) {
       return hash;
     } else if (hash.startsWith('test-cases')) {
       return hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases';
@@ -67,7 +68,7 @@ function AppContent() {
         setCurrentView(hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases');
       } else if (hash.startsWith('suites')) {
         setCurrentView(hash === 'suites-marketplace' ? 'suites-marketplace' : 'suites');
-      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'reviews' || hash === 'profile' || hash === 'chat-monitor') {
+      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'reviews' || hash === 'profile' || hash === 'chat-monitor' || hash === 'nanjing-weather') {
         setCurrentView(hash);
       }
     };
@@ -271,6 +272,8 @@ function AppContent() {
           <SuiteMarketplacePage />
         ) : currentView === 'chat-monitor' ? (
           <ChatMonitorPage />
+        ) : currentView === 'nanjing-weather' ? (
+          <NanjingWeatherPage />
         ) : (
           <DashboardView />
         )}

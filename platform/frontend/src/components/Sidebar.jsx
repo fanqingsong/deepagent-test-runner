@@ -8,6 +8,14 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from './Icons';
+
+// Weather icon for sidebar
+const WeatherIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2a4 4 0 0 1 4 4 4 4 0 0 1 4 4 3 3 0 0 1 0 6H6a3 3 0 0 1 0-6 4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2z"/>
+  </svg>
+);
+
 import './Sidebar.css';
 
 const menuItems = [
@@ -16,6 +24,12 @@ const menuItems = [
     label: 'Dashboard',
     icon: DashboardIcon,
     path: '#dashboard'
+  },
+  {
+    id: 'nanjing-weather',
+    label: 'Nanjing Weather',
+    icon: WeatherIcon,
+    path: '#nanjing-weather'
   },
   {
     id: 'test-cases',
