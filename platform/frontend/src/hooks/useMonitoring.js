@@ -86,7 +86,7 @@ async function resolveAlert(alertId) {
  * @param {number} options.pollInterval - Polling interval in milliseconds (default: 30000)
  * @param {boolean} options.enabled - Whether to enable polling (default: true)
  */
-export function useMonitoring(options = {}) {
+function useMonitoring(options = {}) {
   const {
     pollInterval = 30000, // 30 seconds default
     enabled = true,

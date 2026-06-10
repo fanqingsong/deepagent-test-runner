@@ -9,7 +9,7 @@ from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,14 +123,16 @@ async def verify_token(
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
     Get the current authenticated user from JWT token.
 
+    Supports both Bearer token (Authorization header) and httpOnly cookies.
+
     Args:
-        credentials: HTTP Bearer credentials
+        request: FastAPI request
         db: Database session
 
     Returns:
@@ -139,7 +141,23 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or expired
     """
-    token = credentials.credentials
+    token = None
+
+    # First, try Authorization header (Bearer token)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+    else:
+        # Fall back to httpOnly cookie
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = decode_access_token(token)
 
     # Extract user ID from token

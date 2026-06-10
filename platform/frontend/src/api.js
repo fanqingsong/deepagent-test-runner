@@ -12,18 +12,16 @@ const USERS_API = `${BASE_URL}/api/v1`;
 import authService from './services/authService';
 
 const getAuthHeaders = () => {
-  const token = authService.getAccessToken();
+  // httpOnly cookies are sent automatically by the browser
+  // No need to manually add Authorization header
+  // Only add X-Session-Token if stored in localStorage/sessionStorage (backward compatibility)
   const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
-  if (!token) {
-    return {};
-  }
-  const headers = {
-    Authorization: `Bearer ${token}`,
-  };
   if (sessionToken) {
-    headers['X-Session-Token'] = sessionToken;
+    return {
+      'X-Session-Token': sessionToken,
+    };
   }
-  return headers;
+  return {};
 };
 
 async function parseApiError(response, fallback) {
@@ -66,6 +64,7 @@ async function apiFetch(url, options = {}) {
   try {
     const response = await fetch(url, {
       mode: 'cors',
+      credentials: 'include',  // Include httpOnly cookies
       signal: controller.signal,
       ...fetchOptions,
       headers: {
@@ -81,6 +80,7 @@ async function apiFetch(url, options = {}) {
         await authService.refreshToken();
         const retryResponse = await fetch(url, {
           mode: 'cors',
+          credentials: 'include',
           ...fetchOptions,
           headers: {
             ...getAuthHeaders(),

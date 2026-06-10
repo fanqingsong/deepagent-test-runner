@@ -2,7 +2,7 @@
  * Chat translations for English and Chinese.
  */
 
-export const chatTranslations = {
+const chatTranslations = {
   en: {
     chatTitle: 'AI Assistant',
     chatWelcome: "Hello! I'm your AI assistant.",
@@ -69,7 +69,7 @@ export const chatTranslations = {
  * @param {string} language - Language code ('en' or 'zh')
  * @returns {string} - Translated text
  */
-export function getChatTranslation(key, language = 'en') {
+function getChatTranslation(key, language = 'en') {
   const translations = chatTranslations[language] || chatTranslations.en;
   return translations[key] || chatTranslations.en[key] || key;
 }
