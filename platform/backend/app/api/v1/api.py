@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     charts,
     data_analysis,
     llm_usage,
+    monitoring,
     reviews,
     run_configs,
     script_generation,
@@ -118,6 +119,12 @@ api_router.include_router(
     llm_usage.router,
     prefix="/llm-usage",
     tags=["llm-usage"]
+)
+
+api_router.include_router(
+    monitoring.router,
+    prefix="/monitoring",
+    tags=["monitoring"]
 )
 
 api_router.include_router(

@@ -153,15 +153,6 @@ export const getTestRunDetails = async (runId) => {
   return response.json();
 };
 
-// Get test job status
-export const getJobStatus = async (jobId) => {
-  const response = await apiFetch(`${SCHEDULER_API}/jobs/${jobId}`);
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, 'Failed to fetch job status'));
-  }
-  return response.json();
-};
-
 // Get all jobs
 const getJobs = async () => {
   const response = await apiFetch(`${SCHEDULER_API}/jobs/`);
@@ -282,12 +273,6 @@ export const runTestCase = async (testCaseId, { forceRegenerate, useExistingPlan
     }),
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to run Test Case'));
-  return response.json();
-};
-
-export const getTestCaseRunProgress = async (testCaseId) => {
-  const response = await apiFetch(`${TEST_API}/test-workspaces/${testCaseId}/run-progress`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to get progress'));
   return response.json();
 };
 
@@ -622,25 +607,6 @@ const getPendingSuiteReviews = async () => {
   return response.json();
 };
 
-export const approveTest = async (testDefId) => {
-  const response = await apiFetch(`${TEST_API}/reviews/tests/${testDefId}/approve`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to approve test'));
-  return response.json();
-};
-
-export const rejectTest = async (testDefId, reason) => {
-  const response = await apiFetch(`${TEST_API}/reviews/tests/${testDefId}/reject`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason }),
-  });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to reject test'));
-  return response.json();
-};
-
 export const approveVersion = async (versionId) => {
   const response = await apiFetch(`${TEST_API}/reviews/versions/${versionId}/approve`, {
     method: 'POST',
@@ -666,12 +632,6 @@ export const publishVersion = async (versionId) => {
     headers: { 'Content-Type': 'application/json' },
   });
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to publish version'));
-  return response.json();
-};
-
-export const getApprovedItems = async () => {
-  const response = await apiFetch(`${TEST_API}/reviews/approved`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load approved items'));
   return response.json();
 };
 
@@ -875,12 +835,6 @@ const getLlmUsageByDay = async (days = 30) => {
 
 const ADMIN_CHAT_API = `${BASE_URL}/api/v1/admin/chat`;
 
-export const getActiveChatSessions = async () => {
-  const response = await apiFetch(`${ADMIN_CHAT_API}/active-sessions`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load active chat sessions'));
-  return response.json();
-};
-
 export const getChatSessions = async (params = {}) => {
   const qs = new URLSearchParams();
   if (params.userId) qs.set('user_id', params.userId);
@@ -919,17 +873,6 @@ export const getChatSubagentUsage = async (days = 30) => {
 // --- Script Generation ---
 
 const SCRIPT_API = `${BASE_URL}/api/v1/scripts`;
-
-export const generateScript = async (testId, opts = {}) => {
-  const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/generate-script`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ max_retries: opts.max_retries || 3, force_regenerate: !!opts.force_regenerate }),
-    timeout: 600000, // 10 minutes for script generation
-  });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to generate script'));
-  return response.json();
-};
 
 export const generateScriptStream = async (testId, opts = {}) => {
   const response = await apiFetch(`${SCRIPT_API}/test-definitions/${testId}/generate-script/stream`, {

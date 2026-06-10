@@ -1,0 +1,252 @@
+/**
+ * Alert Banner Styles
+ *
+ * Follows IBM Carbon design system principles:
+ * - Full-width notification banner
+ * - 0px border-radius on main container
+ * - IBM Carbon colors for severity levels
+ */
+
+.alert-banner {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #161616; /* Gray 100 */
+  color: #ffffff;
+  border: none;
+  position: relative;
+  z-index: 1000;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Severity-specific backgrounds */
+.alert-banner-critical {
+  background-color: #da1e28; /* Red 60 */
+}
+
+.alert-banner-warning {
+  background-color: #f1c21b; /* Yellow 30 */
+  color: #161616; /* Dark text on yellow background */
+}
+
+.alert-banner-info {
+  background-color: #0f62fe; /* Blue 60 */
+}
+
+/* Banner content layout */
+.alert-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-banner-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.alert-banner-message {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-banner-title {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  margin-bottom: 4px;
+}
+
+.alert-banner-description {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.alert-banner-meta {
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.33;
+  letter-spacing: 0.32px;
+  opacity: 0.7;
+}
+
+/* Banner actions */
+.alert-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.alert-banner-dismiss-btn,
+.alert-banner-cooldown-btn {
+  padding: 8px 16px;
+  height: 32px;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.16px;
+  border: 1px solid transparent;
+  border-radius: 0; /* 0px border-radius - Carbon standard */
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.alert-banner-dismiss-btn {
+  background-color: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+}
+
+.alert-banner-dismiss-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.alert-banner-cooldown-btn {
+  background-color: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+}
+
+.alert-banner-cooldown-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Dark text on warning banner */
+.alert-banner-warning .alert-banner-dismiss-btn,
+.alert-banner-warning .alert-banner-cooldown-btn {
+  color: #161616;
+  border-color: #161616;
+}
+
+.alert-banner-warning .alert-banner-dismiss-btn:hover,
+.alert-banner-warning .alert-banner-cooldown-btn:hover {
+  background-color: rgba(22, 22, 22, 0.1);
+}
+
+/* Cooldown confirmation dialog */
+.alert-banner-confirm {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 0;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+}
+
+.alert-banner-confirm-btn,
+.alert-banner-cancel-btn {
+  padding: 6px 12px;
+  height: 28px;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.alert-banner-confirm-btn {
+  background-color: #0f62fe; /* IBM Blue 60 */
+  color: #ffffff;
+}
+
+.alert-banner-confirm-btn:hover {
+  background-color: #0353e9; /* Blue 60 Hover */
+}
+
+.alert-banner-cancel-btn {
+  background-color: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+}
+
+.alert-banner-cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 672px) {
+  .alert-banner {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .alert-banner-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .alert-banner-icon {
+    font-size: 18px;
+  }
+
+  .alert-banner-title {
+    font-size: 13px;
+  }
+
+  .alert-banner-description {
+    font-size: 13px;
+  }
+
+  .alert-banner-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .alert-banner-dismiss-btn,
+  .alert-banner-cooldown-btn {
+    padding: 6px 12px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  .alert-banner-confirm {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .alert-banner-confirm-btn,
+  .alert-banner-cancel-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 320px) {
+  .alert-banner-title {
+    font-size: 12px;
+  }
+
+  .alert-banner-description {
+    font-size: 12px;
+  }
+}

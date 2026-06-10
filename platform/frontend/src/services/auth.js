@@ -327,5 +327,5 @@ class AuthClient {
 }
 
 // Export singleton instance
-export const authClient = new AuthClient();
+const authClient = new AuthClient();
 export default authClient;

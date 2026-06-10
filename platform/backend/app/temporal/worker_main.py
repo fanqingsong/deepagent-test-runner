@@ -29,10 +29,17 @@ from app.temporal.activities.maintenance_activities import (
     cleanup_audit_logs
 )
 from app.temporal.activities.email_activities import send_email
+from app.temporal.activities.monitoring_activities import (
+    collect_system_metrics,
+    analyze_health_metrics,
+    store_monitoring_snapshot,
+    send_alert_notifications,
+)
 from app.temporal.workflows.test_execution import TestExecutionWorkflow, RetryTestWorkflow
 from app.temporal.workflows.schedules import ScheduleExecutionWorkflow
 from app.temporal.workflows.suites import SuiteExecutionWorkflow
 from app.temporal.workflows.emails import EmailWorkflow
+from app.temporal.workflows.monitoring_workflow import MonitoringAgentWorkflow
 from app.temporal.workflows.maintenance import (
     CleanupTestRunsWorkflow,
     CleanupSessionsWorkflow,
@@ -80,6 +87,11 @@ async def run_worker():
         cleanup_audit_logs,
         # Email activities
         send_email,
+        # Monitoring activities
+        collect_system_metrics,
+        analyze_health_metrics,
+        store_monitoring_snapshot,
+        send_alert_notifications,
     ]
 
     # Register workflows
@@ -89,6 +101,7 @@ async def run_worker():
         ScheduleExecutionWorkflow,
         SuiteExecutionWorkflow,
         EmailWorkflow,
+        MonitoringAgentWorkflow,
         CleanupTestRunsWorkflow,
         CleanupSessionsWorkflow,
         CleanupAuditLogsWorkflow,

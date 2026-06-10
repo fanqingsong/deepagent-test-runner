@@ -149,4 +149,3 @@ export function ConversationList({
   );
 }
 
-export default ConversationList;

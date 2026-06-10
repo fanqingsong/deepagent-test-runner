@@ -5,7 +5,7 @@ import './ChatFab.css';
  * Floating Action Button (FAB) for opening the chat interface.
  * Positioned in the bottom-right corner of the screen.
  */
-export function ChatFab({ onClick, hasUnreadMessages = false, className = '' }) {
+function ChatFab({ onClick, hasUnreadMessages = false, className = '' }) {
   const handleClick = (e) => {
     e.preventDefault();
     e.stopPropagation();

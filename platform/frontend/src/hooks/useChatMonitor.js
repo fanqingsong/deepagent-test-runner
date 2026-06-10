@@ -1,14 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getActiveChatSessions, getChatSessions, getChatMetrics, getChatSubagentUsage, getChatSessionMessages } from '../api';
-
-export const useActiveChatSessions = () => {
-  return useQuery({
-    queryKey: ['chat-active-sessions'],
-    queryFn: () => getActiveChatSessions(),
-    staleTime: 10000,
-    refetchInterval: 15000,
-  });
-};
+import { getChatSessions, getChatMetrics, getChatSubagentUsage, getChatSessionMessages } from '../api';
 
 export const useChatSessions = (params = {}) => {
   return useQuery({

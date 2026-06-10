@@ -1,0 +1,127 @@
+/**
+ * Monitoring Agent Card Styles
+ *
+ * Follows IBM Carbon design system principles:
+ * - 0px border-radius on cards
+ * - Flat design with background-color layering
+ * - Gray scale + IBM Blue 60 (#0f62fe) accent
+ */
+
+/* Main card styling - extends stat-card pattern */
+.monitoring-card {
+  position: relative;
+  min-height: 120px;
+  transition: background-color 0.15s ease;
+}
+
+.monitoring-card:hover {
+  background-color: #e8e8e8; /* Gray 10 Hover */
+}
+
+/* Status colors - following Carbon support colors */
+.monitoring-card .stat-card-value.green {
+  color: #24a148; /* Green 50 */
+}
+
+.monitoring-card .stat-card-value.yellow {
+  color: #f1c21b; /* Yellow 30 */
+}
+
+.monitoring-card .stat-card-value.red {
+  color: #da1e28; /* Red 60 */
+}
+
+/* Loading state */
+.monitoring-card.loading .stat-card-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+
+.monitoring-card.loading .spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #c6c6c6;
+  border-top-color: #0f62fe;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error state */
+.monitoring-card.error {
+  border: 1px solid #da1e28; /* Red 60 */
+}
+
+/* Last update timestamp */
+.monitoring-last-update {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6f6f6f; /* Gray 60 */
+  letter-spacing: 0.16px;
+  margin-top: 4px;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Active alerts badge */
+.monitoring-alerts-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background-color: #da1e28; /* Red 60 */
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 400;
+  border-radius: 24px; /* Pill shape - exception to 0px rule */
+  line-height: 1;
+  letter-spacing: 0.16px;
+}
+
+.monitoring-alerts-badge:empty {
+  display: none;
+}
+
+/* Monitoring summary text */
+.monitoring-summary {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0; /* Gray 20 */
+  font-size: 14px;
+  font-weight: 400;
+  color: #525252; /* Gray 70 */
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Responsive adjustments */
+@media (max-width: 672px) {
+  .monitoring-card {
+    min-height: 100px;
+  }
+
+  .monitoring-last-update {
+    font-size: 11px;
+  }
+
+  .monitoring-alerts-badge {
+    top: 12px;
+    right: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+
+  .monitoring-summary {
+    font-size: 13px;
+  }
+}

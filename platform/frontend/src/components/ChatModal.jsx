@@ -68,7 +68,7 @@ function formatDuration(seconds) {
   return `${seconds.toFixed(1)}s`;
 }
 
-export function ChatModal({ isOpen, onClose, threadId = null, language = 'en' }) {
+function ChatModal({ isOpen, onClose, threadId = null, language = 'en' }) {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef(null);
   const { t } = useChatTranslations(language);

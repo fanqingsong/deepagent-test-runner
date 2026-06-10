@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useDashboard, useSuiteTimeline, useSuiteRunEntries } from '../hooks/useDashboard';
 import { useLlmUsage } from '../hooks/useLlmUsage';
 import RefreshIndicator from './RefreshIndicator';
+import AlertBanner from './AlertBanner';
+import MonitoringAgentCard from './MonitoringAgentCard';
 import './DashboardView.css';
 
 const STATUS_LABELS = {
@@ -387,6 +389,8 @@ function DashboardView() {
     <div className="suite-dashboard">
       <RefreshIndicator refreshing={isRefreshing} />
 
+      <AlertBanner />
+
       <div className="dashboard-header">
         <h1 className="dashboard-title">Test Dashboard</h1>
         <div className="dashboard-controls">
@@ -410,6 +414,8 @@ function DashboardView() {
       <StatsCards summary={summary} />
 
       <LlmUsageCards summary={llmSummary} byAgent={llmByAgent} />
+
+      <MonitoringAgentCard />
 
       <div className="dashboard-content">
         <SuiteListPanel
