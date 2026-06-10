@@ -34,12 +34,10 @@ function AlertBanner({ className = '', cooldownMinutes = 15 }) {
   // Check if banner is currently dismissed (in cooldown)
   const isDismissed = dismissedUntil && new Date() < new Date(dismissedUntil);
 
-  if (!alertToShow || isDismissed) {
-    return null;
-  }
-
-  // Handle dismiss with cooldown
+  // Handle dismiss with cooldown - must be before early return
   const handleDismiss = useCallback((withCooldown = false) => {
+    if (!alertToShow) return;
+
     if (withCooldown) {
       const cooldownUntil = new Date();
       cooldownUntil.setMinutes(cooldownUntil.getMinutes() + cooldownMinutes);
@@ -54,6 +52,10 @@ function AlertBanner({ className = '', cooldownMinutes = 15 }) {
       console.error('Failed to acknowledge alert:', err);
     });
   }, [alertToShow, acknowledgeAlert, cooldownMinutes]);
+
+  if (!alertToShow || isDismissed) {
+    return null;
+  }
 
   return (
     <div className={`alert-banner alert-banner-${alertToShow.severity} ${className}`}>

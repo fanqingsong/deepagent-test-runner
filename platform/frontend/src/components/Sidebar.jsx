@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import PermissionGate from './PermissionGate';
 import {
   DashboardIcon,
@@ -31,18 +31,6 @@ const menuItems = [
     label: 'Dashboard',
     icon: DashboardIcon,
     path: '#dashboard'
-  },
-  {
-    id: 'monitoring',
-    label: 'System Monitoring',
-    icon: MonitoringIcon,
-    path: '#monitoring'
-  },
-  {
-    id: 'nanjing-weather',
-    label: 'Nanjing Weather',
-    icon: WeatherIcon,
-    path: '#nanjing-weather'
   },
   {
     id: 'test-cases',
@@ -111,6 +99,16 @@ const menuItems = [
         id: 'chat-monitor',
         label: 'Chat Monitor',
         path: '#chat-monitor'
+      },
+      {
+        id: 'monitoring',
+        label: 'System Monitoring',
+        path: '#monitoring'
+      },
+      {
+        id: 'nanjing-weather',
+        label: 'Nanjing Weather',
+        path: '#nanjing-weather'
       }
     ]
   }
@@ -123,6 +121,7 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
   const popupRef = useRef(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0 });
   const [popupPosition, setPopupPosition] = useState({ top: 0 });
+  const hideTimeoutRef = useRef(null);
 
   const hasChildren = item.children && item.children.length > 0;
   const isSubmenuExpanded = expandedSubmenus.has(item.id);
@@ -137,6 +136,12 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
   };
 
   const handleMouseEnter = () => {
+    // Clear any pending hide timeout
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+
     if (!isExpanded && itemRef.current) {
       const rect = itemRef.current.getBoundingClientRect();
       setTooltipPosition({ top: rect.top + rect.height / 2 - 12 });
@@ -150,20 +155,34 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
   };
 
   const handleMouseLeave = (e) => {
-    const relatedTarget = e.relatedTarget;
-    const popup = popupRef.current;
+    // Use a small delay before hiding to allow moving to the popup
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowTooltip(false);
+      setShowSubmenuPopup(false);
+    }, 100);
+  };
 
-    if (popup && popup.contains(relatedTarget)) {
-      return;
+  const handlePopupMouseEnter = () => {
+    // Clear the hide timeout when entering the popup
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
     }
-
-    setShowTooltip(false);
-    setShowSubmenuPopup(false);
   };
 
   const handlePopupMouseLeave = () => {
+    // Hide the popup after leaving it
     setShowSubmenuPopup(false);
   };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const IconComponent = item.icon;
 
@@ -234,6 +253,7 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
           ref={popupRef}
           className="submenu-popup"
           style={{ top: `${popupPosition.top}px` }}
+          onMouseEnter={handlePopupMouseEnter}
           onMouseLeave={handlePopupMouseLeave}
         >
           <div className="submenu-popup-header">{item.label}</div>

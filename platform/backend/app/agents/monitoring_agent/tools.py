@@ -124,24 +124,42 @@ def get_active_alerts() -> Dict[str, Any]:
     Returns:
         Dict with active alerts information
     """
-    from app.services.monitoring_service import MonitoringService
-    from app.core.database import get_db
+    from app.core.database import sync_session_maker
+    from app.models.monitoring import AgentAlert
+    from sqlalchemy import select, desc
     import asyncio
 
-    async def _get_alerts():
-        db_gen = get_db()
-        db = next(db_gen)
+    # Use sync DB for agent tool context
+    def _get_alerts():
+        db = sync_session_maker()
 
-        async_db = await db.__aenter__()
+        try:
+            # acknowledged is stored as Integer (0/1), not boolean
+            stmt = (
+                select(AgentAlert)
+                .where(AgentAlert.acknowledged == 0)
+                .order_by(desc(AgentAlert.created_at))
+                .limit(20)
+            )
+            result = db.execute(stmt)
+            alerts = result.scalars().all()
 
-        service = MonitoringService(db_session=async_db)
-        alerts = await service.get_active_alerts(limit=20)
+            return [
+                {
+                    "id": alert.id,
+                    "alert_type": alert.alert_type,
+                    "severity": alert.severity,
+                    "title": alert.title,
+                    "description": alert.description,
+                    "metrics_snapshot": alert.metrics_snapshot,
+                    "created_at": alert.created_at.isoformat(),
+                }
+                for alert in alerts
+            ]
+        finally:
+            db.close()
 
-        await async_db.__aexit__(None, None, None)
-
-        return alerts
-
-    alerts = asyncio.run(_get_alerts())
+    alerts = _get_alerts()
 
     return {
         "active_alerts_count": len(alerts),

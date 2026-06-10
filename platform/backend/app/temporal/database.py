@@ -5,6 +5,7 @@ Temporal workers run in a persistent event loop, so we maintain
 a global database engine and session maker for the worker lifetime.
 """
 
+from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from typing import AsyncGenerator
 
@@ -45,6 +46,7 @@ def get_worker_session_maker() -> async_sessionmaker:
     return _session_maker
 
 
+@asynccontextmanager
 async def get_worker_session() -> AsyncGenerator[AsyncSession, None]:
     """Get a database session for use in Temporal activities.
 

@@ -9,10 +9,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select, and_
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
 from app.models.llm_usage import LlmUsage
 from app.models.monitoring import AgentMonitoring
 from app.models.schedule import Schedule
@@ -22,7 +21,7 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
-async def collect_test_execution_metrics(db: Session) -> Dict[str, Any]:
+async def collect_test_execution_metrics(db: AsyncSession) -> Dict[str, Any]:
     """
     Collect test execution health metrics.
 
@@ -33,33 +32,35 @@ async def collect_test_execution_metrics(db: Session) -> Dict[str, Any]:
     yesterday = now - timedelta(hours=24)
 
     # Get test runs in last 24 hours
-    result = db.execute(
+    result = await db.execute(
         select(
             func.count(TestRun.id).label("total"),
             func.sum(func.cast(TestRun.status == "passed", type_=func.INTEGER)).label("passed"),
             func.sum(func.cast(TestRun.status == "failed", type_=func.INTEGER)).label("failed"),
             func.avg(TestRun.total_duration).label("avg_duration"),
         ).where(TestRun.created_at >= yesterday)
-    ).first()
+    )
+    row = result.first()
 
-    total_runs = result.total or 0
-    passed_runs = result.passed or 0
-    failed_runs = result.failed or 0
-    avg_duration = result.avg_duration or 0
+    total_runs = row.total or 0
+    passed_runs = row.passed or 0
+    failed_runs = row.failed or 0
+    avg_duration = row.avg_duration or 0
 
     pass_rate = passed_runs / total_runs if total_runs > 0 else 0.0
 
     # Find failing tests (runs with status='failed' in last 24h)
-    failing_runs_result = db.execute(
+    failing_runs_result = await db.execute(
         select(TestRun.test_definition_id, TestRun.created_at, TestRun.error_message)
         .where(TestRun.created_at >= yesterday)
         .where(TestRun.status == "failed")
         .order_by(TestRun.created_at.desc())
         .limit(10)
-    ).all()
+    )
+    failing_runs = failing_runs_result.all()
 
     failing_tests = []
-    for run in failing_runs_result:
+    for run in failing_runs:
         failing_tests.append({
             "test_definition_id": run.test_definition_id,
             "last_failure": run.created_at.isoformat() if run.created_at else None,
@@ -67,15 +68,17 @@ async def collect_test_execution_metrics(db: Session) -> Dict[str, Any]:
         })
 
     # Get schedule status
-    active_schedules = db.execute(
+    active_schedules_result = await db.execute(
         select(func.count(Schedule.id)).where(Schedule.is_active == True)
-    ).scalar()
+    )
+    active_schedules = active_schedules_result.scalar()
 
-    missed_schedules = db.execute(
+    missed_schedules_result = await db.execute(
         select(func.count(Schedule.id))
         .where(Schedule.is_active == True)
         .where(Schedule.next_run_time < yesterday)
-    ).scalar()
+    )
+    missed_schedules = missed_schedules_result.scalar()
 
     return {
         "test_runs_24h": {
@@ -94,7 +97,7 @@ async def collect_test_execution_metrics(db: Session) -> Dict[str, Any]:
     }
 
 
-async def collect_llm_metrics(db: Session) -> Dict[str, Any]:
+async def collect_llm_metrics(db: AsyncSession) -> Dict[str, Any]:
     """
     Collect LLM agent performance metrics.
 
@@ -104,22 +107,23 @@ async def collect_llm_metrics(db: Session) -> Dict[str, Any]:
     yesterday = datetime.utcnow() - timedelta(hours=24)
 
     # Get token usage in last 24 hours
-    result = db.execute(
+    result = await db.execute(
         select(
             func.sum(LlmUsage.total_tokens).label("total_tokens"),
             func.sum(LlmUsage.duration_ms).label("total_duration"),
             func.count(LlmUsage.id).label("call_count"),
         ).where(LlmUsage.created_at >= yesterday)
-    ).first()
+    )
+    row = result.first()
 
-    total_tokens = result.total_tokens or 0
-    total_duration = result.total_duration or 0
-    call_count = result.call_count or 0
+    total_tokens = row.total_tokens or 0
+    total_duration = row.total_duration or 0
+    call_count = row.call_count or 0
 
     avg_response_time = total_duration / call_count if call_count > 0 else 0
 
     # Get token usage by agent type
-    agent_usage = db.execute(
+    agent_usage_result = await db.execute(
         select(
             LlmUsage.agent_type,
             func.sum(LlmUsage.total_tokens).label("tokens"),
@@ -127,7 +131,8 @@ async def collect_llm_metrics(db: Session) -> Dict[str, Any]:
         )
         .where(LlmUsage.created_at >= yesterday)
         .group_by(LlmUsage.agent_type)
-    ).all()
+    )
+    agent_usage = agent_usage_result.all()
 
     by_agent = {}
     slowest_operations = []
@@ -166,7 +171,7 @@ async def collect_llm_metrics(db: Session) -> Dict[str, Any]:
     }
 
 
-async def collect_resource_metrics(db: Session) -> Dict[str, Any]:
+async def collect_resource_metrics(db: AsyncSession) -> Dict[str, Any]:
     """
     Collect system resource metrics.
 
@@ -176,8 +181,9 @@ async def collect_resource_metrics(db: Session) -> Dict[str, Any]:
     # Database connection pool status (simplified - check from engine)
     # In production, use sqlalchemy.engine.status
     try:
-        pool_status = db.execute(func.count()).scalar()  # Simple ping
-        db_healthy = pool_status is not None
+        pool_status = await db.execute(select(func.count()))
+        result = pool_status.scalar()
+        db_healthy = result is not None
     except Exception as e:
         logger.warning("Database health check failed: %s", e)
         db_healthy = False
@@ -202,7 +208,7 @@ async def collect_resource_metrics(db: Session) -> Dict[str, Any]:
     }
 
 
-async def collect_user_activity_metrics(db: Session) -> Dict[str, Any]:
+async def collect_user_activity_metrics(db: AsyncSession) -> Dict[str, Any]:
     """
     Collect user activity metrics.
 
@@ -213,12 +219,14 @@ async def collect_user_activity_metrics(db: Session) -> Dict[str, Any]:
 
     # Active users (users with sessions in last 24h)
     # Note: Requires user_sessions table - using User.last_login as proxy
-    active_users = db.execute(
-        select(func.count(User.id)).where(User.last_login >= yesterday)
-    ).scalar()
+    active_users_result = await db.execute(
+        select(func.count(User.id)).where(and_(User.last_login.isnot(None), User.last_login >= yesterday))
+    )
+    active_users = active_users_result.scalar()
 
     # Total users (for context)
-    total_users = db.execute(select(func.count(User.id))).scalar()
+    total_users_result = await db.execute(select(func.count(User.id)))
+    total_users = total_users_result.scalar()
 
     # API calls - placeholder (requires API logging table)
     # Top features - placeholder (requires feature access tracking)
@@ -231,9 +239,12 @@ async def collect_user_activity_metrics(db: Session) -> Dict[str, Any]:
     }
 
 
-async def collect_all_metrics() -> Dict[str, Any]:
+async def collect_all_metrics(db: AsyncSession) -> Dict[str, Any]:
     """
     Collect all metrics from all sources.
+
+    Args:
+        db: Database session (AsyncSession from Temporal worker context)
 
     Returns:
         Complete metrics dictionary for monitoring snapshot.
@@ -245,9 +256,6 @@ async def collect_all_metrics() -> Dict[str, Any]:
         "resources": {},
         "user_activity": {},
     }
-
-    db_gen = get_db()
-    db = next(db_gen)
 
     try:
         # Collect metrics from all categories
@@ -276,8 +284,5 @@ async def collect_all_metrics() -> Dict[str, Any]:
         logger.error("Failed to collect monitoring metrics: %s", e)
         metrics["error"] = str(e)
         metrics["overall_status"] = "unknown"
-
-    finally:
-        db.close()
 
     return metrics

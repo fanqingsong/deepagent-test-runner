@@ -14,7 +14,6 @@ from app.core.security import get_current_user
 from app.models.user import User
 
 router = APIRouter()
-monitoring_service = MonitoringService()
 
 
 @router.get("/status")
@@ -34,7 +33,7 @@ async def get_monitoring_status(
 
     Requires authentication.
     """
-    monitoring_service.db = db
+    monitoring_service = MonitoringService(db)
     status = await monitoring_service.get_current_status()
     return status
 
@@ -58,7 +57,7 @@ async def get_alerts(
 
     Requires authentication.
     """
-    monitoring_service.db = db
+    monitoring_service = MonitoringService(db)
 
     if active_only:
         alerts = await monitoring_service.get_active_alerts(limit=limit)
@@ -94,7 +93,7 @@ async def acknowledge_alert(
     Returns:
         Updated alert data
     """
-    monitoring_service.db = db
+    monitoring_service = MonitoringService(db)
 
     result = await monitoring_service.acknowledge_alert(
         alert_id=alert_id,
@@ -124,7 +123,7 @@ async def resolve_alert(
     Returns:
         Updated alert data
     """
-    monitoring_service.db = db
+    monitoring_service = MonitoringService(db)
 
     result = await monitoring_service.resolve_alert(alert_id=alert_id)
 
@@ -151,7 +150,7 @@ async def get_monitoring_reports(
 
     Requires authentication.
     """
-    monitoring_service.db = db
+    monitoring_service = MonitoringService(db)
     reports = await monitoring_service.get_monitoring_reports(hours=hours, limit=limit)
 
     return {
@@ -177,7 +176,7 @@ async def get_alert_statistics(
 
     Requires authentication.
     """
-    monitoring_service.db = db
+    monitoring_service = MonitoringService(db)
     stats = await monitoring_service.get_alert_statistics(hours=hours)
 
     return stats
@@ -198,7 +197,7 @@ async def get_alert_configurations(
 
     Requires authentication. Admin-only in future.
     """
-    monitoring_service.db = db
+    monitoring_service = MonitoringService(db)
     configs = await monitoring_service.get_alert_configurations(enabled_only=enabled_only)
 
     return {

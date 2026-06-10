@@ -8,7 +8,7 @@ Runs periodically to collect metrics, analyze health, and send alerts.
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict
 
 from temporalio import workflow
@@ -34,10 +34,10 @@ logger = logging.getLogger(__name__)
 
 
 # Default timeouts
-DEFAULT_CHECK_TIMEOUT = 300  # 5 minutes
-DEFAULT_ANALYSIS_TIMEOUT = 120  # 2 minutes
-DEFAULT_STORAGE_TIMEOUT = 120  # 2 minutes
-DEFAULT_NOTIFICATION_TIMEOUT = 300  # 5 minutes
+DEFAULT_CHECK_TIMEOUT = timedelta(seconds=300)  # 5 minutes
+DEFAULT_ANALYSIS_TIMEOUT = timedelta(seconds=120)  # 2 minutes
+DEFAULT_STORAGE_TIMEOUT = timedelta(seconds=120)  # 2 minutes
+DEFAULT_NOTIFICATION_TIMEOUT = timedelta(seconds=300)  # 5 minutes
 
 
 @dataclass
@@ -183,7 +183,7 @@ class MonitoringAgentWorkflow:
                 )
 
                 # Wait for next check interval
-                await asyncio.sleep(config.check_interval_seconds)
+                await workflow.sleep(timedelta(seconds=config.check_interval_seconds))
 
         except asyncio.CancelledError:
             logger.info("MonitoringAgentWorkflow cancelled")

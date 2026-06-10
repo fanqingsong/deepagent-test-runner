@@ -34,6 +34,7 @@ from app.temporal.activities.monitoring_activities import (
     analyze_health_metrics,
     store_monitoring_snapshot,
     send_alert_notifications,
+    generate_ai_report,
 )
 from app.temporal.workflows.test_execution import TestExecutionWorkflow, RetryTestWorkflow
 from app.temporal.workflows.schedules import ScheduleExecutionWorkflow
@@ -92,6 +93,7 @@ async def run_worker():
         analyze_health_metrics,
         store_monitoring_snapshot,
         send_alert_notifications,
+        generate_ai_report,
     ]
 
     # Register workflows

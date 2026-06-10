@@ -14,7 +14,129 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getAlerts, getMonitoringStatus, getMonitoringReports, acknowledgeAlert, resolveAlert } from '../api';
+import SystemStatusRadar from '../components/SystemStatusRadar';
 import './MonitoringPage.css';
+
+/**
+ * AI Report Display Component
+ *
+ * Parses and displays AI-generated monitoring reports in a formatted way.
+ */
+function AIReportDisplay({ content }) {
+  // Parse JSON from markdown code blocks
+  const parseReport = (text) => {
+    try {
+      // Remove markdown code blocks
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[1]);
+      }
+      // Try parsing as direct JSON
+      return JSON.parse(text);
+    } catch (e) {
+      // If parsing fails, return raw text
+      return { raw: text };
+    }
+  };
+
+  const report = parseReport(content);
+
+  // If raw text (parsing failed), display as is
+  if (report.raw) {
+    return <div className="ai-summary-content">{content}</div>;
+  }
+
+  // Get status color
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'critical': return '#da1e28';
+      case 'warning': return '#f1c21b';
+      case 'normal': return '#24a148';
+      default: return '#6f6f6f';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status.toLowerCase()) {
+      case 'critical': return 'Critical';
+      case 'warning': return 'Warning';
+      case 'normal': return 'Normal';
+      default: return status;
+    }
+  };
+
+  return (
+    <div className="ai-report-formatted">
+      {/* Status Badge */}
+      {report.status && (
+        <div className="ai-status-badge" style={{ backgroundColor: getStatusColor(report.status) }}>
+          {getStatusLabel(report.status)}
+        </div>
+      )}
+
+      {/* Summary */}
+      {report.summary && (
+        <div className="ai-section">
+          <h4>📋 Summary</h4>
+          <p>{report.summary}</p>
+        </div>
+      )}
+
+      {/* Highlights */}
+      {report.highlights && report.highlights.length > 0 && (
+        <div className="ai-section">
+          <h4>🎯 Key Findings</h4>
+          <ul className="ai-list">
+            {report.highlights.map((highlight, index) => (
+              <li key={index} className={highlight.startsWith('✓') ? 'ai-positive' : 'ai-warning'}>
+                {highlight}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Trends */}
+      {report.trends && (report.trends.improving?.length > 0 || report.trends.concerning?.length > 0) && (
+        <div className="ai-section">
+          <h4>📈 Trends</h4>
+          {report.trends.improving && report.trends.improving.length > 0 && report.trends.improving[0] !== 'None identified' && (
+            <div className="ai-trend-group">
+              <strong>Improving:</strong>
+              <ul className="ai-list">
+                {report.trends.improving.map((trend, index) => (
+                  <li key={`imp-${index}`} className="ai-positive">{trend}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {report.trends.concerning && report.trends.concerning.length > 0 && report.trends.concerning[0] !== 'None identified' && (
+            <div className="ai-trend-group">
+              <strong>Concerning:</strong>
+              <ul className="ai-list">
+                {report.trends.concerning.map((trend, index) => (
+                  <li key={`con-${index}`} className="ai-warning">{trend}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {report.recommendations && report.recommendations.length > 0 && (
+        <div className="ai-section">
+          <h4>💡 Recommendations</h4>
+          <ol className="ai-ordered-list">
+            {report.recommendations.map((rec, index) => (
+              <li key={index}>{rec}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * Format timestamp for display
@@ -195,25 +317,24 @@ function MonitoringPage() {
         </div>
       </div>
 
-      {/* Status Banner */}
-      <div className={`status-banner ${getStatusColor(currentStatus)}`}>
-        <div className="status-icon">
-          {currentStatus === 'critical' && '🔴'}
-          {currentStatus === 'warning' && '⚠️'}
-          {currentStatus === 'normal' && '✅'}
-          {currentStatus === 'unknown' && '❓'}
-        </div>
-        <div className="status-text">
-          <strong>System Status: {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}</strong>
-          <span className="status-updated">
-            Last checked: {formatRelativeTime(status?.last_check)}
-          </span>
-        </div>
-        {activeAlertsCount > 0 && (
-          <div className="status-alerts-count">
-            {activeAlertsCount} active alert{activeAlertsCount !== 1 ? 's' : ''}
+      {/* System Status Radar Chart */}
+      <SystemStatusRadar metrics={status?.metrics} size="medium" />
+
+      {/* Status Summary Banner */}
+      <div className={`status-summary-banner ${getStatusColor(currentStatus)}`}>
+        <div className="status-summary-content">
+          <div className="status-summary-text">
+            <strong>Overall Status: {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}</strong>
+            <span className="status-updated">
+              Last checked: {formatRelativeTime(status?.last_check)}
+            </span>
           </div>
-        )}
+          {activeAlertsCount > 0 && (
+            <div className="status-alerts-count">
+              {activeAlertsCount} active alert{activeAlertsCount !== 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* AI Summary */}
@@ -223,9 +344,7 @@ function MonitoringPage() {
             <h2>🤖 AI Analysis</h2>
             <span className="ai-badge">Generated by DeepAgent</span>
           </div>
-          <div className="ai-summary-content">
-            {status.report_summary}
-          </div>
+          <AIReportDisplay content={status.report_summary} />
         </div>
       )}
 

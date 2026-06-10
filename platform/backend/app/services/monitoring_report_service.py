@@ -31,6 +31,7 @@ async def generate_daily_report(snapshot_id: int) -> Dict[str, Any]:
         agent = await get_monitoring_reporter_agent()
 
         # Generate the report with context
+        # DeepAgent expects a dict with 'messages' key, not a string
         prompt = f"""Generate a comprehensive monitoring report for the current system state.
 
 Use your available tools to:
@@ -41,11 +42,26 @@ Use your available tools to:
 
 Focus on clarity and actionable insights. Include specific numbers and percentages."""
 
-        # Invoke the agent
-        response = await agent.ainvoke(prompt)
+        # Invoke the agent with proper state format
+        response = await agent.ainvoke({"messages": [prompt]})
 
-        # Extract the report content
-        report_content = response.content if hasattr(response, 'content') else str(response)
+        # Extract the report content from the response
+        # DeepAgent returns a dict with 'messages' key containing the response
+        if isinstance(response, dict):
+            messages = response.get("messages", [])
+            if messages:
+                # Get the last message content
+                last_message = messages[-1]
+                if hasattr(last_message, 'content'):
+                    report_content = last_message.content
+                elif isinstance(last_message, dict) and 'content' in last_message:
+                    report_content = last_message['content']
+                else:
+                    report_content = str(last_message)
+            else:
+                report_content = str(response)
+        else:
+            report_content = str(response)
 
         # Save the report to the snapshot
         updated = await update_snapshot_report(snapshot_id, report_content)

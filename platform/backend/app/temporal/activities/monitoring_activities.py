@@ -114,24 +114,26 @@ async def collect_system_metrics(input: CollectSystemMetricsInput) -> CollectSys
     """
     from app.services.monitoring_collector import collect_all_metrics
 
-    # Use the new centralized collector service
-    all_metrics = await collect_all_metrics()
+    # Use worker session for Temporal activities
+    async with get_worker_session() as session:
+        # Use the new centralized collector service
+        all_metrics = await collect_all_metrics(session)
 
-    collected_at = datetime.utcnow()
-    metrics = SystemMetrics()
+        collected_at = datetime.utcnow()
+        metrics = SystemMetrics()
 
-    # Map to the existing structure
-    metrics.test_health = all_metrics.get("test_execution", {})
-    metrics.agent_performance = all_metrics.get("llm_performance", {})
-    metrics.resource_usage = all_metrics.get("resources", {})
-    metrics.schedule_status = all_metrics.get("test_execution", {}).get("schedules", {})
+        # Map to the existing structure
+        metrics.test_health = all_metrics.get("test_execution", {})
+        metrics.agent_performance = all_metrics.get("llm_performance", {})
+        metrics.resource_usage = all_metrics.get("resources", {})
+        metrics.schedule_status = all_metrics.get("test_execution", {}).get("schedules", {})
 
-    logger.info(f"Collected system metrics at {collected_at}")
+        logger.info(f"Collected system metrics at {collected_at}")
 
-    return CollectSystemMetricsOutput(
-        metrics=metrics,
-        collected_at=collected_at,
-    )
+        return CollectSystemMetricsOutput(
+            metrics=metrics,
+            collected_at=collected_at,
+        )
 
 
 async def _collect_test_health(session: AsyncSession, hours: int) -> Dict[str, Any]:
@@ -382,20 +384,22 @@ async def store_monitoring_snapshot(input: StoreMonitoringSnapshotInput) -> Stor
         "schedule_status": input.metrics.schedule_status or {},
     }
 
-    # Use the new centralized storage service
-    snapshot_id = await save_monitoring_snapshot(unified_metrics, input.status)
+    # Use worker session for Temporal activities
+    async with get_worker_session() as session:
+        # Use the new centralized storage service
+        snapshot_id = await save_monitoring_snapshot(unified_metrics, input.status, db=session)
 
-    if snapshot_id is None:
-        logger.error("Failed to store monitoring snapshot")
-        raise Exception("Failed to store monitoring snapshot")
+        if snapshot_id is None:
+            logger.error("Failed to store monitoring snapshot")
+            raise Exception("Failed to store monitoring snapshot")
 
-    logger.info(f"Stored monitoring snapshot ID {snapshot_id} with status {input.status}")
+        logger.info(f"Stored monitoring snapshot ID {snapshot_id} with status {input.status}")
 
-    return StoreMonitoringSnapshotOutput(
-        monitoring_id=snapshot_id,
-        check_time=datetime.utcnow(),
-        status=input.status,
-    )
+        return StoreMonitoringSnapshotOutput(
+            monitoring_id=snapshot_id,
+            check_time=datetime.utcnow(),
+            status=input.status,
+        )
 
 
 @activity.defn

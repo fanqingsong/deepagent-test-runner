@@ -7,6 +7,16 @@ import './ConversationList.css';
 const LANGGRAPH_URL = import.meta.env.VITE_LANGGRAPH_URL || `${window.location.origin}/langgraph`;
 
 /**
+ * Custom fetch implementation that includes credentials (cookies)
+ */
+async function fetchWithCredentials(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    credentials: 'include',  // Include httpOnly cookies
+  });
+}
+
+/**
  * Sidebar panel for managing chat conversations via LangGraph threads.
  */
 export function ConversationList({
@@ -23,6 +33,7 @@ export function ConversationList({
   const client = useMemo(() => new Client({
     apiUrl: LANGGRAPH_URL,
     defaultHeaders: authService.getAuthHeaders(),
+    fetch: fetchWithCredentials,  // Use custom fetch that includes cookies
   }), [refreshKey]);
 
   const loadConversations = useCallback(async () => {

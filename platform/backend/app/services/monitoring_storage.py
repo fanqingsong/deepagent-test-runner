@@ -8,27 +8,37 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, sync_session_maker
 from app.models.monitoring import AgentMonitoring
 
 logger = logging.getLogger(__name__)
 
 
-async def save_monitoring_snapshot(metrics: Dict[str, Any], status: str = "normal") -> Optional[int]:
+def _get_sync_db() -> Session:
+    """Get a synchronous database session for use in agent tools."""
+    return sync_session_maker()
+
+
+async def save_monitoring_snapshot(metrics: Dict[str, Any], status: str = "normal", db: Optional[AsyncSession] = None) -> Optional[int]:
     """
     Save a monitoring snapshot to the database.
 
     Args:
         metrics: Collected metrics dictionary
         status: Overall system status (normal, warning, critical)
+        db: Database session (optional, if None will create one)
 
     Returns:
         ID of the created snapshot, or None if failed
     """
-    db_gen = get_db()
-    db = next(db_gen)
+    # If no session provided, this is for backward compatibility but not recommended for Temporal
+    if db is None:
+        logger.warning("save_monitoring_snapshot called without db session, this should not happen in Temporal context")
+        return None
 
     try:
         snapshot = AgentMonitoring(
@@ -39,19 +49,16 @@ async def save_monitoring_snapshot(metrics: Dict[str, Any], status: str = "norma
         )
 
         db.add(snapshot)
-        db.commit()
-        db.refresh(snapshot)
+        await db.commit()
+        await db.refresh(snapshot)
 
         logger.info("Saved monitoring snapshot: id=%d, status=%s", snapshot.id, status)
         return snapshot.id
 
     except Exception as e:
         logger.error("Failed to save monitoring snapshot: %s", e)
-        db.rollback()
+        await db.rollback()
         return None
-
-    finally:
-        db.close()
 
 
 async def get_latest_snapshot() -> Optional[Dict[str, Any]]:
@@ -61,8 +68,7 @@ async def get_latest_snapshot() -> Optional[Dict[str, Any]]:
     Returns:
         Dict with snapshot data or None if no snapshots exist
     """
-    db_gen = get_db()
-    db = next(db_gen)
+    db = _get_sync_db()
 
     try:
         snapshot = db.execute(
@@ -102,17 +108,17 @@ async def get_historical_metrics(days: int = 7) -> List[Dict[str, Any]]:
     Returns:
         List of snapshot dicts ordered by check_time descending
     """
-    db_gen = get_db()
-    db = next(db_gen)
+    db = _get_sync_db()
 
     try:
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-        snapshots = db.execute(
+        result = db.execute(
             select(AgentMonitoring)
             .where(AgentMonitoring.check_time >= cutoff_date)
             .order_by(AgentMonitoring.check_time.desc())
-        ).scalars().all()
+        )
+        snapshots = result.scalars().all()
 
         results = []
         for snapshot in snapshots:
@@ -146,8 +152,7 @@ async def update_snapshot_report(snapshot_id: int, report_summary: str) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    db_gen = get_db()
-    db = next(db_gen)
+    db = _get_sync_db()
 
     try:
         snapshot = db.execute(
@@ -183,8 +188,7 @@ async def get_snapshot_for_comparison(hours_ago: int = 24) -> Optional[Dict[str,
     Returns:
         Snapshot dict or None if not found
     """
-    db_gen = get_db()
-    db = next(db_gen)
+    db = _get_sync_db()
 
     try:
         target_time = datetime.utcnow() - timedelta(hours=hours_ago)
