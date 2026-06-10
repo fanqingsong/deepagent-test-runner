@@ -929,3 +929,53 @@ export const generateDescription = async (testId) => {
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to generate description'));
   return response.json();
 };
+
+
+// Monitoring API
+const MONITORING_API = `${BASE_URL}/api/v1/monitoring`;
+
+export const getMonitoringStatus = async () => {
+  const response = await apiFetch(`${MONITORING_API}/status`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to fetch monitoring status'));
+  return response.json();
+};
+
+export const getMonitoringHistory = async (days = 7) => {
+  const response = await apiFetch(`${MONITORING_API}/history?days=${days}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to fetch monitoring history'));
+  return response.json();
+};
+
+export const getAlerts = async (options = {}) => {
+  const params = new URLSearchParams();
+  if (options.active_only) params.append('active_only', 'true');
+  if (options.alert_type) params.append('alert_type', options.alert_type);
+  if (options.severity) params.append('severity', options.severity);
+  if (options.limit) params.append('limit', options.limit);
+
+  const response = await apiFetch(`${MONITORING_API}/alerts?${params.toString()}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to fetch alerts'));
+  return response.json();
+};
+
+export const acknowledgeAlert = async (alertId) => {
+  const response = await apiFetch(`${MONITORING_API}/alerts/${alertId}/acknowledge`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to acknowledge alert'));
+  return response.json();
+};
+
+export const resolveAlert = async (alertId) => {
+  const response = await apiFetch(`${MONITORING_API}/alerts/${alertId}/resolve`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to resolve alert'));
+  return response.json();
+};
+
+export const getMonitoringReports = async (hours = 24, limit = 50) => {
+  const response = await apiFetch(`${MONITORING_API}/reports?hours=${hours}&limit=${limit}`);
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to fetch monitoring reports'));
+  return response.json();
+};

@@ -148,6 +148,29 @@ class MonitoringAgentWorkflow:
                     retry_policy=get_default_retry_policy(),
                 )
 
+                # Step 5: Generate AI report (async, non-blocking)
+                self._status = "generating_report"
+
+                try:
+                    from app.temporal.activities.monitoring_activities import (
+                        generate_ai_report,
+                        GenerateAIReportInput,
+                    )
+
+                    await workflow.execute_activity(
+                        generate_ai_report,
+                        GenerateAIReportInput(
+                            snapshot_id=snapshot_output.monitoring_id,
+                            force_regeneration=False,
+                        ),
+                        start_to_close_timeout=DEFAULT_ANALYSIS_TIMEOUT,
+                        retry_policy=get_default_retry_policy(),
+                    )
+                    logger.info(f"AI report generated for snapshot {snapshot_output.monitoring_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to generate AI report for snapshot {snapshot_output.monitoring_id}: {e}")
+                    # Continue even if report generation fails
+
                 # Update workflow state
                 self._last_check_time = metrics_output.collected_at
                 self._check_count += 1

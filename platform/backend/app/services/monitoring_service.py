@@ -57,8 +57,9 @@ class MonitoringService:
             }
 
         # Count active (unacknowledged) alerts
+        # Note: acknowledged is stored as Integer (0/1), not boolean
         active_alerts_stmt = select(sql_func.count()).select_from(AgentAlert).where(
-            AgentAlert.acknowledged == False
+            AgentAlert.acknowledged == 0
         )
         active_alerts_result = await self.db.execute(active_alerts_stmt)
         active_alerts = active_alerts_result.scalar() or 0
@@ -81,9 +82,10 @@ class MonitoringService:
         Returns:
             list: Active alerts with details
         """
+        # acknowledged is stored as Integer (0/1), not boolean
         stmt = (
             select(AgentAlert)
-            .where(AgentAlert.acknowledged == False)
+            .where(AgentAlert.acknowledged == 0)
             .order_by(desc(AgentAlert.created_at))
             .limit(limit)
         )
@@ -129,7 +131,8 @@ class MonitoringService:
         if severity:
             stmt = stmt.where(AgentAlert.severity == severity)
         if acknowledged is not None:
-            stmt = stmt.where(AgentAlert.acknowledged == acknowledged)
+            # acknowledged is stored as Integer (0/1), not boolean
+            stmt = stmt.where(AgentAlert.acknowledged == (1 if acknowledged else 0))
 
         stmt = stmt.order_by(desc(AgentAlert.created_at)).limit(limit)
 
@@ -172,7 +175,8 @@ class MonitoringService:
         if not alert:
             return None
 
-        alert.acknowledged = True
+        # acknowledged is stored as Integer (0/1), not boolean
+        alert.acknowledged = 1
         alert.acknowledged_by = user_id
         alert.acknowledged_at = datetime.utcnow()
 
@@ -327,7 +331,8 @@ class MonitoringService:
         stmt = select(AlertConfiguration)
 
         if enabled_only:
-            stmt = stmt.where(AlertConfiguration.enabled == True)
+            # enabled is stored as Integer (0/1), not boolean
+            stmt = stmt.where(AlertConfiguration.enabled == 1)
 
         stmt = stmt.order_by(AlertConfiguration.created_at.desc())
 

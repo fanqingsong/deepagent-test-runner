@@ -112,32 +112,26 @@ async def collect_system_metrics(input: CollectSystemMetricsInput) -> CollectSys
     - Resource usage (token consumption)
     - Schedule status (missed runs, active schedules)
     """
-    async with get_worker_session() as session:
-        collected_at = datetime.utcnow()
-        metrics = SystemMetrics()
+    from app.services.monitoring_collector import collect_all_metrics
 
-        # Collect test health metrics
-        test_health = await _collect_test_health(session, input.time_range_hours)
-        metrics.test_health = test_health
+    # Use the new centralized collector service
+    all_metrics = await collect_all_metrics()
 
-        # Collect agent performance metrics
-        agent_perf = await _collect_agent_performance(session, input.time_range_hours)
-        metrics.agent_performance = agent_perf
+    collected_at = datetime.utcnow()
+    metrics = SystemMetrics()
 
-        # Collect resource usage metrics
-        resource_usage = await _collect_resource_usage(session, input.time_range_hours)
-        metrics.resource_usage = resource_usage
+    # Map to the existing structure
+    metrics.test_health = all_metrics.get("test_execution", {})
+    metrics.agent_performance = all_metrics.get("llm_performance", {})
+    metrics.resource_usage = all_metrics.get("resources", {})
+    metrics.schedule_status = all_metrics.get("test_execution", {}).get("schedules", {})
 
-        # Collect schedule status metrics
-        schedule_status = await _collect_schedule_status(session)
-        metrics.schedule_status = schedule_status
+    logger.info(f"Collected system metrics at {collected_at}")
 
-        logger.info(f"Collected system metrics at {collected_at}")
-
-        return CollectSystemMetricsOutput(
-            metrics=metrics,
-            collected_at=collected_at,
-        )
+    return CollectSystemMetricsOutput(
+        metrics=metrics,
+        collected_at=collected_at,
+    )
 
 
 async def _collect_test_health(session: AsyncSession, hours: int) -> Dict[str, Any]:
@@ -378,42 +372,30 @@ async def store_monitoring_snapshot(input: StoreMonitoringSnapshotInput) -> Stor
     - Alerts generated (JSONB)
     - Report summary
     """
-    async with get_worker_session() as session:
-        monitoring = AgentMonitoring(
-            check_time=datetime.utcnow(),
-            status=input.status,
-            metrics={
-                "test_health": input.metrics.test_health or {},
-                "agent_performance": input.metrics.agent_performance or {},
-                "resource_usage": input.metrics.resource_usage or {},
-                "schedule_status": input.metrics.schedule_status or {},
-            },
-            alerts_generated={
-                "alerts": [
-                    {
-                        "alert_type": a.alert_type,
-                        "severity": a.severity,
-                        "title": a.title,
-                        "description": a.description,
-                        "metrics_snapshot": a.metrics_snapshot,
-                    }
-                    for a in input.alerts
-                ]
-            },
-            report_summary=input.report_summary,
-        )
+    from app.services.monitoring_storage import save_monitoring_snapshot
 
-        session.add(monitoring)
-        await session.commit()
-        await session.refresh(monitoring)
+    # Build unified metrics dict from input
+    unified_metrics = {
+        "test_health": input.metrics.test_health or {},
+        "agent_performance": input.metrics.agent_performance or {},
+        "resource_usage": input.metrics.resource_usage or {},
+        "schedule_status": input.metrics.schedule_status or {},
+    }
 
-        logger.info(f"Stored monitoring snapshot ID {monitoring.id} with status {input.status}")
+    # Use the new centralized storage service
+    snapshot_id = await save_monitoring_snapshot(unified_metrics, input.status)
 
-        return StoreMonitoringSnapshotOutput(
-            monitoring_id=monitoring.id,
-            check_time=monitoring.check_time,
-            status=monitoring.status,
-        )
+    if snapshot_id is None:
+        logger.error("Failed to store monitoring snapshot")
+        raise Exception("Failed to store monitoring snapshot")
+
+    logger.info(f"Stored monitoring snapshot ID {snapshot_id} with status {input.status}")
+
+    return StoreMonitoringSnapshotOutput(
+        monitoring_id=snapshot_id,
+        check_time=datetime.utcnow(),
+        status=input.status,
+    )
 
 
 @activity.defn
@@ -458,4 +440,62 @@ async def send_alert_notifications(input: SendAlertNotificationsInput) -> SendAl
         return SendAlertNotificationsOutput(
             notifications_sent=len(input.alerts),
             notification_details=notification_details,
+        )
+
+
+# AI Report Generation Activities
+
+
+@dataclass
+class GenerateAIReportInput:
+    """Input for generate_ai_report activity."""
+    snapshot_id: int
+    force_regeneration: bool = False
+
+
+@dataclass
+class GenerateAIReportOutput:
+    """Output from generate_ai_report activity."""
+    success: bool
+    report_summary: Optional[str] = None
+    error: Optional[str] = None
+    snapshot_id: int = 0
+
+
+@activity.defn
+async def generate_ai_report(input: GenerateAIReportInput) -> GenerateAIReportOutput:
+    """Generate AI-powered monitoring report using the reporter agent.
+
+    Args:
+        input: Contains snapshot_id and optional force_regeneration flag
+
+    Returns:
+        Output with success status and report summary
+    """
+    from app.services.monitoring_report_service import generate_daily_report
+
+    try:
+        logger.info(f"Generating AI report for snapshot {input.snapshot_id}")
+
+        result = await generate_daily_report(snapshot_id=input.snapshot_id)
+
+        if result.get("success"):
+            return GenerateAIReportOutput(
+                success=True,
+                report_summary=result.get("report"),
+                snapshot_id=input.snapshot_id,
+            )
+        else:
+            return GenerateAIReportOutput(
+                success=False,
+                error=result.get("error", "Unknown error"),
+                snapshot_id=input.snapshot_id,
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to generate AI report for snapshot {input.snapshot_id}: {e}", exc_info=True)
+        return GenerateAIReportOutput(
+            success=False,
+            error=str(e),
+            snapshot_id=input.snapshot_id,
         )

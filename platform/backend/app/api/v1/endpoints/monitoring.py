@@ -66,7 +66,7 @@ async def get_alerts(
         alerts = await monitoring_service.get_alert_history(
             alert_type=alert_type,
             severity=severity,
-            acknowledged=None if not active_only else False,
+            acknowledged=None if not active_only else 0,  # acknowledged is Integer (0/1)
             limit=limit
         )
 

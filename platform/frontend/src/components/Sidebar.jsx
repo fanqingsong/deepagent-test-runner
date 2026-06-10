@@ -16,6 +16,13 @@ const WeatherIcon = ({ size = 20 }) => (
   </svg>
 );
 
+// Monitoring icon for sidebar
+const MonitoringIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2a8 8 0 0 1 8 8 8 8 0 0 1-8 8zm0 2a6 6 0 0 0-6 6 6 6 0 0 0 6-6zm1 5H9v-2h2v2zm0-4H9v2h2V5z"/>
+  </svg>
+);
+
 import './Sidebar.css';
 
 const menuItems = [
@@ -24,6 +31,12 @@ const menuItems = [
     label: 'Dashboard',
     icon: DashboardIcon,
     path: '#dashboard'
+  },
+  {
+    id: 'monitoring',
+    label: 'System Monitoring',
+    icon: MonitoringIcon,
+    path: '#monitoring'
   },
   {
     id: 'nanjing-weather',
