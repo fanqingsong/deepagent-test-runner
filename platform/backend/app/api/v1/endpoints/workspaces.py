@@ -191,9 +191,9 @@ async def get_app_runs(
     if not workspace:
         raise HTTPException(status_code=404, detail=f"TestWorkspace {workspace_id} not found")
 
-    analytics_svc = AnalyticsService()
+    analytics_svc = AnalyticsService(db)
     runs = await analytics_svc.get_test_runs_for_app(
-        db=db, app_id=workspace_id, limit=limit, offset=offset,
+        app_id=workspace_id, limit=limit, offset=offset,
     )
     return runs
 

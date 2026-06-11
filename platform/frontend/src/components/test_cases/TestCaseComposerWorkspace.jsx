@@ -364,20 +364,26 @@ export default function TestCaseComposerWorkspace({ testCaseId, onTestCaseChange
             </div>
           </div>
 
-          {/* Script Section */}
-          <div className="composer-script-section">
-            <div className="composer-script-section-header">
-              <span className="composer-script-section-title">Playwright Script</span>
+          {/* Script Section - Only show if test_definition_id exists */}
+          {testCase?.test_definition_id ? (
+            <div className="composer-script-section">
+              <div className="composer-script-section-header">
+                <span className="composer-script-section-title">Playwright Script</span>
+              </div>
+              <div className="composer-script-section-body">
+                <TestCaseScriptTab
+                  testCaseId={testCase.test_definition_id}
+                  appId={testCaseId}
+                  readOnly={readOnly}
+                  onRunComplete={loadRunHistory}
+                />
+              </div>
             </div>
-            <div className="composer-script-section-body">
-              <TestCaseScriptTab
-                testCaseId={testCase?.test_definition_id || testCaseId}
-                appId={testCaseId}
-                readOnly={readOnly}
-                onRunComplete={loadRunHistory}
-              />
+          ) : (
+            <div className="composer-script-section" style={{ padding: '16px', textAlign: 'center', color: '#6f6f6f' }}>
+              <p>No test definition linked. Complete the test configuration to generate scripts.</p>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Divider */}

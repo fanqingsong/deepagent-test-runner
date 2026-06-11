@@ -51,6 +51,27 @@ class AppWorkspaceCrud:
         self.db.add(app)
         await self.db.flush()
 
+        # Create test definition if URL and test_goal are provided
+        if app.url and app.test_goal:
+            test_def = TestDefinition(
+                name=f"[APP] {app.name}",
+                description=app.description or app.test_goal,
+                test_id=f"app-{app.id}-{uuid.uuid4().hex[:8]}",
+                url=app.url,
+                test_goal=app.test_goal,
+                test_context=app.test_context or {},
+                environment={},
+                tags=["app-workspace"],
+                is_active=True,
+                is_draft=True,
+                source_workspace_id=app.id,
+                created_by=user_id,
+            )
+            self.db.add(test_def)
+            await self.db.flush()
+            app.test_definition_id = test_def.id
+            logger.info(f"Created TestDefinition {test_def.id} for new workspace {app.id}")
+
         system_msg = ConversationMessage(
             thread_id=thread.id,
             role="system",
@@ -152,6 +173,27 @@ class AppWorkspaceCrud:
             if key in data and data[key] is not None:
                 setattr(app, key, data[key])
 
+        # Create test definition if it doesn't exist and we have the required fields
+        if not app.test_definition_id and app.url and app.test_goal:
+            test_def = TestDefinition(
+                name=f"[APP] {app.name}",
+                description=app.description or app.test_goal,
+                test_id=f"app-{app.id}-{uuid.uuid4().hex[:8]}",
+                url=app.url,
+                test_goal=app.test_goal,
+                test_context=app.test_context or {},
+                environment={},
+                tags=["app-workspace"],
+                is_active=True,
+                is_draft=True,
+                source_workspace_id=app.id,
+                created_by=app.created_by,
+            )
+            self.db.add(test_def)
+            await self.db.flush()
+            app.test_definition_id = test_def.id
+            logger.info(f"Created TestDefinition {test_def.id} for workspace {app.id}")
+
         # Sync config changes to the draft version snapshot
         if app.test_definition_id:
             from app.models.test_version import TestVersion
@@ -251,7 +293,7 @@ class AppWorkspaceCrud:
                     tags=["app-copied"],
                     is_active=True,
                     is_draft=True,
-                    source_app_id=app.id,
+                    source_workspace_id=app.id,
                     created_by=user_id,
                 )
                 self.db.add(test_def)
