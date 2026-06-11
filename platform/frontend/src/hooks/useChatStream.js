@@ -4,7 +4,7 @@
  * Connects to the LangGraph Platform Server for real-time
  * subagent tracking, tool calls, and token streaming.
  */
-import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useCallback, useRef, useEffect, useState } from 'react';
 import { useStream } from '@langchain/react';
 import { Client } from '@langchain/langgraph-sdk';
 import authService from '../services/authService';
@@ -15,12 +15,37 @@ const THREAD_STORAGE_KEY = 'chat-active-thread-id';
 export function useChatStream() {
   const threadIdRef = useRef(null);
   const titledThreadsRef = useRef(new Set());
+  const [authHeaders, setAuthHeaders] = useState({});
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
-  const client = useMemo(() => new Client({
-    apiUrl: LANGGRAPH_URL,
-    defaultHeaders: authService.getAuthHeaders(),
-  }), []);
+  // Fetch access token on mount to ensure LangGraph SDK has auth
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        // Try to get current user, which will fetch and store the access token
+        await authService.getCurrentUser();
+        setAuthHeaders(authService.getAuthHeaders());
+        setIsAuthReady(true);
+      } catch (error) {
+        // If not authenticated, just initialize without auth
+        console.warn('Could not initialize auth for LangGraph:', error);
+        setIsAuthReady(true);
+      }
+    };
+    initAuth();
+  }, []);
 
+  const client = useMemo(() => {
+    if (!isAuthReady) return null;
+    return new Client({
+      apiUrl: LANGGRAPH_URL,
+      defaultHeaders: authHeaders,
+    });
+  }, [isAuthReady, authHeaders]);
+
+  // Always call useStream (Rule of Hooks must be followed)
+  // Even when auth isn't ready, we call the hook with empty headers
+  // The library will handle connection errors gracefully
   const stream = useStream({
     apiUrl: LANGGRAPH_URL,
     assistantId: 'chat',
@@ -33,7 +58,7 @@ export function useChatStream() {
       }
     },
     filterSubagentMessages: true,
-    defaultHeaders: authService.getAuthHeaders(),
+    defaultHeaders: authHeaders,
   });
 
   // Reconnect to active thread on mount after page refresh
@@ -217,6 +242,7 @@ export function useChatStream() {
     if (!threadId || !msgs || msgs.length < 2) return;
     if (titledThreadsRef.current.has(threadId)) return;
     if (stream.isLoading) return;
+    if (!client) return; // Wait for client to be ready
 
     const humanMsg = msgs.find((m) => m.getType?.() === 'human');
     const aiMsg = msgs.find((m) => m.getType?.() === 'ai');

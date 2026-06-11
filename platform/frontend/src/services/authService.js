@@ -54,20 +54,32 @@ class AuthService {
 
   /**
    * Get access token
-   * SECURITY: This is no longer accessible - tokens are in httpOnly cookies
-   * This method returns null to indicate tokens are handled by browser
+   * SECURITY: Token is retrieved from /auth/me response for LangGraph SDK use
+   * Primary auth still uses httpOnly cookies
    */
   getAccessToken() {
-    // Tokens are now in httpOnly cookies - not accessible via JavaScript
-    return null;
+    // Try to get from memory (stored after /auth/me call)
+    return this._accessToken || null;
+  }
+
+  /**
+   * Set access token in memory (for LangGraph SDK)
+   * SECURITY: This is a short-lived token for LangGraph SDK only
+   */
+  _setAccessToken(token) {
+    this._accessToken = token;
   }
 
   /**
    * Get auth headers for API requests
-   * SECURITY: No longer needed - cookies are sent automatically
+   * Returns empty object for most API calls (cookies are sent automatically)
+   * But returns Bearer token for LangGraph SDK if available
    */
   getAuthHeaders() {
-    // Cookies are sent automatically - no manual headers needed
+    const token = this.getAccessToken();
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
     return {};
   }
 
@@ -166,6 +178,7 @@ class AuthService {
   /**
    * Local password login
    * SECURITY: Tokens are set in httpOnly cookies by backend
+   * Also fetches /me to get access_token for LangGraph SDK
    */
   async loginLocal(email, password, rememberMe = false) {
     const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
@@ -189,6 +202,23 @@ class AuthService {
     const data = await response.json();
     // Store user info locally (tokens are in httpOnly cookies)
     this.setAuthData('local', data.user, rememberMe);
+
+    // Fetch access_token for LangGraph SDK
+    try {
+      const meResponse = await this.fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
+        credentials: 'include',
+      });
+      if (meResponse.ok) {
+        const meData = await meResponse.json();
+        if (meData.access_token) {
+          this._setAccessToken(meData.access_token);
+        }
+      }
+    } catch (e) {
+      // Non-critical, continue without LangGraph token
+      console.warn('Could not fetch access token for LangGraph:', e);
+    }
+
     return data;
   }
 
@@ -212,6 +242,7 @@ class AuthService {
   /**
    * Get current user info
    * SECURITY: Cookies are sent automatically
+   * Also stores access_token in memory for LangGraph SDK
    */
   async getCurrentUser() {
     const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
@@ -223,6 +254,12 @@ class AuthService {
     }
 
     const user = await response.json();
+
+    // Store access_token in memory for LangGraph SDK use
+    if (user.access_token) {
+      this._setAccessToken(user.access_token);
+    }
+
     this.updateStoredUser(user);
     return user;
   }

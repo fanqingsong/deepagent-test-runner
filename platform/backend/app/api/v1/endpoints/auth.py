@@ -376,10 +376,14 @@ async def refresh_token(
 
 
 @router.get("/me")
-async def get_me(current_user=Depends(get_current_user)):
-    """Get current user info with roles and permissions."""
+async def get_me(request: Request, current_user=Depends(get_current_user)):
+    """Get current user info with roles and permissions. Includes access token for LangGraph SDK."""
     roles = [r.name for r in current_user.roles]
     permissions = list({p.name for r in current_user.roles for p in r.permissions})
+
+    # Get access token from cookie for LangGraph SDK use
+    access_token = request.cookies.get("access_token")
+
     return {
         "id": current_user.id,
         "username": current_user.username,
@@ -388,6 +392,7 @@ async def get_me(current_user=Depends(get_current_user)):
         "is_active": current_user.is_active,
         "roles": roles,
         "permissions": permissions,
+        "access_token": access_token,  # Include for LangGraph SDK authentication
     }
 
 

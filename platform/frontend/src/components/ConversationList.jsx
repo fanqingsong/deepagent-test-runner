@@ -1,20 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Client } from '@langchain/langgraph-sdk';
+import { useState, useEffect, useCallback } from 'react';
 import { CloseIcon, AddIcon, TrashIcon } from './Icons';
 import authService from '../services/authService';
 import './ConversationList.css';
 
-const LANGGRAPH_URL = import.meta.env.VITE_LANGGRAPH_URL || `${window.location.origin}/langgraph`;
-
-/**
- * Custom fetch implementation that includes credentials (cookies)
- */
-async function fetchWithCredentials(url, options = {}) {
-  return fetch(url, {
-    ...options,
-    credentials: 'include',  // Include httpOnly cookies
-  });
-}
+// Use backend proxy endpoint for LangGraph
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api/v1`;
+const LANGGRAPH_PROXY_URL = `${API_BASE_URL}/langgraph`;
 
 /**
  * Sidebar panel for managing chat conversations via LangGraph threads.
@@ -30,24 +21,31 @@ export function ConversationList({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const client = useMemo(() => new Client({
-    apiUrl: LANGGRAPH_URL,
-    defaultHeaders: authService.getAuthHeaders(),
-    fetch: fetchWithCredentials,  // Use custom fetch that includes cookies
-  }), [refreshKey]);
-
   const loadConversations = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const threads = await client.threads.search({ limit: 50 });
+      const response = await fetch(`${LANGGRAPH_PROXY_URL}/threads/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ limit: 50 }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load conversations: ${response.statusText}`);
+      }
+
+      const threads = await response.json();
       setConversations(threads || []);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, []);
 
   useEffect(() => {
     loadConversations();
@@ -57,9 +55,22 @@ export function ConversationList({
 
   const handleCreateConversation = async () => {
     try {
-      const thread = await client.threads.create({
-        metadata: { title: 'New Chat' },
+      const response = await fetch(`${LANGGRAPH_PROXY_URL}/threads`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          metadata: { title: 'New Chat' },
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create conversation: ${response.statusText}`);
+      }
+
+      const thread = await response.json();
       setConversations(prev => [thread, ...prev]);
       onSelectConversation(thread.thread_id);
     } catch (err) {
@@ -72,7 +83,15 @@ export function ConversationList({
     if (!confirm('Delete this conversation?')) return;
 
     try {
-      await client.threads.delete(threadId);
+      const response = await fetch(`${LANGGRAPH_PROXY_URL}/threads/${threadId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete conversation: ${response.statusText}`);
+      }
+
       setConversations(prev => prev.filter(c => c.thread_id !== threadId));
       if (activeConversationId === threadId) {
         onSelectConversation(null);

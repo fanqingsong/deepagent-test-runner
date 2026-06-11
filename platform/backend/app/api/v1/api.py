@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     auth,
     charts,
     data_analysis,
+    langgraph,
     llm_usage,
     monitoring,
     reviews,
@@ -154,4 +155,10 @@ api_router.include_router(
     weather.router,
     prefix="/weather",
     tags=["weather"],
+)
+
+api_router.include_router(
+    langgraph.router,
+    prefix="/langgraph",
+    tags=["langgraph"],
 )
