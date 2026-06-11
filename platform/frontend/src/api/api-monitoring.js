@@ -1,3 +1,5 @@
+import { BASE_URL, apiFetch, parseApiError } from './api-utils.js';
+
 const LLM_USAGE_API = `${BASE_URL}/api/v1/llm-usage`;
 
 export const getLlmUsageSummary = async (days = 30) => {
@@ -9,12 +11,6 @@ export const getLlmUsageSummary = async (days = 30) => {
 export const getLlmUsageByAgent = async (days = 30) => {
   const response = await apiFetch(`${LLM_USAGE_API}/by-agent?days=${days}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load LLM usage by agent'));
-  return response.json();
-};
-
-const getLlmUsageByDay = async (days = 30) => {
-  const response = await apiFetch(`${LLM_USAGE_API}/by-day?days=${days}`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load LLM usage by day'));
   return response.json();
 };
 
@@ -30,12 +26,6 @@ export const getChatSessions = async (params = {}) => {
   if (params.limit) qs.set('limit', params.limit);
   const response = await apiFetch(`${ADMIN_CHAT_API}/sessions?${qs.toString()}`);
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load chat sessions'));
-  return response.json();
-};
-
-const getChatSessionDetail = async (threadId) => {
-  const response = await apiFetch(`${ADMIN_CHAT_API}/sessions/${threadId}`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load chat session detail'));
   return response.json();
 };
 

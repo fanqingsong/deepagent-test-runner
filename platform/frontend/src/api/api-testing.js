@@ -1,3 +1,5 @@
+import { TEST_API, apiFetch, parseApiError } from './api-utils.js';
+
 // Test Cases Workspace
 export const createTestCase = async (data) => {
   const response = await apiFetch(`${TEST_API}/test-workspaces`, {
@@ -384,5 +386,3 @@ const getPendingSuiteReviews = async () => {
   if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load pending suite reviews'));
   return response.json();
 };
-
-export const approveVersion = async (versionId) => {

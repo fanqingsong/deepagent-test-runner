@@ -1,3 +1,5 @@
+import { USERS_API, apiFetch, parseApiError } from './api-utils.js';
+
 export const getUsers = async () => {
   const response = await apiFetch(`${USERS_API}/users`);
   if (!response.ok) {

@@ -1,3 +1,9 @@
+import { TEST_API, apiFetch, parseApiError } from './api-utils.js';
+
+// --- Version Reviews ---
+
+export const approveVersion = async (versionId) => {
+  const response = await apiFetch(`${TEST_API}/reviews/versions/${versionId}/approve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });

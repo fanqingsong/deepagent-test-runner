@@ -1,15 +1,15 @@
 // API Base URLs — use relative paths so the browser preserves the port
-const BASE_URL =
+export const BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ||
   '';
 
-const TEST_API = `${BASE_URL}/api/v1`;
-const DASHBOARD_API = `${BASE_URL}/api/v1/analytics`;
-const SCHEDULER_API = `${BASE_URL}/api/v1`;
-const USERS_API = `${BASE_URL}/api/v1`;
+export const TEST_API = `${BASE_URL}/api/v1`;
+export const DASHBOARD_API = `${BASE_URL}/api/v1/analytics`;
+export const SCHEDULER_API = `${BASE_URL}/api/v1`;
+export const USERS_API = `${BASE_URL}/api/v1`;
 
 // Import authService for authentication
-import authService from './services/authService';
+import authService from '../services/authService';
 
 const getAuthHeaders = () => {
   // httpOnly cookies are sent automatically by the browser
@@ -24,7 +24,7 @@ const getAuthHeaders = () => {
   return {};
 };
 
-async function parseApiError(response, fallback) {
+export async function parseApiError(response, fallback) {
   const status = response?.status;
   const statusText = response?.statusText || '';
   let bodyText = '';
@@ -56,7 +56,7 @@ async function parseApiError(response, fallback) {
   return parts.length ? `${base} (${parts.join(' - ')})` : base;
 }
 
-async function apiFetch(url, options = {}) {
+export async function apiFetch(url, options = {}) {
   const controller = new AbortController();
   const { timeout: timeoutMs = 15000, ...fetchOptions } = options;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -104,17 +104,3 @@ async function apiFetch(url, options = {}) {
   }
 }
 
-
-
-
-// Dashboard API
-const getDashboardData = async (days = 30) => {
-  const response = await apiFetch(`${DASHBOARD_API}/dashboard?days=${days}`);
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, 'Failed to fetch dashboard data'));
-  }
-  return response.json();
-};
-
-// Suite Dashboard API
-export const getSuiteDashboard = async (days = 30) => {

@@ -1,11 +1,4 @@
-// Dashboard API
-const getDashboardData = async (days = 30) => {
-  const response = await apiFetch(`${DASHBOARD_API}/dashboard?days=${days}`);
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, 'Failed to fetch dashboard data'));
-  }
-  return response.json();
-};
+import { DASHBOARD_API, SCHEDULER_API, apiFetch, parseApiError } from './api-utils.js';
 
 // Suite Dashboard API
 export const getSuiteDashboard = async (days = 30) => {
@@ -28,14 +21,6 @@ export const getSuiteRunEntries = async (runId) => {
   return response.json();
 };
 
-const getTestRuns = async (limit = 20) => {
-  const response = await apiFetch(`${DASHBOARD_API}/test-runs?limit=${limit}`);
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, 'Failed to fetch test runs'));
-  }
-  return response.json();
-};
-
 export const getTestRunDetails = async (runId) => {
   const response = await apiFetch(`${DASHBOARD_API}/test-runs/${runId}`);
   if (!response.ok) {
@@ -44,20 +29,4 @@ export const getTestRunDetails = async (runId) => {
   return response.json();
 };
 
-// Get all jobs
-const getJobs = async () => {
-  const response = await apiFetch(`${SCHEDULER_API}/jobs/`);
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, 'Failed to fetch jobs'));
-  }
-  return response.json();
-};
-
-const getTestStats = async () => {
-  const response = await apiFetch(`${DASHBOARD_API}/dashboard`);
-  if (!response.ok) {
-    throw new Error(await parseApiError(response, 'Failed to fetch test stats'));
-  }
-  return response.json();
-};
 
