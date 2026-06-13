@@ -1,0 +1,349 @@
+/* Token Analytics Styles - IBM Carbon Design System */
+
+.token-analytics {
+  padding: 16px;
+  max-width: 1584px;
+  margin: 0 auto;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: #6f6f6f;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #161616;
+  margin: 0;
+}
+
+.period-selector {
+  display: flex;
+  gap: 2px;
+  background: #f4f4f4;
+  padding: 2px;
+}
+
+.period-button {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  color: #161616;
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  height: 40px;
+}
+
+.period-button:hover {
+  background: #e8e8e8;
+}
+
+.period-button.active {
+  background: #ffffff;
+  font-weight: 600;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #ffffff;
+  padding: 16px;
+  border-top: 4px solid #0f62fe;
+  border-radius: 0;
+  transition: background-color 0.15s ease;
+}
+
+.stat-card:hover {
+  background: #f4f4f4;
+}
+
+.stat-label {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  color: #6f6f6f;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1.19;
+  color: #161616;
+  margin-bottom: 4px;
+}
+
+.stat-subtitle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  color: #6f6f6f;
+}
+
+.stat-trend {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  margin-top: 8px;
+}
+
+.stat-trend.up {
+  color: #24a148;
+}
+
+.stat-trend.down {
+  color: #da1e28;
+}
+
+/* Charts Grid */
+.charts-grid {
+  margin-bottom: 32px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.chart-card {
+  background: #ffffff;
+  padding: 16px;
+  border: none;
+  border-radius: 0;
+}
+
+.chart-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.50;
+  color: #161616;
+  margin: 0 0 16px 0;
+}
+
+.chart-container {
+  width: 100%;
+  height: 300px;
+}
+
+/* Rankings Grid */
+.rankings-grid {
+  margin-bottom: 32px;
+}
+
+.ranking-table-card {
+  background: #ffffff;
+  padding: 16px;
+  border: none;
+  border-radius: 0;
+}
+
+.ranking-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.50;
+  color: #161616;
+  margin: 0 0 16px 0;
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ranking-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  background: #f4f4f4;
+  transition: background-color 0.15s ease;
+}
+
+.ranking-item:hover {
+  background: #e8e8e8;
+}
+
+.ranking-position {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #0f62fe;
+  min-width: 40px;
+}
+
+.ranking-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ranking-name {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+}
+
+.ranking-subtitle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  color: #6f6f6f;
+}
+
+.ranking-value {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #161616;
+  min-width: 80px;
+  text-align: right;
+}
+
+.ranking-bar {
+  width: 100%;
+  min-width: 100px;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.ranking-bar-fill {
+  height: 100%;
+  background: #0f62fe;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+/* Forecast Section */
+.forecast-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.33;
+  color: #161616;
+  margin: 0 0 16px 0;
+}
+
+.forecast-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 1056px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .chart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-item {
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+  }
+
+  .ranking-bar {
+    grid-column: 2 / -2;
+  }
+}
+
+@media (max-width: 672px) {
+  .token-analytics {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .period-selector {
+    width: 100%;
+  }
+
+  .period-button {
+    flex: 1;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-item {
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+  }
+
+  .ranking-value {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .ranking-bar {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .forecast-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 320px) {
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .ranking-position {
+    font-size: 18px;
+    min-width: 30px;
+  }
+}

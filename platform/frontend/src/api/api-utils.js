@@ -13,10 +13,8 @@ import authService from '../services/authService';
 
 const getAuthHeaders = () => {
   // httpOnly cookies are sent automatically by the browser
-  // No need to manually add Authorization header
-  // Only add X-Session-Token if stored in localStorage/sessionStorage (backward compatibility)
   const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
-  if (sessionToken) {
+  if (sessionToken && sessionToken !== 'undefined') {
     return {
       'X-Session-Token': sessionToken,
     };
@@ -91,7 +89,10 @@ export async function apiFetch(url, options = {}) {
       } catch {
         // refresh failed, fall through to redirect
       }
-      window.location.hash = 'login';
+      // Only redirect when session is actually gone (avoid false logout on API auth bugs)
+      if (!authService.isAuthenticated()) {
+        window.location.hash = 'login';
+      }
       throw new Error('Session expired, please log in again');
     }
     return response;

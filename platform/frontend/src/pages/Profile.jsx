@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import authClient from '../services/auth';
+import authService from '../services/authService';
 import Toast from '../components/Toast';
 
 function Profile() {
@@ -18,7 +18,7 @@ function Profile() {
     const fetchProfile = async () => {
       setIsLoading(true);
       try {
-        const data = await authClient.fetchCurrentUser();
+        const data = await authService.getCurrentUser();
         setProfileData({
           username: data.username || '',
           email: data.email || ''
@@ -51,25 +51,14 @@ function Profile() {
     setIsSaving(true);
 
     try {
-      await authClient.updateProfile({
+      await authService.updateProfile({
         username: profileData.username
       });
-
-      // Refresh user data from server
-      const updatedData = await authClient.fetchCurrentUser();
-
-      // Update stored user info
-      const storage = localStorage.getItem('access_token') ? localStorage : sessionStorage;
-      const userInfo = JSON.parse(storage.getItem('user_info') || '{}');
-      storage.setItem('user_info', JSON.stringify({ ...userInfo, ...updatedData }));
-
-      // Trigger auth change event to update context
-      window.dispatchEvent(new Event('auth-change'));
 
       showToast('success', 'Profile updated successfully');
       setIsEditing(false);
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || error.message || 'Failed to update profile';
+      const errorMsg = error.message || 'Failed to update profile';
       showToast('error', errorMsg);
     } finally {
       setIsSaving(false);

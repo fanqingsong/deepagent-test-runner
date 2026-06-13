@@ -15,6 +15,11 @@ from app.api.v1.endpoints import workspaces
 from app.api.v1.endpoints import tags
 from app.api.v1.endpoints import run_configs
 from app.api.v1.endpoints import reviews
+from app.api.v1.endpoints import script_generation
+from app.api.v1.endpoints import script_validation
+from app.api.v1.endpoints import script_management
+from app.api.v1.endpoints import health
+from app.api.v1.endpoints import token
 
 __all__ = [
     "analytics",
@@ -28,4 +33,9 @@ __all__ = [
     "tags",
     "run_configs",
     "reviews",
+    "script_generation",
+    "script_validation",
+    "script_management",
+    "health",
+    "token",
 ]

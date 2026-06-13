@@ -8,3 +8,4 @@ export * from './api-users.js';
 export * from './api-testing.js';
 export * from './api-execution.js';
 export * from './api-monitoring.js';
+export * from './api-token.js';

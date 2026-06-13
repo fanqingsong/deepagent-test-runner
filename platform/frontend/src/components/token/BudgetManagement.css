@@ -1,0 +1,521 @@
+/* Budget Management Styles - IBM Carbon Design System */
+
+.budget-management {
+  padding: 16px;
+  max-width: 1584px;
+  margin: 0 auto;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: #6f6f6f;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #161616;
+  margin: 0;
+}
+
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  background: #f4f4f4;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  outline: none;
+  border-bottom-color: #0f62fe;
+}
+
+.filter-select {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  background: #f4f4f4;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23161616' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-bottom-color: #0f62fe;
+}
+
+.create-button {
+  height: 48px;
+  padding: 0 63px 0 15px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  background: #0f62fe;
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.create-button:hover {
+  background: #0353e9;
+}
+
+.create-button::after {
+  content: '→';
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Budget Table */
+.budget-table-container {
+  overflow-x: auto;
+}
+
+.budget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+}
+
+.budget-table thead {
+  background: #f4f4f4;
+}
+
+.budget-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #161616;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.budget-table tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.15s ease;
+}
+
+.budget-table tbody tr:hover {
+  background: #f4f4f4;
+}
+
+.budget-table td {
+  padding: 12px 16px;
+  color: #161616;
+}
+
+.budget-name {
+  font-weight: 600;
+}
+
+.scope-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #edf5ff;
+  color: #0f62fe;
+  border-radius: 24px;
+  font-size: 12px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 24px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.status-badge.active {
+  background: #defbe6;
+  color: #24a148;
+}
+
+.status-badge.warning {
+  background: #fff8e1;
+  color: #f1c21b;
+}
+
+.status-badge.exhausted {
+  background: #ffebee;
+  color: #da1e28;
+}
+
+.status-badge.pending {
+  background: #e0e0e0;
+  color: #525252;
+}
+
+.status-badge.archived {
+  background: #393939;
+  color: #ffffff;
+}
+
+.utilization-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.utilization-fill {
+  height: 8px;
+  background: #0f62fe;
+  border-radius: 0;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  min-width: 2px;
+}
+
+.utilization-fill.warning {
+  background: #f1c21b;
+}
+
+.utilization-fill.critical {
+  background: #da1e28;
+}
+
+.utilization-text {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.budget-actions {
+  white-space: nowrap;
+}
+
+.action-button {
+  padding: 6px 12px;
+  margin-right: 4px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  background: transparent;
+  color: #0f62fe;
+  border: 1px solid #0f62fe;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-button:hover {
+  background: #0f62fe;
+  color: #ffffff;
+}
+
+.action-button.danger {
+  color: #da1e28;
+  border-color: #da1e28;
+}
+
+.action-button.danger:hover {
+  background: #da1e28;
+  color: #ffffff;
+}
+
+/* Budget Form */
+.budget-form {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 400;
+  color: #525252;
+  font-size: 12px;
+  letter-spacing: 0.32px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  background: #f4f4f4;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.form-textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 8px 16px;
+  resize: vertical;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-bottom-color: #0f62fe;
+}
+
+.form-input.error {
+  border-bottom-color: #da1e28;
+}
+
+.form-error {
+  display: block;
+  margin-top: 4px;
+  color: #da1e28;
+  font-size: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.cancel-button,
+.submit-button,
+.close-button,
+.danger-button {
+  height: 48px;
+  padding: 0 63px 0 15px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  border: 1px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.cancel-button,
+.close-button {
+  background: #393939;
+  color: #ffffff;
+}
+
+.cancel-button:hover,
+.close-button:hover {
+  background: #4c4c4c;
+}
+
+.submit-button {
+  background: #0f62fe;
+  color: #ffffff;
+  position: relative;
+}
+
+.submit-button:hover {
+  background: #0353e9;
+}
+
+.submit-button::after {
+  content: '→';
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.danger-button {
+  background: #da1e28;
+  color: #ffffff;
+}
+
+.danger-button:hover {
+  background: #b81921;
+}
+
+/* Budget Details */
+.budget-details {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.details-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.40;
+  color: #161616;
+  margin: 0;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  color: #6f6f6f;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+}
+
+.details-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Delete Confirmation */
+.delete-confirmation {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+}
+
+.confirmation-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.40;
+  color: #161616;
+  margin: 0 0 16px 0;
+}
+
+.confirmation-message {
+  color: #525252;
+  line-height: 1.50;
+  margin-bottom: 24px;
+}
+
+.confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: #6f6f6f;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.empty-state p {
+  margin-bottom: 24px;
+}
+
+/* Responsive Design */
+@media (max-width: 1056px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    min-width: auto;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 672px) {
+  .budget-management {
+    padding: 16px;
+  }
+
+  .budget-table {
+    font-size: 12px;
+  }
+
+  .budget-table th,
+  .budget-table td {
+    padding: 8px 12px;
+  }
+
+  .utilization-bar {
+    min-width: 100px;
+  }
+
+  .budget-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .action-button {
+    width: 100%;
+    margin-right: 0;
+  }
+}

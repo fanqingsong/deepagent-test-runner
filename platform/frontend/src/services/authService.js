@@ -16,7 +16,7 @@ const USER_KEY = 'user_info';
 class AuthService {
   constructor() {
     this.authCallbacks = new Set();
-    this.fetchTimeout = 10000; // 10 second timeout for all fetch calls
+    this.fetchTimeout = 5000; // 5 second timeout for all fetch calls (reduced from 10s)
   }
 
   /**
@@ -112,6 +112,12 @@ class AuthService {
    */
   setAuthData(provider, user, rememberMe = false) {
     const storage = rememberMe ? localStorage : sessionStorage;
+    // Clear legacy token storage from pre-cookie auth
+    [localStorage, sessionStorage].forEach(s => {
+      s.removeItem('access_token');
+      s.removeItem('refresh_token');
+      s.removeItem('session_token');
+    });
     storage.setItem(PROVIDER_KEY, provider);
     storage.setItem(USER_KEY, JSON.stringify(user));
     storage.setItem('remember_me', rememberMe ? '1' : '0');
@@ -265,6 +271,29 @@ class AuthService {
   }
 
   /**
+   * Update current user profile
+   */
+  async updateProfile(data) {
+    const response = await this.fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to update profile');
+    }
+
+    const user = await response.json();
+    this.updateStoredUser(user);
+    return user;
+  }
+
+  /**
    * Refresh access token
    * SECURITY: Cookies are handled automatically by browser
    */
@@ -315,7 +344,8 @@ class AuthService {
       }
       return true;
     } catch (error) {
-      this.clearAuthData();
+      // Don't clear auth data - it might be a temporary network error
+      // The next request will retry token refresh
       throw error;
     }
   }

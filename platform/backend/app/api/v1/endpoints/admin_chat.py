@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.middleware.admin import require_admin
+from app.core.security import get_current_admin_user
+from app.models.user import User
 from app.services.langgraph_reader import langgraph_reader
 from app.services.chat_session_service import chat_session_service
 
@@ -20,7 +21,7 @@ router = APIRouter()
 
 @router.get("/active-sessions")
 async def list_active_sessions(
-    admin_id: int = Depends(require_admin),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """List currently active chat sessions."""
     data = await langgraph_reader.list_threads(limit=200)
@@ -33,7 +34,7 @@ async def list_sessions(
     status: Optional[str] = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    admin_id: int = Depends(require_admin),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Browse all chat sessions from LangGraph server."""
     return await langgraph_reader.list_threads(user_id=user_id, status=status, offset=offset, limit=limit)
@@ -42,7 +43,7 @@ async def list_sessions(
 @router.get("/sessions/{thread_id}")
 async def get_session_detail(
     thread_id: str,
-    admin_id: int = Depends(require_admin),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Get full detail of a chat session from LangGraph server."""
     try:
@@ -67,7 +68,7 @@ async def get_session_detail(
 @router.get("/sessions/{thread_id}/messages")
 async def get_session_messages(
     thread_id: str,
-    admin_id: int = Depends(require_admin),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Get full message history for a conversation."""
     messages = await langgraph_reader.get_thread_messages(thread_id)
@@ -77,7 +78,7 @@ async def get_session_messages(
 @router.get("/metrics")
 async def get_conversation_metrics(
     days: int = Query(30, ge=1, le=365),
-    admin_id: int = Depends(require_admin),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Aggregated conversation metrics from LangGraph server."""
     return await langgraph_reader.get_session_metrics(days=days)
@@ -86,7 +87,7 @@ async def get_conversation_metrics(
 @router.get("/subagent-usage")
 async def get_subagent_usage(
     days: int = Query(30, ge=1, le=365),
-    admin_id: int = Depends(require_admin),
+    current_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Subagent usage breakdown from llm_usage table."""
@@ -97,7 +98,7 @@ async def get_subagent_usage(
 async def get_user_sessions(
     user_id: int,
     limit: int = Query(50, ge=1, le=200),
-    admin_id: int = Depends(require_admin),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Get all chat sessions for a specific user."""
     return await langgraph_reader.list_threads(user_id=user_id, limit=limit)

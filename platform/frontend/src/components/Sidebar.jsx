@@ -23,6 +23,15 @@ const MonitoringIcon = ({ size = 20 }) => (
   </svg>
 );
 
+// Token Management icon for sidebar
+const TokenIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2a8 8 0 0 1 8 8 8 8 0 0 1-8 8zm0 2a6 6 0 0 0-6 6 6 6 0 0 0 6-6zm1 5H9v-2h2v2zm0-4H9v2h2V5z"/>
+    <circle cx="10" cy="10" r="3" fill="currentColor"/>
+    <path d="M10 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" fill="currentColor"/>
+  </svg>
+);
+
 import './Sidebar.css';
 
 const menuItems = [
@@ -64,6 +73,38 @@ const menuItems = [
         id: 'suites-workspace',
         label: 'My Workspace',
         path: '#suites'
+      }
+    ]
+  },
+  {
+    id: 'token-management',
+    label: 'Token Management',
+    icon: TokenIcon,
+    children: [
+      {
+        id: 'token-usage',
+        label: 'Usage Dashboard',
+        path: '#token-usage'
+      },
+      {
+        id: 'token-budget',
+        label: 'Budget Management',
+        path: '#token-budget'
+      },
+      {
+        id: 'token-quota',
+        label: 'Quota Management',
+        path: '#token-quota'
+      },
+      {
+        id: 'token-alert',
+        label: 'Alert Management',
+        path: '#token-alert'
+      },
+      {
+        id: 'token-analytics',
+        label: 'Token Analytics',
+        path: '#token-analytics'
       }
     ]
   },
@@ -114,7 +155,114 @@ const menuItems = [
   }
 ];
 
-function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, expandedSubmenus }) {
+function SidebarSubmenuEntry({ child, activePath, onClick, expandedSubmenus, onSubmenuToggle }) {
+  const hasNestedChildren = child.children?.length > 0;
+  const isNestedExpanded = expandedSubmenus.has(child.id);
+
+  if (hasNestedChildren) {
+    return (
+      <li className="sidebar-submenu-group">
+        <button
+          type="button"
+          className={`sidebar-submenu-group-header ${isNestedExpanded ? 'expanded' : ''}`}
+          onClick={(e) => {
+            e.preventDefault();
+            onSubmenuToggle(child.id);
+          }}
+        >
+          <span className="sidebar-item-text">{child.label}</span>
+          <span className={`sidebar-chevron ${isNestedExpanded ? 'expanded' : ''}`}>
+            <ChevronRightIcon size={12} />
+          </span>
+        </button>
+        <ul className={`sidebar-nested-submenu ${isNestedExpanded ? 'expanded' : ''}`}>
+          {child.children.map((nested) => (
+            <li key={nested.id} className="sidebar-submenu-item nested">
+              <PermissionGate permission={nested.permission} anyPermission={nested.anyPermission}>
+                <a
+                  href={nested.path}
+                  className={`sidebar-item ${activePath === nested.path.slice(1) ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onClick(nested.path);
+                  }}
+                >
+                  <span className="sidebar-item-text">{nested.label}</span>
+                </a>
+              </PermissionGate>
+            </li>
+          ))}
+        </ul>
+      </li>
+    );
+  }
+
+  return (
+    <li className="sidebar-submenu-item">
+      <PermissionGate permission={child.permission} anyPermission={child.anyPermission}>
+        <a
+          href={child.path}
+          className={`sidebar-item ${activePath === child.path?.slice(1) ? 'active' : ''}`}
+          onClick={(e) => {
+            e.preventDefault();
+            onClick(child.path);
+          }}
+        >
+          <span className="sidebar-item-text">{child.label}</span>
+        </a>
+      </PermissionGate>
+    </li>
+  );
+}
+
+function SidebarPopupEntry({ child, onClick, onClose }) {
+  if (child.children?.length) {
+    return (
+      <li key={child.id} className="submenu-popup-group">
+        <div className="submenu-popup-section-label">{child.label}</div>
+        <ul className="submenu-popup-nested-list">
+          {child.children.map((nested) => (
+            <li key={nested.id}>
+              <PermissionGate permission={nested.permission} anyPermission={nested.anyPermission}>
+                <a
+                  href={nested.path}
+                  className={`submenu-popup-item ${nested.path === `#${window.location.hash.slice(1)}` ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onClick(nested.path);
+                    onClose();
+                  }}
+                >
+                  {nested.label}
+                </a>
+              </PermissionGate>
+            </li>
+          ))}
+        </ul>
+      </li>
+    );
+  }
+
+  return (
+    <li key={child.id}>
+      <PermissionGate permission={child.permission} anyPermission={child.anyPermission}>
+        <a
+          href={child.path}
+          className={`submenu-popup-item ${child.path === `#${window.location.hash.slice(1)}` ? 'active' : ''}`}
+          onClick={(e) => {
+            e.preventDefault();
+            onClick(child.path);
+            onClose();
+          }}
+        >
+          {child.label}
+        </a>
+      </PermissionGate>
+    </li>
+  );
+}
+
+function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, expandedSubmenus, activePath }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showSubmenuPopup, setShowSubmenuPopup] = useState(false);
   const itemRef = useRef(null);
@@ -231,20 +379,14 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
       {isExpanded && hasChildren && (
         <ul className={`sidebar-submenu ${isSubmenuExpanded ? 'expanded' : ''}`}>
           {item.children.map((child) => (
-            <li key={child.id} className="sidebar-submenu-item">
-              <PermissionGate permission={child.permission} anyPermission={child.anyPermission}>
-                <a
-                  href={child.path}
-                  className={`sidebar-item ${isActive ? 'active' : ''}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onClick(child.path);
-                  }}
-                >
-                  <span className="sidebar-item-text">{child.label}</span>
-                </a>
-              </PermissionGate>
-            </li>
+            <SidebarSubmenuEntry
+              key={child.id}
+              child={child}
+              activePath={activePath}
+              onClick={onClick}
+              expandedSubmenus={expandedSubmenus}
+              onSubmenuToggle={onSubmenuToggle}
+            />
           ))}
         </ul>
       )}
@@ -259,21 +401,12 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
           <div className="submenu-popup-header">{item.label}</div>
           <ul className="submenu-popup-list">
             {item.children.map((child) => (
-              <li key={child.id}>
-                <PermissionGate permission={child.permission} anyPermission={child.anyPermission}>
-                  <a
-                    href={child.path}
-                    className={`submenu-popup-item ${child.path === `#${window.location.hash.slice(1)}` ? 'active' : ''}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onClick(child.path);
-                      setShowSubmenuPopup(false);
-                    }}
-                  >
-                    {child.label}
-                  </a>
-                </PermissionGate>
-              </li>
+              <SidebarPopupEntry
+                key={child.id}
+                child={child}
+                onClick={onClick}
+                onClose={() => setShowSubmenuPopup(false)}
+              />
             ))}
           </ul>
         </div>
@@ -284,19 +417,30 @@ function SidebarItem({ item, isExpanded, isActive, onClick, onSubmenuToggle, exp
 
 function Sidebar({ isOpen, isCollapsed, onToggle, onMobileClose, isDesktop }) {
   const [activePath, setActivePath] = useState('');
-  const [expandedSubmenus, setExpandedSubmenus] = useState(new Set(['admin', 'test-cases', 'suites']));
+  const [expandedSubmenus, setExpandedSubmenus] = useState(
+    new Set(['test-cases', 'suites', 'token-management'])
+  );
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1) || 'dashboard';
       setActivePath(hash);
 
-      const parentItem = menuItems.find(item =>
-        item.children?.some(child => child.path === `#${hash}`)
-      );
-      if (parentItem) {
-        setExpandedSubmenus(prev => new Set([...prev, parentItem.id]));
+      const expanded = new Set(['test-cases', 'suites', 'token-management']);
+
+      for (const item of menuItems) {
+        if (item.children?.some((child) => child.path === `#${hash}`)) {
+          expanded.add(item.id);
+        }
+        for (const child of item.children || []) {
+          if (child.children?.some((nested) => nested.path === `#${hash}`)) {
+            expanded.add(item.id);
+            expanded.add(child.id);
+          }
+        }
       }
+
+      setExpandedSubmenus(expanded);
     };
 
     handleHashChange();
@@ -305,6 +449,7 @@ function Sidebar({ isOpen, isCollapsed, onToggle, onMobileClose, isDesktop }) {
   }, []);
 
   const handleItemClick = (path) => {
+    if (!path) return;
     window.location.hash = path;
     if (!isDesktop) {
       onMobileClose();
@@ -325,7 +470,10 @@ function Sidebar({ isOpen, isCollapsed, onToggle, onMobileClose, isDesktop }) {
 
   const isItemActive = (item) => {
     if (item.children) {
-      return item.children.some(child => child.path === `#${activePath}`);
+      return item.children.some((child) => {
+        if (child.path === `#${activePath}`) return true;
+        return child.children?.some((nested) => nested.path === `#${activePath}`);
+      });
     }
     return item.path === `#${activePath}`;
   };
@@ -351,6 +499,7 @@ function Sidebar({ isOpen, isCollapsed, onToggle, onMobileClose, isDesktop }) {
               item={item}
               isExpanded={!isCollapsed}
               isActive={isItemActive(item)}
+              activePath={activePath}
               onClick={handleItemClick}
               onSubmenuToggle={handleSubmenuToggle}
               expandedSubmenus={expandedSubmenus}
