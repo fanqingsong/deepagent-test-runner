@@ -22,6 +22,7 @@ from app.schemas.user import (
     UserUpdate,
     UserWithRoles,
 )
+from app.api.v1.response_builders import UserResponseBuilder
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -52,19 +53,8 @@ async def list_users(
         # Regular users can only see themselves
         return [current_user]
 
-    # Attach role names to each user for the response
-    enriched = []
-    for u in users:
-        enriched.append({
-            "id": u.id,
-            "email": u.email,
-            "full_name": None,
-            "is_active": u.is_active,
-            "created_at": u.created_at,
-            "updated_at": u.updated_at,
-            "roles": [r.name for r in u.roles],
-        })
-    return enriched
+    # Use response builder to format users (Single Responsibility Principle)
+    return UserResponseBuilder.build_users_list(users)
 
 
 @router.get("/search", response_model=List[dict])
@@ -87,7 +77,9 @@ async def search_users(
     )
     result = await db.execute(stmt)
     users = result.scalars().all()
-    return [{"id": u.id, "username": u.username, "email": u.email} for u in users]
+
+    # Use response builder to format search results (Single Responsibility Principle)
+    return UserResponseBuilder.build_search_results(users)
 
 
 @router.get("/{user_id}", response_model=UserWithRoles)
