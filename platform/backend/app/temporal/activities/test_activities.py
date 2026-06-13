@@ -178,7 +178,14 @@ async def prepare_test(input: PrepareTestInput) -> PrepareTestOutput:
 @activity.defn
 async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutomationOutput:
     """
-    Execute browser automation using Playwright.
+    Execute browser automation using Playwright with Strategy Pattern.
+
+    This activity uses the ExecutionStrategyFactory to select the appropriate
+    execution strategy based on execution_mode and script_status.
+
+    New execution modes can be added without modifying this code by:
+    1. Creating a new ExecutionStrategy subclass
+    2. Registering it with ExecutionStrategyFactory
 
     Args:
         input: BrowserAutomationInput with all execution parameters
@@ -191,53 +198,82 @@ async def run_browser_automation(input: BrowserAutomationInput) -> BrowserAutoma
 
     from playwright.async_api import async_playwright
     from app.core.config import settings
+    from app.temporal.strategies import (
+        ExecutionContext,
+        get_execution_strategy_factory,
+    )
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=settings.PLAYWRIGHT_HEADLESS)
-        context = await browser.new_context()
-        page = await context.new_page()
+        playwright_context = await browser.new_context()
+        page = await playwright_context.new_page()
 
         try:
             page.set_default_timeout(settings.TEST_TIMEOUT)
 
-            if input.url:
-                await page.goto(input.url, wait_until="domcontentloaded", timeout=30000)
+            # Create execution context
+            execution_context = ExecutionContext(
+                run_id=run_id,
+                test_definition_id=input.test_definition_id,
+                page=page,
+                url=input.url,
+                test_goal=input.test_goal,
+                test_steps=input.test_steps,
+                environment=input.environment,
+                mode=input.mode,
+                playwright_script=input.playwright_script,
+                script_status=input.script_status,
+            )
 
-            if input.execution_mode == "script" and input.playwright_script and input.script_status == "approved":
-                from app.agents.test_composer.lib import execute_script
-                exec_result = await execute_script(input.playwright_script, page, timeout=120)
+            # Get strategy factory and execute
+            factory = get_execution_strategy_factory()
 
+            logger.info(
+                f"Executing test run {run_id} with execution_mode={input.execution_mode}, "
+                f"script_status={input.script_status}"
+            )
+
+            try:
+                result = await factory.execute_with_strategy(
+                    execution_mode=input.execution_mode,
+                    context=execution_context,
+                    script_status=input.script_status,
+                )
+
+                # Convert ExecutionResult to BrowserAutomationOutput
+                return BrowserAutomationOutput(
+                    run_id=result.run_id,
+                    test_definition_id=result.test_definition_id,
+                    status=result.status,
+                    test_cases=result.test_cases,
+                    error=result.error,
+                    start_time=result.start_time,
+                    end_time=result.end_time,
+                    total_duration=result.total_duration,
+                    total_tests=result.total_tests,
+                    passed=result.passed,
+                    failed=result.failed,
+                    skipped=result.skipped,
+                )
+
+            except ValueError as strategy_error:
+                # No strategy found for this execution mode
+                logger.error(f"Strategy selection failed for run {run_id}: {strategy_error}")
                 end_time = int(datetime.utcnow().timestamp() * 1000)
                 return BrowserAutomationOutput(
                     run_id=run_id,
                     test_definition_id=input.test_definition_id,
-                    status=exec_result.get("status", "failed"),
-                    test_cases=exec_result.get("step_results", []),
-                    error=exec_result.get("error"),
+                    status="error",
+                    test_cases=[],
+                    error=str(strategy_error),
                     start_time=start_time,
                     end_time=end_time,
                     total_duration=end_time - start_time,
-                    total_tests=1,
-                    passed=1 if exec_result.get("status") == "passed" else 0,
-                    failed=1 if exec_result.get("status") != "passed" else 0,
+                    total_tests=0,
+                    passed=0,
+                    failed=0,
                     skipped=0,
                 )
-
-            end_time = int(datetime.utcnow().timestamp() * 1000)
-            return BrowserAutomationOutput(
-                run_id=run_id,
-                test_definition_id=input.test_definition_id,
-                status="error",
-                test_cases=[],
-                error="No approved script found for execution",
-                start_time=start_time,
-                end_time=end_time,
-                total_duration=end_time - start_time,
-                total_tests=0,
-                passed=0,
-                failed=0,
-                skipped=0,
-            )
 
         except Exception as e:
             logger.error(f"Browser automation failed for run {run_id}: {e}")

@@ -332,10 +332,9 @@ services:
     container_name: deepagent-tester-frontend
     environment:
       NODE_ENV: development
-    ports:
-      - "5174:5173"  # Vite dev server port for development (changed from 5173 to avoid conflict)
     volumes:
       # Mount frontend source for hot reload in development
+      # No port mapping - only accessible through nginx proxy
       - ./frontend/src:/app/frontend
       # Preserve container's node_modules (avoid host override causing React dup)
       - /app/frontend/node_modules

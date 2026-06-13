@@ -8,8 +8,8 @@ export const TEST_USER = {
 };
 
 export const ADMIN_USER = {
-    email: "admin@test.com",
-    password: "AdminPass123!",
+    email: "admin@testrunner.com",
+    password: "admin123", // Update this to match actual admin password
 };
 
 export async function doLogin(
@@ -57,6 +57,20 @@ export const test = base.extend<AuthFixture>({
 });
 
 export { expect } from "@playwright/test";
+
+export async function loginViaApi(page: Page): Promise<void> {
+    const { token, user } = await doLogin(page);
+
+    await page.goto("/#login");
+    await page.evaluate(
+        ({ token, user }) => {
+            localStorage.setItem("access_token", token);
+            localStorage.setItem("refresh_token", "");
+            localStorage.setItem("user_info", JSON.stringify(user));
+        },
+        { token, user },
+    );
+}
 
 export async function createTestDefinition(page: Page, token: string, overrides: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     const defaults = {

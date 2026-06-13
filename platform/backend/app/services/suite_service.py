@@ -3,12 +3,13 @@ Suite Service
 
 Orchestrates test suite execution: creates suite runs, dispatches
 individual test tasks (sequential or parallel), and aggregates results.
+Now with Result wrapper types for better error handling.
 """
 
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,10 @@ from sqlalchemy.orm import selectinload
 from app.models.suite_run import SuiteRun, SuiteRunEntry
 from app.models.test_suite import TestSuite
 from app.models.test_definition import TestDefinition
+from app.core.simple_result_types import (
+    service_success, service_error, service_not_found,
+    service_validation_error, ServiceSuccess, ServiceError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +31,247 @@ class SuiteService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    # ==================== Result-based methods (v2) ====================
+
+    def resolve_suite_entries_v2(self, suite: TestSuite) -> ServiceSuccess[List[Dict[str, Any]]] | ServiceError:
+        """
+        Build ordered entry list from suite_entries, dynamic rules, or fallback to test_definition_ids.
+
+        Args:
+            suite: TestSuite object
+
+        Returns:
+            ServiceSuccess with list of entry dictionaries or ServiceError
+        """
+        try:
+            if not suite:
+                return service_validation_error("Suite cannot be None")
+
+            if suite.suite_entries:
+                entries = [
+                    e for e in suite.suite_entries
+                    if e.get("enabled", True)
+                ]
+                return service_success(entries)
+            else:
+                # Fallback: generate entries from flat ID list
+                entries = [
+                    {"test_definition_id": tid, "order": idx + 1, "condition": "always"}
+                    for idx, tid in enumerate(suite.test_definition_ids)
+                ]
+                return service_success(entries)
+
+        except Exception as e:
+            logger.error(f"Failed to resolve suite entries: {e}")
+            return service_error(f"Failed to resolve suite entries: {str(e)}", "RESOLVE_ERROR")
+
+    async def resolve_dynamic_suite_v2(self, suite: TestSuite) -> ServiceSuccess[List[Dict[str, Any]]] | ServiceError:
+        """
+        Resolve a dynamic suite by querying test definitions matching tag rules.
+
+        Args:
+            suite: TestSuite object
+
+        Returns:
+            ServiceSuccess with list of entry dictionaries or ServiceError
+        """
+        try:
+            if not suite:
+                return service_validation_error("Suite cannot be None")
+
+            rule = suite.dynamic_tag_rule or {}
+            match_tags = rule.get("tags", [])
+            match_mode = rule.get("match", "any")
+
+            if not match_tags:
+                return service_success([])
+
+            if match_mode == "all":
+                # All tags must be present
+                conditions = [
+                    TestDefinition.tags.any(tag) for tag in match_tags
+                ]
+                stmt = select(TestDefinition).where(
+                    *conditions,
+                    TestDefinition.is_draft == False,
+                )
+            else:
+                # Any tag match
+                stmt = select(TestDefinition).where(
+                    TestDefinition.tags.any(match_tags),
+                    TestDefinition.is_draft == False,
+                )
+
+            result = await self.db.execute(stmt)
+            test_defs = list(result.scalars().all())
+
+            entries = [
+                {"test_definition_id": td.id, "order": idx + 1, "condition": "always"}
+                for idx, td in enumerate(test_defs)
+            ]
+
+            return service_success(entries)
+
+        except Exception as e:
+            logger.error(f"Failed to resolve dynamic suite: {e}")
+            return service_error(f"Failed to resolve dynamic suite: {str(e)}", "RESOLVE_ERROR")
+
+    async def create_suite_run_v2(
+        self,
+        suite_id: int,
+        triggered_by: str = "manual",
+        environment_overrides: Optional[Dict[str, Any]] = None,
+    ) -> ServiceSuccess[SuiteRun] | ServiceError:
+        """
+        Create a SuiteRun with SuiteRunEntry rows from suite config.
+
+        Args:
+            suite_id: Test suite ID
+            triggered_by: Trigger source (manual, schedule, etc.)
+            environment_overrides: Optional environment variable overrides
+
+        Returns:
+            ServiceSuccess[SuiteRun] with created suite run or ServiceError
+        """
+        try:
+            suite = await self._get_suite(suite_id)
+            if not suite:
+                return service_not_found("TestSuite", str(suite_id))
+
+            # Resolve entries
+            entries_result = self.resolve_suite_entries_v2(suite)
+            if entries_result.is_error():
+                return entries_result
+            entries = entries_result.get_data()
+
+            # Handle dynamic suites
+            if not entries and suite.is_dynamic:
+                dynamic_result = await self.resolve_dynamic_suite_v2(suite)
+                if dynamic_result.is_success():
+                    entries = dynamic_result.get_data()
+                else:
+                    return dynamic_result
+
+            if not entries:
+                return service_validation_error(f"Test suite {suite_id} has no test entries")
+
+            run_id = f"suite-{uuid.uuid4().hex[:12]}"
+            now_ms = int(time.time() * 1000)
+
+            # Merge environment: suite base + overrides
+            merged_env = {**suite.environment_vars, **(environment_overrides or {})}
+
+            suite_run = SuiteRun(
+                suite_id=suite_id,
+                run_id=run_id,
+                status="pending",
+                execution_mode=suite.execution_mode,
+                total_tests=len(entries),
+                environment=merged_env,
+                triggered_by=triggered_by,
+                start_time=now_ms,
+            )
+            self.db.add(suite_run)
+            await self.db.flush()
+
+            # Create entry rows
+            entry_rows = [
+                SuiteRunEntry(
+                    suite_run_id=suite_run.id,
+                    test_definition_id=e["test_definition_id"],
+                    entry_order=e.get("order", idx + 1),
+                    condition=e.get("condition", "always"),
+                )
+                for idx, e in enumerate(entries)
+            ]
+            self.db.add_all(entry_rows)
+            await self.db.commit()
+            await self.db.refresh(suite_run)
+
+            logger.info(
+                "Created suite run %s for suite %d with %d entries",
+                run_id, suite_id, len(entry_rows)
+            )
+
+            return service_success(suite_run, metadata={
+                "entry_count": len(entry_rows),
+                "execution_mode": suite.execution_mode
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to create suite run: {e}")
+            await self.db.rollback()
+            return service_error(f"Failed to create suite run: {str(e)}", "CREATE_ERROR")
+
+    async def get_suite_run_with_entries_v2(self, run_id: str) -> ServiceSuccess[SuiteRun] | ServiceError:
+        """
+        Get a suite run by run_id with all entries loaded.
+
+        Args:
+            run_id: Suite run identifier
+
+        Returns:
+            ServiceSuccess[SuiteRun] with suite run and entries or ServiceError
+        """
+        try:
+            result = await self.db.execute(
+                select(SuiteRun)
+                .where(SuiteRun.run_id == run_id)
+                .options(selectinload(SuiteRun.entries))
+            )
+            suite_run = result.unique().scalar_one_or_none()
+
+            if not suite_run:
+                return service_not_found("SuiteRun", run_id)
+
+            return service_success(suite_run)
+
+        except Exception as e:
+            logger.error(f"Failed to get suite run: {e}")
+            return service_error(f"Failed to get suite run: {str(e)}", "GET_ERROR")
+
+    async def cancel_suite_run_v2(self, suite_run_id: int) -> ServiceSuccess[SuiteRun] | ServiceError:
+        """
+        Cancel a running suite run, marking remaining entries as skipped.
+
+        Args:
+            suite_run_id: Suite run database ID
+
+        Returns:
+            ServiceSuccess[SuiteRun] with cancelled suite run or ServiceError
+        """
+        try:
+            suite_run = await self._get_suite_run(suite_run_id)
+            if not suite_run:
+                return service_not_found("SuiteRun", str(suite_run_id))
+
+            if suite_run.status not in ("pending", "running"):
+                return service_validation_error(
+                    f"Cannot cancel suite run in status {suite_run.status}",
+                    field_errors={"current_status": suite_run.status}
+                )
+
+            entries = await self._get_entries(suite_run_id)
+            now_ms = int(time.time() * 1000)
+            for entry in entries:
+                if entry.status in ("pending", "dispatched"):
+                    entry.status = "skipped"
+                    entry.finished_at = now_ms
+
+            suite_run.status = "cancelled"
+            suite_run.end_time = now_ms
+            await self.db.commit()
+            await self.db.refresh(suite_run)
+
+            return service_success(suite_run)
+
+        except Exception as e:
+            logger.error(f"Failed to cancel suite run: {e}")
+            await self.db.rollback()
+            return service_error(f"Failed to cancel suite run: {str(e)}", "CANCEL_ERROR")
+
+    # ==================== Legacy methods (maintained for backward compatibility) ====================
 
     def resolve_suite_entries(self, suite: TestSuite) -> List[Dict[str, Any]]:
         """Build ordered entry list from suite_entries, dynamic rules, or fallback to test_definition_ids."""

@@ -52,7 +52,9 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
         return payload
-    except jwt.PyJWTError:
+    except Exception as e:
+        # Handle JWT errors from python-jose library
+        # jose.JWTError, jose.ExpiredSignatureError, etc.
         return None
 
 

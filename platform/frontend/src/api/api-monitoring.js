@@ -118,7 +118,7 @@ export const getMonitoringStatus = async () => {
 };
 
 
-export const getAlerts = async (options = {}) => {
+export const getMonitoringAlerts = async (options = {}) => {
   const params = new URLSearchParams();
   if (options.active_only) params.append('active_only', 'true');
   if (options.alert_type) params.append('alert_type', options.alert_type);
@@ -130,11 +130,11 @@ export const getAlerts = async (options = {}) => {
   return response.json();
 };
 
-export const acknowledgeAlert = async (alertId) => {
+export const acknowledgeMonitoringAlert = async (alertId) => {
   const response = await apiFetch(`${MONITORING_API}/alerts/${alertId}/acknowledge`, {
     method: 'POST',
   });
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to acknowledge alert'));
+  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to acknowledge monitoring alert'));
   return response.json();
 };
 

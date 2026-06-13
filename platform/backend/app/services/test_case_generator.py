@@ -1,389 +1,293 @@
 """
-Test Case Generator Service
+Test Case Generator Service (Refactored)
 
-Uses LLM (GLM) to generate comprehensive test cases from natural language requirements.
+Orchestrates test case generation using dependency injection.
+Coordinates LLM client, prompt builder, response parser, and repository.
 """
 
-import json
 import logging
-import os
-import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.test_generation import (
     TestCaseGenerateRequest,
     GeneratedTestCase,
-    GeneratedTestStep,
     PromptTemplate
 )
+from app.services.llm_client import LLMClient
+from app.services.prompt_builder import PromptBuilder
+from app.services.response_parser import ResponseParser
+from app.repositories.test_case_repository import TestCaseRepository
 
 logger = logging.getLogger(__name__)
 
 
 class TestCaseGenerator:
     """
-    Service for generating test cases using LLM.
+    Orchestrator for test case generation using LLM.
 
-    Converts natural language requirements into structured test cases
-    with detailed steps that can be executed by Playwright.
+    Coordinates between LLM client, prompt builder, response parser,
+    and repository to generate complete test cases from requirements.
     """
 
-    def __init__(self):
-        self.llm_api_key = os.getenv("LLM_API_KEY", "")
-        self.llm_base_url = os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
-        self.llm_model = os.getenv("LLM_MODEL", "glm-4-plus")
-        self.timeout = 300.0
+    def __init__(
+        self,
+        llm_client: Optional[LLMClient] = None,
+        prompt_builder: Optional[PromptBuilder] = None,
+        response_parser: Optional[ResponseParser] = None,
+        repository: Optional[TestCaseRepository] = None
+    ):
+        """
+        Initialize test case generator with injected dependencies.
+
+        Args:
+            llm_client: LLM API client (creates default if None)
+            prompt_builder: Prompt builder (creates default if None)
+            response_parser: Response parser (creates default if None)
+            repository: Test case repository (requires db session)
+        """
+        self.llm_client = llm_client or LLMClient()
+        self.prompt_builder = prompt_builder or PromptBuilder()
+        self.response_parser = response_parser or ResponseParser()
+        self.repository = repository
 
     async def generate_test_case(
         self,
-        request: TestCaseGenerateRequest
+        request: TestCaseGenerateRequest,
+        db: Optional[AsyncSession] = None,
+        created_by: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Generate a complete test case from requirements.
 
+        Orchestrates the full generation workflow:
+        1. Build prompt from request
+        2. Call LLM API
+        3. Parse response
+        4. Save to database (if db session provided)
+
         Args:
             request: Test generation request
+            db: Optional database session for persistence
+            created_by: Optional user ID who requested generation
 
         Returns:
             dict: Generated test case with metadata
+
+        Raises:
+            ValueError: If request is invalid
+            Exception: If generation fails
         """
-        # Build prompt for Claude
-        prompt = self._build_prompt(request)
-
-        # Call LLM API
-        ai_response = await self._call_llm(prompt)
-
-        # Parse response
-        generated_case = self._parse_ai_response(ai_response, request)
-
-        # Save to database
-        test_def_id = await self._save_to_database(generated_case, request, None)
-
-        return {
-            "test_definition_id": test_def_id,
-            "test_case": generated_case,
-            "metadata": {
-                "generated_at": datetime.utcnow().isoformat(),
-                "ai_model": self.llm_model,
-                "test_type": request.test_type,
-                "total_steps": len(generated_case.steps)
-            }
-        }
-
-    def _build_prompt(self, request: TestCaseGenerateRequest) -> str:
-        """Build comprehensive prompt for Claude AI."""
-
-        prompt = f"""You are an expert QA test case generator. Generate a comprehensive test case based on the following requirements.
-
-Application Details:
-- URL: {request.app_url}
-- Description: {request.app_description}
-- Test Type: {request.test_type}
-
-Test Requirements:
-{request.requirements}
-
-"""
-
-        # Add credentials if provided
-        if request.credentials:
-            prompt += f"\nTest Credentials:\n{json.dumps(request.credentials, indent=2)}\n"
-
-        # Add test data if provided
-        if request.test_data:
-            prompt += f"\nTest Data:\n{json.dumps(request.test_data, indent=2)}\n"
-
-        prompt += f"""
-Generate a test case with {request.max_steps} detailed steps.
-
-Each step must include:
-1. A clear natural language description (this will be used for AI interpretation during execution)
-2. Action type: navigate, click, input, verify, wait, select, screenshot, etc.
-3. Parameters: CSS selectors, values, URLs, etc.
-4. Expected result: What should happen
-
-Action Types:
-- navigate: Navigate to a URL (params: url)
-- click: Click an element (params: selector)
-- input: Enter text in a field (params: selector, value)
-- select: Select from dropdown (params: selector, value)
-- verify: Verify element exists or text is present (params: selector or text)
-- wait: Wait for condition (params: seconds or selector)
-- hover: Hover over element (params: selector)
-- screenshot: Take screenshot (params: filename)
-
-Return ONLY a valid JSON object in this exact format:
-{{
-  "name": "Test Case Name",
-  "description": "Detailed description of what this test validates",
-  "steps": [
-    {{
-      "step_number": 1,
-      "description": "Navigate to the login page",
-      "type": "navigate",
-      "params": {{"url": "https://example.com/login"}},
-      "expected_result": "Login page loads successfully"
-    }},
-    {{
-      "step_number": 2,
-      "description": "Enter username in the username field",
-      "type": "input",
-      "params": {{"selector": "input[name='username']", "value": "test@example.com"}},
-      "expected_result": "Username is entered in the field"
-    }}
-  ]
-}}
-
-Important:
-- Generate realistic, actionable steps
-- Use specific CSS selectors when possible
-- Include proper error handling steps
-- Make descriptions clear and detailed
-- Ensure steps are logically ordered
-- Generate between 5 and {request.max_steps} steps
-"""
-
-        return prompt
-
-    async def _call_llm(self, prompt: str) -> str:
-        """Call LLM via OpenAI-compatible Chat Completions API."""
-
-        if not self.llm_api_key:
-            raise ValueError("LLM_API_KEY is not configured")
-
-        headers = {
-            "Authorization": f"Bearer {self.llm_api_key}",
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "model": self.llm_model,
-            "max_tokens": 4096,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.llm_base_url}/chat/completions",
-                    headers=headers,
-                    json=data
-                )
-                response.raise_for_status()
-                result = response.json()
-                return result["choices"][0]["message"]["content"]
-
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error calling LLM API: {str(e)}")
-            raise
-        except Exception as e:
-            logger.error(f"Error calling LLM API: {str(e)}")
-            raise
-
-    def _parse_ai_response(self, ai_response: str, request: TestCaseGenerateRequest) -> GeneratedTestCase:
-        """Parse Claude AI response into structured test case."""
-
-        # Extract JSON from response
-        json_match = re.search(r'\{[\s\S]*\}', ai_response)
-        if not json_match:
-            raise ValueError("No JSON found in AI response")
-
-        try:
-            case_data = json.loads(json_match.group())
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse AI response JSON: {str(e)}")
-            raise ValueError(f"Invalid JSON in AI response: {str(e)}")
-
-        # Validate required fields
-        if "name" not in case_data or "steps" not in case_data:
-            raise ValueError("AI response missing required fields: name or steps")
-
-        # Convert steps
-        steps = []
-        for step_data in case_data.get("steps", []):
-            step = GeneratedTestStep(
-                step_number=step_data.get("step_number", len(steps) + 1),
-                description=step_data.get("description", ""),
-                type=step_data.get("type", "verify"),
-                params=step_data.get("params", {}),
-                expected_result=step_data.get("expected_result", "")
-            )
-            steps.append(step)
-
-        # Generate test ID
-        test_id = self._generate_test_id(case_data["name"], request.test_type)
-
-        # Estimate duration
-        estimated_duration = self._estimate_duration(len(steps))
-
-        return GeneratedTestCase(
-            name=case_data["name"],
-            description=case_data.get("description", ""),
-            test_id=test_id,
-            url=request.app_url,
-            tags=request.tags,
-            steps=steps,
-            estimated_duration=estimated_duration
+        logger.info(
+            f"Generating test case for {request.test_type} test: "
+            f"{request.app_url}"
         )
 
-    def _generate_test_id(self, name: str, test_type: str) -> str:
-        """Generate unique test case ID."""
-        # Extract key words from name
-        words = re.findall(r'\w+', name.upper())
-        prefix = "-".join(words[:3]) if len(words) >= 3 else "-".join(words)
-        return f"TC-{prefix}-{test_type.upper()}"
-
-    def _estimate_duration(self, num_steps: int) -> str:
-        """Estimate test execution duration."""
-        # Assume 30 seconds per step on average
-        total_seconds = num_steps * 30
-        minutes = total_seconds // 60
-        if minutes > 0:
-            return f"{minutes}-{minutes + 2} minutes"
-        return f"{total_seconds} seconds"
-
-    async def _save_to_database(
-        self,
-        test_case: GeneratedTestCase,
-        request: TestCaseGenerateRequest,
-        db: Optional[Any]
-    ) -> int:
-        """Save generated test case to database via API."""
-
-        # Prepare test definition data
-        test_def_data = {
-            "name": test_case.name,
-            "description": test_case.description,
-            "test_id": test_case.test_id,
-            "url": test_case.url,
-            "tags": test_case.tags,
-            "environment": request.credentials or {},
-            "is_active": True
-        }
-
-        # Prepare test steps data
-        test_steps_data = [
-            {
-                "step_number": step.step_number,
-                "description": step.description,
-                "type": step.type,
-                "params": step.params,
-                "expected_result": step.expected_result
-            }
-            for step in test_case.steps
-        ]
-
         try:
-            # Call test-case-service API
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                # Create test definition
-                response = await client.post(
-                    "http://test-case-service:8001/api/v1/test-definitions/",
-                    json=test_def_data
+            # Step 1: Build prompt
+            prompt = self.prompt_builder.build_test_generation_prompt(request)
+            logger.debug(f"Generated prompt ({len(prompt)} chars)")
+
+            # Step 2: Call LLM API
+            ai_response = await self.llm_client.generate_test_case(prompt)
+            logger.info(f"Received LLM response ({len(ai_response)} chars)")
+
+            # Step 3: Parse response
+            generated_case = self.response_parser.parse_test_case_response(
+                ai_response,
+                request
+            )
+            logger.info(
+                f"Parsed test case '{generated_case.name}' "
+                f"with {len(generated_case.steps)} steps"
+            )
+
+            # Step 4: Save to database (if session provided)
+            test_def_id = None
+            if db and self.repository:
+                # Create repository with session if not already set
+                if not self.repository:
+                    self.repository = TestCaseRepository(db)
+
+                test_def_id = await self.repository.create_test_case(
+                    generated_case,
+                    environment=request.credentials,
+                    created_by=created_by
                 )
-                response.raise_for_status()
-                result = response.json()
-                test_def_id = result.get("id")
+                logger.info(f"Saved test definition {test_def_id} to database")
 
-                # Create test steps
-                for step_data in test_steps_data:
-                    step_response = await client.post(
-                        f"http://test-case-service:8001/api/v1/test-steps/test-definition/{test_def_id}",
-                        json=step_data
-                    )
-                    step_response.raise_for_status()
+            # Return result with metadata
+            return {
+                "test_definition_id": test_def_id,
+                "test_case": generated_case.model_dump(),
+                "metadata": {
+                    "generated_at": datetime.utcnow().isoformat(),
+                    "ai_model": self.llm_client.model,
+                    "test_type": request.test_type,
+                    "total_steps": len(generated_case.steps),
+                    "estimated_duration": generated_case.estimated_duration
+                }
+            }
 
-            logger.info(f"Created test definition {test_def_id} with {len(test_steps_data)} steps")
-            return test_def_id
-
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error saving to database: {str(e)}")
-            raise
         except Exception as e:
-            logger.error(f"Error saving to database: {str(e)}")
+            logger.error(f"Test case generation failed: {str(e)}")
             raise
 
     async def generate_batch(
         self,
-        requests: List[TestCaseGenerateRequest]
+        requests: List[TestCaseGenerateRequest],
+        db: Optional[AsyncSession] = None,
+        created_by: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Generate multiple test cases in batch.
 
         Args:
             requests: List of test generation requests
+            db: Optional database session for persistence
+            created_by: Optional user ID who requested generation
 
         Returns:
-            dict: Batch generation results
+            dict: Batch generation results with summary
         """
+        logger.info(f"Starting batch generation of {len(requests)} test cases")
+
         generated = []
         failed = []
 
         for idx, req in enumerate(requests):
             try:
-                result = await self.generate_test_case(req)
+                result = await self.generate_test_case(req, db, created_by)
                 generated.append(result)
+                logger.info(f"Generated test case {idx + 1}/{len(requests)}")
+
             except Exception as e:
-                logger.error(f"Failed to generate test case {idx}: {str(e)}")
+                logger.error(f"Failed to generate test case {idx + 1}: {str(e)}")
                 failed.append({
                     "index": idx,
                     "requirements": req.requirements,
                     "error": str(e)
                 })
 
+        summary = {
+            "total": len(requests),
+            "succeeded": len(generated),
+            "failed": len(failed)
+        }
+
+        logger.info(
+            f"Batch generation complete: {summary['succeeded']} succeeded, "
+            f"{summary['failed']} failed"
+        )
+
         return {
             "generated_tests": generated,
-            "summary": {
-                "total": len(requests),
-                "succeeded": len(generated),
-                "failed": len(failed)
-            },
+            "summary": summary,
             "failed": failed
         }
 
     def get_prompt_template(self, test_type: str) -> PromptTemplate:
-        """Get prompt template for specific test type."""
-        templates = self._get_templates()
-        return templates.get(test_type, templates["functional"])
+        """
+        Get prompt template for specific test type.
 
-    def _get_templates(self) -> Dict[str, PromptTemplate]:
-        """Get all available prompt templates."""
+        Args:
+            test_type: Type of test
+
+        Returns:
+            PromptTemplate: Template for the test type
+        """
+        return self.prompt_builder.get_prompt_template(test_type)
+
+    async def health_check(self) -> Dict[str, bool]:
+        """
+        Health check for all components.
+
+        Returns:
+            dict: Health status of each component
+        """
+        health = {
+            "llm_client": await self.llm_client.health_check(),
+            "prompt_builder": True,  # Always healthy (no external deps)
+            "response_parser": True,  # Always healthy (no external deps)
+        }
+
+        if self.repository:
+            try:
+                # Try to count test cases
+                count = await self.repository.count_test_cases()
+                health["repository"] = count >= 0
+            except Exception:
+                health["repository"] = False
+        else:
+            health["repository"] = None  # Not configured
+
+        return health
+
+    def set_repository(self, db: AsyncSession) -> None:
+        """
+        Set repository with database session.
+
+        Args:
+            db: Database session
+        """
+        self.repository = TestCaseRepository(db)
+
+    async def validate_request(self, request: TestCaseGenerateRequest) -> bool:
+        """
+        Validate test generation request.
+
+        Args:
+            request: Test generation request
+
+        Returns:
+            bool: True if request is valid
+        """
+        try:
+            # Pydantic validation is automatic
+            # Additional business logic validation can be added here
+
+            if not request.app_url:
+                logger.error("App URL is required")
+                return False
+
+            if len(request.requirements) < 20:
+                logger.error("Requirements must be at least 20 characters")
+                return False
+
+            if request.max_steps < 5 or request.max_steps > 20:
+                logger.error("Max steps must be between 5 and 20")
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Request validation failed: {str(e)}")
+            return False
+
+    async def estimate_generation_time(
+        self,
+        num_requests: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Estimate generation time for test cases.
+
+        Args:
+            num_requests: Number of test cases to generate
+
+        Returns:
+            dict: Time estimation details
+        """
+        # Assume 30 seconds per test case generation
+        avg_time_per_test = 30  # seconds
+
+        estimated_total_seconds = num_requests * avg_time_per_test
+        estimated_minutes = estimated_total_seconds / 60
+
         return {
-            "functional": PromptTemplate(
-                name="Functional Test",
-                test_type="functional",
-                description="Template for functional testing",
-                template="Generate functional test cases for {requirements}",
-                variables=["requirements"]
-            ),
-            "ui": PromptTemplate(
-                name="UI Test",
-                test_type="ui",
-                description="Template for UI/UX testing",
-                template="Generate UI test cases focusing on {requirements}",
-                variables=["requirements"]
-            ),
-            "api": PromptTemplate(
-                name="API Test",
-                test_type="api",
-                description="Template for API testing",
-                template="Generate API test cases for {requirements}",
-                variables=["requirements"]
-            ),
-            "e2e": PromptTemplate(
-                name="E2E Test",
-                test_type="e2e",
-                description="Template for end-to-end testing",
-                template="Generate E2E test cases covering {requirements}",
-                variables=["requirements"]
-            )
+            "num_requests": num_requests,
+            "estimated_seconds": estimated_total_seconds,
+            "estimated_minutes": estimated_minutes,
+            "estimated_time_per_test": avg_time_per_test
         }

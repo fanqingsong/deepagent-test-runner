@@ -14,16 +14,16 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    allowedHosts: true,
+    allowedHosts: 'all',
     cors: true,
     hmr: true,
     proxy: {
       '/api/v1': {
-        target: 'http://cc-test-backend:8001',
+        target: 'http://deepagent-tester-backend:8011',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://cc-test-backend:8001',
+        target: 'ws://deepagent-tester-backend:8011',
         ws: true,
       },
     },

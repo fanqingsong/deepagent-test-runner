@@ -27,28 +27,16 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       try {
         if (authService.isAuthenticated()) {
-          // Verify token is still valid
-          try {
-            await authService.ensureValidToken();
-            let storedUser = authService.getUser();
-            if (storedUser) {
-              // If user data lacks permissions, fetch fresh from /auth/me
-              if (!storedUser.permissions || storedUser.permissions.length === 0) {
-                try {
-                  const meData = await authService.getCurrentUser();
-                  storedUser = { ...storedUser, ...meData };
-                  authService.updateStoredUser(storedUser);
-                } catch (e) {
-                  // /auth/me failed, use stored user as-is
-                }
-              }
-              setUser(storedUser);
-            } else {
-              // Token exists but no user data, clear it
-              authService.clearAuthData();
-            }
-          } catch (error) {
-            // Token is invalid, clear it
+          // Get stored user data immediately
+          let storedUser = authService.getUser();
+          if (storedUser) {
+            // Set user immediately - don't wait for API calls
+            setUser(storedUser);
+
+            // Don't block UI with token validation - let it happen in background
+            // Token validation will happen naturally when user makes API requests
+          } else {
+            // Token exists but no user data, clear it
             authService.clearAuthData();
           }
         }

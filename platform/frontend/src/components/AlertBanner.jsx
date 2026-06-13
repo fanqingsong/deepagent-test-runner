@@ -8,6 +8,7 @@
 
 import React, { useState, useCallback } from 'react';
 import useMonitoring from '../hooks/useMonitoring';
+import { useAuth } from '../contexts/AuthContext';
 import './AlertBanner.css';
 
 /**
@@ -19,9 +20,11 @@ import './AlertBanner.css';
  * - Shows alert severity, title, and description
  */
 function AlertBanner({ className = '', cooldownMinutes = 15 }) {
+  const { isAuthenticated } = useAuth();
+
   const { alerts, acknowledgeAlert, activeAlertsCount } = useMonitoring({
     pollInterval: 60000, // 1 minute for banner
-    enabled: true,
+    enabled: isAuthenticated, // Only poll when authenticated
   });
 
   const [dismissedUntil, setDismissedUntil] = useState(null);

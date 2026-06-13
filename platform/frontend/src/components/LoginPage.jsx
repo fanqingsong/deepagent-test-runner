@@ -37,6 +37,7 @@ function LoginPage() {
   };
 
   const handleLoginSuccess = (user) => {
+    // Navigate immediately - AuthContext has already been updated via notifyAuthChange()
     window.location.hash = 'dashboard';
   };
 

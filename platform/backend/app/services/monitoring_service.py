@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.monitoring import AgentMonitoring, AgentAlert, AlertConfiguration
 from app.models.user import User
+from app.core.metrics.metrics_decorators import track_timing
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class MonitoringService:
         """
         self.db = db_session
 
+    @track_timing("service.monitoring.get_current_status")
     async def get_current_status(self) -> Dict[str, Any]:
         """
         Get the current monitoring status from the latest snapshot.

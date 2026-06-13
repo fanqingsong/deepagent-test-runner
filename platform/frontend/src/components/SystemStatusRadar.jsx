@@ -197,7 +197,7 @@ function SystemStatusRadar({ metrics = null, size = 'medium' }) {
               cy={centerY}
               r={level.radius}
               fill="none"
-              stroke="rgba(255, 255, 255, 0.1)"
+              stroke="#c6c6c6"
               strokeWidth="1"
             />
           ))}
@@ -211,7 +211,7 @@ function SystemStatusRadar({ metrics = null, size = 'medium' }) {
                 y1={centerY}
                 x2={axis.endPoint.x}
                 y2={axis.endPoint.y}
-                stroke="rgba(255, 255, 255, 0.1)"
+                stroke="#c6c6c6"
                 strokeWidth="1"
               />
 

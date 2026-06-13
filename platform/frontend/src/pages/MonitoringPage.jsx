@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getAlerts, getMonitoringStatus, getMonitoringReports, acknowledgeAlert, resolveAlert } from '../api';
+import { getMonitoringAlerts, getMonitoringStatus, getMonitoringReports, acknowledgeMonitoringAlert, resolveAlert } from '../api';
 import SystemStatusRadar from '../components/SystemStatusRadar';
 import './MonitoringPage.css';
 
@@ -196,6 +196,11 @@ function MonitoringPage() {
   const [historyDays, setHistoryDays] = useState(7);
   const [showAlerts, setShowAlerts] = useState(true);
 
+  // Pagination state for reports
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [isExpanded, setIsExpanded] = useState(false);
+
   // Fetch monitoring status
   const fetchStatus = async () => {
     try {
@@ -211,7 +216,7 @@ function MonitoringPage() {
   // Fetch alerts
   const fetchAlerts = async () => {
     try {
-      const response = await getAlerts({ limit: 20 });
+      const response = await getMonitoringAlerts({ limit: 20 });
       console.log('Alerts response:', response);
       // Handle both possible response formats
       const alerts = response.alerts || response || [];
@@ -240,7 +245,7 @@ function MonitoringPage() {
   // Acknowledge alert
   const handleAcknowledgeAlert = async (alertId) => {
     try {
-      await acknowledgeAlert(alertId);
+      await acknowledgeMonitoringAlert(alertId);
       // Refresh alerts
       await fetchAlerts();
       await fetchStatus();
@@ -533,26 +538,123 @@ function MonitoringPage() {
       <div className="reports-section">
         <div className="section-header">
           <h2>Historical Reports</h2>
-          <span className="section-count">{reports.length} reports</span>
+          <div className="reports-controls">
+            <span className="section-count">{reports.length} reports</span>
+            <button
+              className="btn-tertiary"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? 'Compact' : 'Expanded'}
+            </button>
+          </div>
         </div>
 
-        <div className="reports-list">
-          {reports.map((report) => (
-            <div key={report.id} className="report-card">
-              <div className="report-header">
-                <span className={`report-status ${getStatusColor(report.status)}`}>
-                  {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-                </span>
-                <span className="report-time">
-                  {formatTimestamp(report.check_time)}
-                </span>
-              </div>
-              {report.report_summary && (
-                <div className="report-summary">{report.report_summary}</div>
-              )}
+        {reports.length === 0 ? (
+          <div className="reports-empty">No historical reports available</div>
+        ) : (
+          <>
+            <div className="reports-table-container">
+              <table className={`reports-table ${isExpanded ? 'reports-table-expanded' : 'reports-table-compact'}`}>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Time</th>
+                    <th>Summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((report) => {
+                      const parsedReport = (() => {
+                        try {
+                          const jsonMatch = report.report_summary?.match(/```json\s*([\s\S]*?)\s*```/);
+                          if (jsonMatch) {
+                            return JSON.parse(jsonMatch[1]);
+                          }
+                          return report.report_summary ? JSON.parse(report.report_summary) : null;
+                        } catch (e) {
+                          return null;
+                        }
+                      })();
+
+                      const summary = parsedReport?.summary ||
+                        (typeof report.report_summary === 'string' ?
+                          report.report_summary.substring(0, 100) + '...' :
+                          'No summary');
+
+                      return (
+                        <tr key={report.id} className="report-row">
+                          <td className="report-status-cell">
+                            <span className={`report-status-badge ${getStatusColor(report.status)}`}>
+                              {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="report-time-cell">
+                            {formatTimestamp(report.check_time)}
+                          </td>
+                          <td className="report-summary-cell">
+                            <div className="report-summary-text">{summary}</div>
+                            {isExpanded && parsedReport?.highlights && (
+                              <div className="report-highlights">
+                                {parsedReport.highlights.slice(0, 2).map((h, i) => (
+                                  <span key={i} className={`report-highlight ${h.startsWith('✓') ? 'positive' : 'warning'}`}>
+                                    {h}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+
+            {/* Pagination Controls */}
+            {Math.ceil(reports.length / itemsPerPage) > 1 && (
+              <div className="pagination-controls">
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  First
+                </button>
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+
+                <div className="pagination-info">
+                  Page {currentPage} of {Math.ceil(reports.length / itemsPerPage)}
+                  <span className="pagination-range">
+                    ({(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, reports.length)} of {reports.length})
+                  </span>
+                </div>
+
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(reports.length / itemsPerPage), prev + 1))}
+                  disabled={currentPage === Math.ceil(reports.length / itemsPerPage)}
+                >
+                  Next
+                </button>
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(Math.ceil(reports.length / itemsPerPage))}
+                  disabled={currentPage === Math.ceil(reports.length / itemsPerPage)}
+                >
+                  Last
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
