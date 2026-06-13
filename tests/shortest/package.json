@@ -1,0 +1,26 @@
+{
+  "name": "deepagent-test-runner-shortest",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "shortest",
+    "test:headless": "shortest --headless",
+    "test:login": "shortest login.test.ts",
+    "test:dashboard": "shortest dashboard.test.ts",
+    "test:tests": "shortest tests-management.test.ts",
+    "test:schedules": "shortest schedules.test.ts",
+    "test:smoke": "shortest smoke.test.ts"
+  },
+  "devDependencies": {
+    "@ai-sdk/openai": "^1.0.0",
+    "@ai-sdk/provider": "^1.0.10",
+    "@antiwork/shortest": "github:fanqingsong/shortest",
+    "ai": "^4.1.53",
+    "dotenv": "^16.4.5",
+    "esbuild": "^0.20.1",
+    "expect": "^29.7.0",
+    "playwright": "^1.60.0",
+    "typescript": "^5.7.3"
+  }
+}
