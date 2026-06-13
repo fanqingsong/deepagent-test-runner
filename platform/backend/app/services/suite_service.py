@@ -22,15 +22,50 @@ from app.core.simple_result_types import (
     service_success, service_error, service_not_found,
     service_validation_error, ServiceSuccess, ServiceError
 )
+from app.services.interfaces.suite_service_interface import ISuiteService
+from app.repositories.interfaces.suite_run_repository_interface import ISuiteRunRepository
+from app.repositories.repository_factory import RepositoryFactory
 
 logger = logging.getLogger(__name__)
 
 
-class SuiteService:
+class SuiteService(ISuiteService):
     """Service for managing suite-level test execution."""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(
+        self,
+        db: Optional[AsyncSession] = None,
+        suite_run_repository: Optional[ISuiteRunRepository] = None
+    ):
+        """
+        Initialize Suite Service.
+
+        Args:
+            db: Optional database session. If not provided, session must be passed to each method.
+                 This allows both singleton usage (with DI container) and direct instantiation.
+            suite_run_repository: Optional SuiteRunRepository instance (created if not provided)
+        """
+        self._default_db = db
+        self.suite_run_repository = suite_run_repository or RepositoryFactory.get_suite_run_repository()
+
+    def _get_db(self, db: Optional[AsyncSession] = None) -> AsyncSession:
+        """
+        Get database session for method execution.
+
+        Args:
+            db: Optional database session passed to method
+
+        Returns:
+            Database session to use
+
+        Raises:
+            ValueError: If no database session is available
+        """
+        if db is not None:
+            return db
+        if self._default_db is not None:
+            return self._default_db
+        raise ValueError("Database session required. Pass db parameter or initialize service with db session.")
 
     # ==================== Result-based methods (v2) ====================
 
@@ -66,17 +101,24 @@ class SuiteService:
             logger.error(f"Failed to resolve suite entries: {e}")
             return service_error(f"Failed to resolve suite entries: {str(e)}", "RESOLVE_ERROR")
 
-    async def resolve_dynamic_suite_v2(self, suite: TestSuite) -> ServiceSuccess[List[Dict[str, Any]]] | ServiceError:
+    async def resolve_dynamic_suite_v2(
+        self,
+        suite: TestSuite,
+        db: Optional[AsyncSession] = None
+    ) -> ServiceSuccess[List[Dict[str, Any]]] | ServiceError:
         """
         Resolve a dynamic suite by querying test definitions matching tag rules.
 
         Args:
             suite: TestSuite object
+            db: Optional database session
 
         Returns:
             ServiceSuccess with list of entry dictionaries or ServiceError
         """
         try:
+            db = self._get_db(db)
+
             if not suite:
                 return service_validation_error("Suite cannot be None")
 
@@ -103,7 +145,7 @@ class SuiteService:
                     TestDefinition.is_draft == False,
                 )
 
-            result = await self.db.execute(stmt)
+            result = await db.execute(stmt)
             test_defs = list(result.scalars().all())
 
             entries = [
@@ -122,6 +164,7 @@ class SuiteService:
         suite_id: int,
         triggered_by: str = "manual",
         environment_overrides: Optional[Dict[str, Any]] = None,
+        db: Optional[AsyncSession] = None,
     ) -> ServiceSuccess[SuiteRun] | ServiceError:
         """
         Create a SuiteRun with SuiteRunEntry rows from suite config.
@@ -130,12 +173,15 @@ class SuiteService:
             suite_id: Test suite ID
             triggered_by: Trigger source (manual, schedule, etc.)
             environment_overrides: Optional environment variable overrides
+            db: Optional database session
 
         Returns:
             ServiceSuccess[SuiteRun] with created suite run or ServiceError
         """
         try:
-            suite = await self._get_suite(suite_id)
+            db = self._get_db(db)
+
+            suite = await self._get_suite(suite_id, db)
             if not suite:
                 return service_not_found("TestSuite", str(suite_id))
 
@@ -162,7 +208,8 @@ class SuiteService:
             # Merge environment: suite base + overrides
             merged_env = {**suite.environment_vars, **(environment_overrides or {})}
 
-            suite_run = SuiteRun(
+            # Create suite run using repository
+            suite_run = await self.suite_run_repository.create(
                 suite_id=suite_id,
                 run_id=run_id,
                 status="pending",
@@ -171,23 +218,18 @@ class SuiteService:
                 environment=merged_env,
                 triggered_by=triggered_by,
                 start_time=now_ms,
+                db_session=db
             )
-            self.db.add(suite_run)
-            await self.db.flush()
 
-            # Create entry rows
-            entry_rows = [
-                SuiteRunEntry(
-                    suite_run_id=suite_run.id,
-                    test_definition_id=e["test_definition_id"],
-                    entry_order=e.get("order", idx + 1),
-                    condition=e.get("condition", "always"),
-                )
-                for idx, e in enumerate(entries)
-            ]
-            self.db.add_all(entry_rows)
-            await self.db.commit()
-            await self.db.refresh(suite_run)
+            # Create entry rows using repository
+            entry_rows = await self.suite_run_repository.create_entries(
+                suite_run_id=suite_run.id,
+                entries=entries,
+                db_session=db
+            )
+
+            await db.commit()
+            await db.refresh(suite_run)
 
             logger.info(
                 "Created suite run %s for suite %d with %d entries",
@@ -204,23 +246,29 @@ class SuiteService:
             await self.db.rollback()
             return service_error(f"Failed to create suite run: {str(e)}", "CREATE_ERROR")
 
-    async def get_suite_run_with_entries_v2(self, run_id: str) -> ServiceSuccess[SuiteRun] | ServiceError:
+    async def get_suite_run_with_entries_v2(
+        self,
+        run_id: str,
+        db: Optional[AsyncSession] = None
+    ) -> ServiceSuccess[SuiteRun] | ServiceError:
         """
         Get a suite run by run_id with all entries loaded.
 
         Args:
             run_id: Suite run identifier
+            db: Optional database session
 
         Returns:
             ServiceSuccess[SuiteRun] with suite run and entries or ServiceError
         """
         try:
-            result = await self.db.execute(
-                select(SuiteRun)
-                .where(SuiteRun.run_id == run_id)
-                .options(selectinload(SuiteRun.entries))
+            db = self._get_db(db)
+
+            suite_run = await self.suite_run_repository.get_by_run_id(
+                run_id=run_id,
+                db_session=db,
+                load_entries=True
             )
-            suite_run = result.unique().scalar_one_or_none()
 
             if not suite_run:
                 return service_not_found("SuiteRun", run_id)
@@ -231,18 +279,25 @@ class SuiteService:
             logger.error(f"Failed to get suite run: {e}")
             return service_error(f"Failed to get suite run: {str(e)}", "GET_ERROR")
 
-    async def cancel_suite_run_v2(self, suite_run_id: int) -> ServiceSuccess[SuiteRun] | ServiceError:
+    async def cancel_suite_run_v2(
+        self,
+        suite_run_id: int,
+        db: Optional[AsyncSession] = None
+    ) -> ServiceSuccess[SuiteRun] | ServiceError:
         """
         Cancel a running suite run, marking remaining entries as skipped.
 
         Args:
             suite_run_id: Suite run database ID
+            db: Optional database session
 
         Returns:
             ServiceSuccess[SuiteRun] with cancelled suite run or ServiceError
         """
         try:
-            suite_run = await self._get_suite_run(suite_run_id)
+            db = self._get_db(db)
+
+            suite_run = await self._get_suite_run(suite_run_id, db)
             if not suite_run:
                 return service_not_found("SuiteRun", str(suite_run_id))
 
@@ -252,23 +307,29 @@ class SuiteService:
                     field_errors={"current_status": suite_run.status}
                 )
 
-            entries = await self._get_entries(suite_run_id)
+            entries = await self._get_entries(suite_run_id, db)
             now_ms = int(time.time() * 1000)
             for entry in entries:
                 if entry.status in ("pending", "dispatched"):
                     entry.status = "skipped"
                     entry.finished_at = now_ms
 
-            suite_run.status = "cancelled"
-            suite_run.end_time = now_ms
-            await self.db.commit()
-            await self.db.refresh(suite_run)
+            # Update suite run status using repository
+            suite_run = await self.suite_run_repository.update_status(
+                suite_run_id=suite_run_id,
+                status="cancelled",
+                end_time=now_ms,
+                db_session=db
+            )
+
+            await db.commit()
+            await db.refresh(suite_run)
 
             return service_success(suite_run)
 
         except Exception as e:
             logger.error(f"Failed to cancel suite run: {e}")
-            await self.db.rollback()
+            await db.rollback()
             return service_error(f"Failed to cancel suite run: {str(e)}", "CANCEL_ERROR")
 
     # ==================== Legacy methods (maintained for backward compatibility) ====================
@@ -699,19 +760,13 @@ class SuiteService:
         )
         return result.scalar_one_or_none()
 
-    async def _get_suite_run(self, suite_run_id: int) -> Optional[SuiteRun]:
-        result = await self.db.execute(
-            select(SuiteRun).where(SuiteRun.id == suite_run_id)
-        )
-        return result.scalar_one_or_none()
+    async def _get_suite_run(self, suite_run_id: int, db: Optional[AsyncSession] = None) -> Optional[SuiteRun]:
+        """Get suite run by ID using repository."""
+        return await self.suite_run_repository.get_by_id(suite_run_id, self._get_db(db))
 
-    async def _get_entries(self, suite_run_id: int) -> List[SuiteRunEntry]:
-        result = await self.db.execute(
-            select(SuiteRunEntry)
-            .where(SuiteRunEntry.suite_run_id == suite_run_id)
-            .order_by(SuiteRunEntry.entry_order)
-        )
-        return list(result.scalars().all())
+    async def _get_entries(self, suite_run_id: int, db: Optional[AsyncSession] = None) -> List[SuiteRunEntry]:
+        """Get suite run entries using repository."""
+        return await self.suite_run_repository.get_entries(suite_run_id, self._get_db(db))
 
     async def _has_failure(self, suite_run_id: int) -> bool:
         result = await self.db.execute(

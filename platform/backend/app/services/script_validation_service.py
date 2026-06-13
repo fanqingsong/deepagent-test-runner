@@ -15,11 +15,12 @@ from app.core.simple_result_types import (
     service_success, service_error, service_validation_error,
     ServiceSuccess, ServiceError
 )
+from app.services.interfaces.script_validation_service_interface import IScriptValidationService
 
 logger = logging.getLogger(__name__)
 
 
-class ScriptValidationService:
+class ScriptValidationService(IScriptValidationService):
     """
     Service for validating Playwright scripts through browser execution.
 

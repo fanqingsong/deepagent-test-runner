@@ -27,11 +27,12 @@ from app.services.result_persister import ResultPersister
 from app.repositories.repository_factory import RepositoryFactory
 from app.repositories.interfaces.test_run_repository_interface import ITestRunRepository
 from app.core.metrics.metrics_decorators import track_timing, track_metrics, track_errors
+from app.services.interfaces.execution_service_interface import IExecutionService
 
 logger = logging.getLogger(__name__)
 
 
-class ExecutionService:
+class ExecutionService(IExecutionService):
     """
     Service for managing test execution for scheduled tasks.
 

@@ -48,12 +48,14 @@ from app.repositories.schedule_repository import SQLAlchemyScheduleRepository
 from app.repositories.token_budget_repository import SQLAlchemyTokenBudgetRepository
 from app.repositories.token_quota_repository import SQLAlchemyTokenQuotaRepository
 from app.repositories.token_alert_repository import SQLAlchemyTokenAlertRepository
+from app.repositories.suite_run_repository import SQLAlchemySuiteRunRepository
 from app.repositories.interfaces.test_run_repository_interface import ITestRunRepository
 from app.repositories.interfaces.test_definition_repository_interface import ITestDefinitionRepository
 from app.repositories.interfaces.schedule_repository_interface import IScheduleRepository
 from app.repositories.interfaces.token_budget_repository_interface import ITokenBudgetRepository
 from app.repositories.interfaces.token_quota_repository_interface import ITokenQuotaRepository
 from app.repositories.interfaces.token_alert_repository_interface import ITokenAlertRepository
+from app.repositories.interfaces.suite_run_repository_interface import ISuiteRunRepository
 
 # Services
 from app.services.execution_service import ExecutionService
@@ -75,6 +77,12 @@ from app.services.token_budget_service import TokenBudgetService
 from app.services.token_quota_service import TokenQuotaService
 from app.services.token_alert_service import TokenAlertService
 from app.services.token_reporting_service import TokenReportingService
+
+# Service Interfaces (for Dependency Inversion Principle)
+from app.services.interfaces.execution_service_interface import IExecutionService
+from app.services.interfaces.analytics_service_interface import IAnalyticsService
+from app.services.interfaces.script_validation_service_interface import IScriptValidationService
+from app.services.interfaces.suite_service_interface import ISuiteService
 
 # Strategy Factories
 from app.services.strategies.schedule_resolver_factory import ScheduleResolverFactory
@@ -278,6 +286,11 @@ class Container(containers.DeclarativeContainer):
         SQLAlchemyTokenAlertRepository
     )
 
+    # Suite Run Repository
+    suite_run_repository = providers.Singleton(
+        SQLAlchemySuiteRunRepository
+    )
+
     # =============================================================================
     # Strategy Factories (Singleton)
     # =============================================================================
@@ -344,18 +357,15 @@ class Container(containers.DeclarativeContainer):
         test_run_repository=test_run_repository
     )
 
-    # Analytics Service
+    # Analytics Service (singleton without db - db passed per method call)
     analytics_service = providers.Singleton(
-        AnalyticsService,
-        test_run_repository=test_run_repository,
-        test_definition_repository=test_definition_repository
+        AnalyticsService
     )
 
-    # Suite Service
+    # Suite Service (singleton with repository dependency - db passed per method call)
     suite_service = providers.Singleton(
         SuiteService,
-        test_definition_repository=test_definition_repository,
-        permission_service=providers.Singleton(PermissionService)
+        suite_run_repository=suite_run_repository
     )
 
     # Temporal Schedule Service - Commented out as TemporalScheduleService doesn't exist as a class

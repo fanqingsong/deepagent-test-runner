@@ -16,17 +16,44 @@ from app.services.analytics.analytics_dashboard import DashboardAnalytics
 from app.services.analytics.analytics_test_runs import TestRunsAnalytics
 from app.services.analytics.analytics_performance import PerformanceAnalytics
 from app.services.analytics.analytics_suites import SuitesAnalytics
+from app.services.interfaces.analytics_service_interface import IAnalyticsService
 
 
-class AnalyticsService:
+class AnalyticsService(IAnalyticsService):
     """Service for test analytics and dashboard data"""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, db: Optional[AsyncSession] = None):
+        """
+        Initialize Analytics Service.
+
+        Args:
+            db: Optional database session. If not provided, session must be passed to each method.
+                 This allows both singleton usage (with DI container) and direct instantiation.
+        """
+        self._default_db = db
         self._dashboard = DashboardAnalytics()
         self._test_runs = TestRunsAnalytics()
         self._performance = PerformanceAnalytics()
         self._suites = SuitesAnalytics()
+
+    def _get_db(self, db: Optional[AsyncSession] = None) -> AsyncSession:
+        """
+        Get database session for method execution.
+
+        Args:
+            db: Optional database session passed to method
+
+        Returns:
+            Database session to use
+
+        Raises:
+            ValueError: If no database session is available
+        """
+        if db is not None:
+            return db
+        if self._default_db is not None:
+            return self._default_db
+        raise ValueError("Database session required. Pass db parameter or initialize service with db session.")
 
     # ------------------------------------------------------------------
     # Dashboard summary queries (delegated to DashboardAnalytics)
@@ -36,24 +63,30 @@ class AnalyticsService:
         self,
         days: int = 30,
         user_id: Optional[int] = None,
-        is_admin: bool = False
+        is_admin: bool = False,
+        db: Optional[AsyncSession] = None
     ) -> Dict[str, Any]:
-        return await self._dashboard.get_dashboard_summary(self.db, days, user_id, is_admin)
+        db = self._get_db(db)
+        return await self._dashboard.get_dashboard_summary(db, days, user_id, is_admin)
 
     async def get_total_test_definitions(
         self,
         user_id: Optional[int] = None,
-        is_admin: bool = False
+        is_admin: bool = False,
+        db: Optional[AsyncSession] = None
     ) -> int:
-        return await self._dashboard.get_total_test_definitions(self.db, user_id, is_admin)
+        db = self._get_db(db)
+        return await self._dashboard.get_total_test_definitions(db, user_id, is_admin)
 
     async def get_test_runs_by_day(
         self,
         days: int = 30,
         user_id: Optional[int] = None,
-        is_admin: bool = False
+        is_admin: bool = False,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._dashboard.get_test_runs_by_day(self.db, days, user_id, is_admin)
+        db = self._get_db(db)
+        return await self._dashboard.get_test_runs_by_day(db, days, user_id, is_admin)
 
     # ------------------------------------------------------------------
     # Test run queries (delegated to TestRunsAnalytics)
@@ -63,23 +96,29 @@ class AnalyticsService:
         self,
         limit: int = 100,
         user_id: Optional[int] = None,
-        is_admin: bool = False
+        is_admin: bool = False,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._test_runs.get_recent_test_runs(self.db, limit, user_id, is_admin)
+        db = self._get_db(db)
+        return await self._test_runs.get_recent_test_runs(db, limit, user_id, is_admin)
 
     async def get_test_cases_for_run(
         self,
-        run_id: str
+        run_id: str,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._test_runs.get_test_cases_for_run(self.db, run_id)
+        db = self._get_db(db)
+        return await self._test_runs.get_test_cases_for_run(db, run_id)
 
     async def get_test_runs_for_app(
         self,
         app_id: int,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._test_runs.get_test_runs_for_app(self.db, app_id, limit, offset)
+        db = self._get_db(db)
+        return await self._test_runs.get_test_runs_for_app(db, app_id, limit, offset)
 
     # ------------------------------------------------------------------
     # Performance analysis (delegated to PerformanceAnalytics)
@@ -87,21 +126,27 @@ class AnalyticsService:
 
     async def get_slowest_tests(
         self,
-        limit: int = 20
+        limit: int = 20,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._performance.get_slowest_tests(self.db, limit)
+        db = self._get_db(db)
+        return await self._performance.get_slowest_tests(db, limit)
 
     async def get_flaky_tests(
         self,
-        days: int = 30
+        days: int = 30,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._performance.get_flaky_tests(self.db, days)
+        db = self._get_db(db)
+        return await self._performance.get_flaky_tests(db, days)
 
     async def get_failure_patterns(
         self,
-        limit: int = 10
+        limit: int = 10,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._performance.get_failure_patterns(self.db, limit)
+        db = self._get_db(db)
+        return await self._performance.get_failure_patterns(db, limit)
 
     # ------------------------------------------------------------------
     # Suite analytics (delegated to SuitesAnalytics)
@@ -111,26 +156,34 @@ class AnalyticsService:
         self,
         days: int = 30,
         user_id: Optional[int] = None,
-        is_admin: bool = False
+        is_admin: bool = False,
+        db: Optional[AsyncSession] = None
     ) -> Dict[str, Any]:
-        return await self._suites.get_suite_dashboard_summary(self.db, days, user_id, is_admin)
+        db = self._get_db(db)
+        return await self._suites.get_suite_dashboard_summary(db, days, user_id, is_admin)
 
     async def get_suites_with_latest_run(
         self,
         user_id: Optional[int] = None,
-        is_admin: bool = False
+        is_admin: bool = False,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._suites.get_suites_with_latest_run(self.db, user_id, is_admin)
+        db = self._get_db(db)
+        return await self._suites.get_suites_with_latest_run(db, user_id, is_admin)
 
     async def get_suite_run_timeline(
         self,
         suite_id: int,
-        limit: int = 10
+        limit: int = 10,
+        db: Optional[AsyncSession] = None
     ) -> List[Dict[str, Any]]:
-        return await self._suites.get_suite_run_timeline(self.db, suite_id, limit)
+        db = self._get_db(db)
+        return await self._suites.get_suite_run_timeline(db, suite_id, limit)
 
     async def get_suite_run_with_test_cases(
         self,
-        run_id: str
+        run_id: str,
+        db: Optional[AsyncSession] = None
     ) -> Optional[Dict[str, Any]]:
-        return await self._suites.get_suite_run_with_test_cases(self.db, run_id)
+        db = self._get_db(db)
+        return await self._suites.get_suite_run_with_test_cases(db, run_id)

@@ -23,6 +23,8 @@ from app.repositories.interfaces.token_quota_repository_interface import ITokenQ
 from app.repositories.token_quota_repository import SQLAlchemyTokenQuotaRepository
 from app.repositories.interfaces.token_alert_repository_interface import ITokenAlertRepository
 from app.repositories.token_alert_repository import SQLAlchemyTokenAlertRepository
+from app.repositories.interfaces.suite_run_repository_interface import ISuiteRunRepository
+from app.repositories.suite_run_repository import SQLAlchemySuiteRunRepository
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,7 @@ class RepositoryFactory:
     _token_budget_repository: Optional[ITokenBudgetRepository] = None
     _token_quota_repository: Optional[ITokenQuotaRepository] = None
     _token_alert_repository: Optional[ITokenAlertRepository] = None
+    _suite_run_repository: Optional[ISuiteRunRepository] = None
 
     @classmethod
     def get_test_run_repository(cls) -> ITestRunRepository:
@@ -98,6 +101,24 @@ class RepositoryFactory:
         return cls._schedule_repository
 
     @classmethod
+    def get_suite_run_repository(cls) -> ISuiteRunRepository:
+        """
+        Get or create the SuiteRun repository instance.
+
+        Returns:
+            ISuiteRunRepository implementation instance
+
+        Example:
+            >>> repo = RepositoryFactory.get_suite_run_repository()
+            >>> run = await repo.get_by_id(123, db_session)
+        """
+        if cls._suite_run_repository is None:
+            logger.info("Creating SQLAlchemySuiteRunRepository instance")
+            cls._suite_run_repository = SQLAlchemySuiteRunRepository()
+
+        return cls._suite_run_repository
+
+    @classmethod
     def reset(cls) -> None:
         """
         Reset all repository instances.
@@ -111,6 +132,10 @@ class RepositoryFactory:
         cls._test_run_repository = None
         cls._test_definition_repository = None
         cls._schedule_repository = None
+        cls._token_budget_repository = None
+        cls._token_quota_repository = None
+        cls._token_alert_repository = None
+        cls._suite_run_repository = None
         logger.debug("Repository factory reset")
 
     @classmethod
@@ -163,6 +188,23 @@ class RepositoryFactory:
         """
         cls._schedule_repository = repository
         logger.info(f"Set custom Schedule repository: {type(repository).__name__}")
+
+    @classmethod
+    def set_suite_run_repository(cls, repository: ISuiteRunRepository) -> None:
+        """
+        Set a custom SuiteRun repository implementation.
+
+        Useful for testing with mock repositories or alternative implementations.
+
+        Args:
+            repository: Custom ISuiteRunRepository implementation
+
+        Example:
+            >>> mock_repo = MockSuiteRunRepository()
+            >>> RepositoryFactory.set_suite_run_repository(mock_repo)
+        """
+        cls._suite_run_repository = repository
+        logger.info(f"Set custom SuiteRun repository: {type(repository).__name__}")
 
     @classmethod
     def get_token_budget_repository(cls) -> ITokenBudgetRepository:
@@ -219,25 +261,6 @@ class RepositoryFactory:
         return cls._token_alert_repository
 
     @classmethod
-    def reset(cls) -> None:
-        """
-        Reset all repository instances.
-
-        Primarily useful for testing to ensure clean state between tests.
-
-        Example:
-            >>> RepositoryFactory.reset()
-            >>> # Now new repository instances will be created on next access
-        """
-        cls._test_run_repository = None
-        cls._test_definition_repository = None
-        cls._schedule_repository = None
-        cls._token_budget_repository = None
-        cls._token_quota_repository = None
-        cls._token_alert_repository = None
-        logger.debug("Repository factory reset")
-
-    @classmethod
     def set_token_budget_repository(cls, repository: ITokenBudgetRepository) -> None:
         """
         Set a custom TokenBudget repository implementation.
@@ -287,3 +310,20 @@ class RepositoryFactory:
         """
         cls._token_alert_repository = repository
         logger.info(f"Set custom TokenAlert repository: {type(repository).__name__}")
+
+    @classmethod
+    def set_suite_run_repository(cls, repository: ISuiteRunRepository) -> None:
+        """
+        Set a custom SuiteRun repository implementation.
+
+        Useful for testing with mock repositories or alternative implementations.
+
+        Args:
+            repository: Custom ISuiteRunRepository implementation
+
+        Example:
+            >>> mock_repo = MockSuiteRunRepository()
+            >>> RepositoryFactory.set_suite_run_repository(mock_repo)
+        """
+        cls._suite_run_repository = repository
+        logger.info(f"Set custom SuiteRun repository: {type(repository).__name__}")
