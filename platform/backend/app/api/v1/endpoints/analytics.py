@@ -11,32 +11,16 @@ from app.core.database import get_db
 from app.services.analytics_service import AnalyticsService
 from app.core.security import get_current_user
 from app.models.user import User
-from app.core.container import Container, Provide, inject
+from app.core.container import provide_analytics_service
 
 router = APIRouter()
 
 
-# Provider function for AnalyticsService with database session
-@inject
-def get_analytics_service_with_db(
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
-    db: AsyncSession = Depends(get_db)
-) -> AnalyticsService:
-    """
-    Get AnalyticsService with database session.
-
-    This ensures the singleton service gets the request-scoped database session.
-    """
-    # The service is a singleton from the container, but we pass db to each method call
-    return analytics
-
-
 @router.get("/dashboard")
-@inject
 async def get_dashboard_summary(
     days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -79,11 +63,10 @@ async def get_dashboard_summary(
 
 
 @router.get("/test-runs")
-@inject
 async def get_test_runs(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of runs to return"),
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -106,11 +89,10 @@ async def get_test_runs(
 
 
 @router.get("/test-runs/{run_id}")
-@inject
 async def get_test_run_details(
     run_id: str,
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -127,11 +109,10 @@ async def get_test_run_details(
 
 
 @router.get("/suite-dashboard")
-@inject
 async def get_suite_dashboard(
     days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Get suite-centric dashboard data."""
@@ -149,12 +130,11 @@ async def get_suite_dashboard(
 
 
 @router.get("/suite-runs/timeline/{suite_id}")
-@inject
 async def get_suite_run_timeline(
     suite_id: int,
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Get run timeline for a specific suite."""
@@ -165,11 +145,10 @@ async def get_suite_run_timeline(
 
 
 @router.get("/suite-runs/{run_id}/entries")
-@inject
 async def get_suite_run_entries(
     run_id: str,
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """Get suite run entries with test case details."""
@@ -184,11 +163,10 @@ async def get_suite_run_entries(
 
 
 @router.get("/slowest-tests")
-@inject
 async def get_slowest_tests(
     limit: int = Query(20, ge=1, le=100, description="Maximum number of tests to return"),
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -206,11 +184,10 @@ async def get_slowest_tests(
 
 
 @router.get("/flaky-tests")
-@inject
 async def get_flaky_tests(
     days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -228,11 +205,10 @@ async def get_flaky_tests(
 
 
 @router.get("/failure-patterns")
-@inject
 async def get_failure_patterns(
     limit: int = Query(10, ge=1, le=50, description="Maximum number of patterns to return"),
     current_user: User = Depends(get_current_user),
-    analytics: AnalyticsService = Depends(Provide[Container.analytics_service]),
+    analytics: AnalyticsService = Depends(provide_analytics_service),
     db: AsyncSession = Depends(get_db)
 ):
     """
