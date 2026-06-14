@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Shared helpers for shortest batch runners.
+
+clear_login_ratelimit() {
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q deepagent-tester-redis; then
+    docker exec deepagent-tester-redis redis-cli KEYS 'ratelimit:login:*' 2>/dev/null \
+      | xargs -r docker exec deepagent-tester-redis redis-cli DEL >/dev/null 2>&1 || true
+  fi
+}
+
+setup_auth_state() {
+  local dir="$1"
+  clear_login_ratelimit
+  if node "$dir/helpers/setup-auth.mjs"; then
+    echo "Auth state ready: $dir/.shortest/auth-state.json"
+    return 0
+  fi
+  echo "WARN: setup-auth failed; tests will fall back to AI login" >&2
+  return 1
+}
+
+# Classify using the last run block (after --- RETRY --- if present).
+classify_log() {
+  local log="$1"
+  local section
+  if grep -q "--- RETRY ---" "$log" 2>/dev/null; then
+    section="$(sed -n '/--- RETRY ---/,$p' "$log")"
+  else
+    section="$(cat "$log")"
+  fi
+  if echo "$section" | grep -q "Error processing file"; then
+    echo "FAIL"
+  elif echo "$section" | grep -qE "[0-9]+ failed"; then
+    echo "FAIL"
+  elif echo "$section" | grep -qE "Tests[[:space:]]+0 passed"; then
+    echo "FAIL"
+  elif echo "$section" | grep -qE "Tests[[:space:]]+[1-9][0-9]* passed"; then
+    echo "PASS"
+  else
+    echo "FAIL"
+  fi
+}
+
+shortest_env_for_file() {
+  local f="$1"
+  if [[ "$(basename "$f")" == "login.test.ts" ]]; then
+    export SHORTEST_SKIP_AUTH_STATE=1
+  else
+    unset SHORTEST_SKIP_AUTH_STATE
+  fi
+}
