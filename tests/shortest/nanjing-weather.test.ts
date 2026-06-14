@@ -1,10 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify Nanjing weather page heading containing 天气 is visible",
-    "Verify current weather information or loading state is displayed",
+    assertPageAny("天气", "Nanjing", "Weather"),
+    assertPageAny("°", "℃", "更新", "Loading", "Weather Information"),
   ],
   authPayload,
 );

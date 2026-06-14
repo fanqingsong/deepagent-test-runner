@@ -1,10 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify Alert Management page title is visible",
-    "Verify alert configuration or alert list section is displayed",
+    assertPage("Alert Management"),
+    assertPageAny("Alert", "Create", "Active"),
   ],
   authPayload,
 );

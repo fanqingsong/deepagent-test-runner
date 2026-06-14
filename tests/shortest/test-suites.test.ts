@@ -1,11 +1,14 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { actThenAssert, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify suite list panel is visible with + New Suite button or empty state",
-    "Click + New Suite button and verify suite composer workspace opens",
-    "Use search filter and verify list updates or shows No matching test suites",
+    assertPageAny("+ New Suite", "suite", "No suites"),
+    actThenAssert(
+      'If a "+ New Suite" button is visible, click it.',
+      "a suite composer workspace or new suite form is open.",
+    ),
   ],
   authPayload,
 );

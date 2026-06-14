@@ -1,6 +1,6 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
-import { assertPage } from "./helpers/prompts";
+import { assertPage, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
