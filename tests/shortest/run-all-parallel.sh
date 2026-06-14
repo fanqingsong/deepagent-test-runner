@@ -30,6 +30,7 @@ run_one_file() {
     echo "Started: $(date -Iseconds)"
     shortest_env_for_file "$f"
     clear_login_ratelimit
+    echo "SHORTEST_START_HASH=${SHORTEST_START_HASH:-}"
     timeout "$TIMEOUT_SEC" npx shortest "$f" --headless
     local exit_code=$?
     local status
@@ -40,6 +41,7 @@ run_one_file() {
       sleep "$COOLDOWN_SEC"
       shortest_env_for_file "$f"
       clear_login_ratelimit
+      echo "SHORTEST_START_HASH=${SHORTEST_START_HASH:-}"
       timeout "$TIMEOUT_SEC" npx shortest "$f" --headless
       exit_code=$?
       status="$(classify_log "$log")"

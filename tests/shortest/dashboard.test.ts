@@ -1,5 +1,5 @@
 import { shortest } from "@antiwork/shortest";
-import { authPayload, goTo } from "./helpers/flows";
+import { authPayload } from "./helpers/flows";
 
 shortest(
   [
