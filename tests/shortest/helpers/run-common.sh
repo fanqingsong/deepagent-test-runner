@@ -45,7 +45,16 @@ shortest_env_for_file() {
   local f="$1"
   if [[ "$(basename "$f")" == "login.test.ts" ]]; then
     export SHORTEST_SKIP_AUTH_STATE=1
+    unset SHORTEST_START_HASH
   else
     unset SHORTEST_SKIP_AUTH_STATE
+    local hash
+    hash="$(grep -oE 'goTo\("#[^"]+"' "$f" 2>/dev/null | head -1 | sed -E 's/goTo\("([^"]+)".*/\1/' || true)"
+    export SHORTEST_START_HASH="${hash:-#dashboard}"
   fi
+}
+
+kill_stale_shortest() {
+  pkill -9 -f "node.*shortest.*\.test\.ts" 2>/dev/null || true
+  sleep 1
 }

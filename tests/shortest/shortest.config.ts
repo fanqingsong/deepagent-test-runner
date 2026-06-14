@@ -17,10 +17,12 @@ const authStatePath = join(process.cwd(), ".shortest/auth-state.json");
 const useAuthState =
   process.env.SHORTEST_SKIP_AUTH_STATE !== "1" && existsSync(authStatePath);
 
-/** With saved session, land on dashboard — skips slow AI navigation step. */
-const appBaseUrl = useAuthState
-  ? `${baseUrl.replace(/\/$/, "")}/#dashboard`
-  : baseUrl;
+/** With saved session, open target page via hash — no AI navigation needed. */
+const startHash = process.env.SHORTEST_START_HASH || (useAuthState ? "#dashboard" : "");
+const appBaseUrl =
+  useAuthState && startHash
+    ? `${baseUrl.replace(/\/$/, "")}${startHash.startsWith("#") ? startHash : `#${startHash}`}`
+    : baseUrl;
 
 export default {
   headless: process.env.SHORTEST_HEADLESS === "true",

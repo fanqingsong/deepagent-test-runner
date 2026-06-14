@@ -21,14 +21,12 @@ run_shortest_file() {
   local log="$2"
   shortest_env_for_file "$f"
   clear_login_ratelimit
+  echo "SHORTEST_START_HASH=${SHORTEST_START_HASH:-}" >>"$log"
   timeout 900 npx shortest "$f" --headless >>"$log" 2>&1
 }
 
 setup_auth_state "$DIR" || true
-
-# Kill orphaned shortest processes from prior interrupted runs.
-pkill -f "node.*shortest.*\.test\.ts" 2>/dev/null || true
-sleep 1
+kill_stale_shortest
 
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR="$DIR/results/$RUN_ID"

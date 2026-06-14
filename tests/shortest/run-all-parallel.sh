@@ -58,9 +58,7 @@ export -f run_one_file classify_log clear_login_ratelimit shortest_env_for_file
 export TIMEOUT_SEC SHORTEST_HEADLESS COOLDOWN_SEC
 
 setup_auth_state "$DIR" || true
-
-pkill -f "node.*shortest.*\.test\.ts" 2>/dev/null || true
-sleep 1
+kill_stale_shortest
 
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR="$DIR/results/$RUN_ID"
