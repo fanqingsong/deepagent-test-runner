@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.core.container import startup_container, shutdown_container
 from app.core.observability import setup_observability
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """
     # Startup
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+
+    await startup_container()
 
     from app.core.rbac_seed import ensure_rbac_seeded
     await ensure_rbac_seeded()
@@ -61,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     yield
     # Shutdown
+    await shutdown_container()
     logger.info(f"Shutting down {settings.APP_NAME}")
 
 

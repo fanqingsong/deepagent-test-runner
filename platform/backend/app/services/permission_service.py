@@ -15,7 +15,7 @@ from app.services.interfaces.permission_service_interface import IPermissionServ
 VALID_PERMISSION_TYPES = {"view", "edit", "execute", "admin"}
 
 
-class PermissionService(IPPermissionService):
+class PermissionService(IPermissionService):
     def __init__(self, db: Optional[AsyncSession] = None):
         """
         Initialize Permission Service.

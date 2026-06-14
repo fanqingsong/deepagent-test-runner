@@ -36,7 +36,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
         environment: dict,
         triggered_by: str,
         start_time: int,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> SuiteRun:
         """Create a new suite run."""
         suite_run = SuiteRun(
@@ -59,7 +59,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
     async def get_by_run_id(
         self,
         run_id: str,
-        db_session: AsyncSession,
+        db_session: Optional[AsyncSession] = None,
         load_entries: bool = False
     ) -> Optional[SuiteRun]:
         """Get a suite run by run_id."""
@@ -74,7 +74,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
     async def get_by_id(
         self,
         suite_run_id: int,
-        db_session: AsyncSession,
+        db_session: Optional[AsyncSession] = None,
         load_entries: bool = False
     ) -> Optional[SuiteRun]:
         """Get a suite run by database ID."""
@@ -92,7 +92,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
         status: str,
         end_time: Optional[int] = None,
         error: Optional[str] = None,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> Optional[SuiteRun]:
         """Update suite run status."""
         suite_run = await self.get_by_id(suite_run_id, db_session)
@@ -120,7 +120,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
         failed: int,
         skipped: int,
         total_duration: Optional[int] = None,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> Optional[SuiteRun]:
         """Update suite run with final execution results."""
         suite_run = await self.get_by_id(suite_run_id, db_session)
@@ -158,7 +158,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
         suite_id: int,
         skip: int = 0,
         limit: int = 50,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> List[SuiteRun]:
         """List suite runs for a specific suite."""
         result = await db_session.execute(
@@ -173,7 +173,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
     async def get_entries(
         self,
         suite_run_id: int,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> List[SuiteRunEntry]:
         """Get all entries for a suite run."""
         result = await db_session.execute(
@@ -187,7 +187,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
         self,
         suite_run_id: int,
         entries: List[dict],
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> List[SuiteRunEntry]:
         """Create suite run entries."""
         entry_rows = [
@@ -215,7 +215,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
         test_run_id: Optional[str] = None,
         error_message: Optional[str] = None,
         duration: Optional[int] = None,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> Optional[SuiteRunEntry]:
         """Update suite run entry status."""
         result = await db_session.execute(
@@ -252,7 +252,7 @@ class SQLAlchemySuiteRunRepository(ISuiteRunRepository):
         self,
         suite_run_id: int,
         from_order: int,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> int:
         """Cancel all pending entries from a specific order."""
         import time

@@ -1,10 +1,20 @@
 import { shortest } from "@antiwork/shortest";
-import { E2E_CREDENTIALS } from "./helpers/credentials";
+import { authPayload, goTo, loginSteps } from "./helpers/flows";
+
+shortest([...loginSteps, "Verify Test Dashboard heading is visible"], authPayload);
 
 shortest([
-  "Sign in to AI Test Runner using email #login-email and password #login-password, then click Sign In",
-  "Verify the dashboard page displays Test Dashboard heading",
-], {
-  email: E2E_CREDENTIALS.email,
-  password: E2E_CREDENTIALS.password,
-});
+  ...loginSteps,
+  "Verify Admin View or Personal View badge is visible on dashboard",
+], authPayload);
+
+shortest([
+  ...loginSteps,
+  "Verify time range buttons 7 days, 30 days, and 90 days are visible",
+], authPayload);
+
+shortest([
+  ...loginSteps,
+  goTo("#dashboard", "Dashboard"),
+  "Verify LLM usage stats section or summary cards are visible",
+], authPayload);

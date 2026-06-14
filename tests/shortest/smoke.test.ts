@@ -1,11 +1,7 @@
 import { shortest } from "@antiwork/shortest";
-import { E2E_CREDENTIALS } from "./helpers/credentials";
+import { authPayload, loginSteps } from "./helpers/flows";
 
 shortest([
-  "Open the app login page",
-  "Sign in with email and password",
-  "Verify dashboard shows Test Dashboard heading",
-], {
-  email: E2E_CREDENTIALS.email,
-  password: E2E_CREDENTIALS.password,
-});
+  ...loginSteps,
+  "Verify Test Dashboard heading is visible",
+], authPayload);

@@ -1,17 +1,23 @@
 import { shortest } from "@antiwork/shortest";
-import { E2E_CREDENTIALS } from "./helpers/credentials";
+import { authPayload } from "./helpers/flows";
 
-shortest("Open the login page and verify the AI Test Runner sign-in form is visible with email and password fields");
+shortest("Open the login page and verify AI Test Runner heading and Sign In form with email and password fields");
 
-shortest("Sign in to AI Test Runner using email and password", {
-  email: E2E_CREDENTIALS.email,
-  password: E2E_CREDENTIALS.password,
-});
+shortest("Sign in with valid email and password", authPayload);
+
+shortest("Try to sign in with empty email and verify an error message appears");
+
+shortest("Try to sign in with empty password and verify an error message appears");
+
+shortest("Try invalid credentials wrong@test.com / wrongpassword and verify an error message appears");
+
+shortest('Click "Forgot password?" and verify Reset Your Password form is shown');
+
+shortest('Click "Create account" and verify registration form is shown');
 
 shortest([
-  "Sign in to AI Test Runner with valid email and password",
-  "After login, verify the dashboard page shows Test Dashboard heading",
-], {
-  email: E2E_CREDENTIALS.email,
-  password: E2E_CREDENTIALS.password,
-});
+  "Sign in with valid email and password",
+  "Verify Test Dashboard heading is visible",
+  "Open user dropdown in header and click Logout",
+  "Verify login page is shown again",
+], authPayload);

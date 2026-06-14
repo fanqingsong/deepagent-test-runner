@@ -1,15 +1,3 @@
 {
-  "tasks": [
-    {
-      "id": "6d149be3",
-      "cron": "7 * * * *",
-      "prompt": "/everything-claude-code:refactor-clean",
-      "createdAt": 1780708266477,
-      "lastFiredAt": 1781162411243,
-      "recurring": true,
-      "createdBySessionId": "067077b0-0df6-48a7-b26f-17de4893e976",
-      "createdByPid": 60537,
-      "createdByProcStart": "184837"
-    }
-  ]
+  "tasks": []
 }

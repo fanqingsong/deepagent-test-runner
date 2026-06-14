@@ -67,8 +67,6 @@ from app.services.prompt_builder import PromptBuilder
 from app.services.response_parser import ResponseParser
 from app.services.analytics_service import AnalyticsService
 from app.services.suite_service import SuiteService
-# Temporal schedule service uses functions, not classes - TemporalScheduleService import removed
-# from app.services.temporal_schedule_service import TemporalScheduleService
 from app.services.chat_session_service import ChatSessionService
 from app.services.monitoring_service import MonitoringService
 from app.services.permission_service import PermissionService
@@ -86,8 +84,6 @@ from app.services.interfaces.suite_service_interface import ISuiteService
 
 # Strategy Factories
 from app.services.strategies.schedule_resolver_factory import ScheduleResolverFactory
-# ExecutionStrategyFactory does not exist in current codebase
-# from app.services.strategies.execution_strategy_factory import ExecutionStrategyFactory
 
 logger = logging.getLogger(__name__)
 
@@ -300,11 +296,6 @@ class Container(containers.DeclarativeContainer):
         ScheduleResolverFactory
     )
 
-    # Execution Strategy Factory (with strategies auto-registered) - Commented out as ExecutionStrategyFactory doesn't exist
-    # execution_strategy_factory = providers.Singleton(
-    #     ExecutionStrategyFactory
-    # )
-
     # =============================================================================
     # Core Services (Singleton)
     # =============================================================================
@@ -367,14 +358,6 @@ class Container(containers.DeclarativeContainer):
         SuiteService,
         suite_run_repository=suite_run_repository
     )
-
-    # Temporal Schedule Service - Commented out as TemporalScheduleService doesn't exist as a class
-    # temporal_schedule_service = providers.Singleton(
-    #     TemporalScheduleService,
-    #     schedule_repository=schedule_repository,
-    #     test_definition_repository=test_definition_repository,
-    #     execution_service=execution_service
-    # )
 
     # Chat Session Service
     chat_session_service = providers.Singleton(
@@ -464,20 +447,8 @@ def init_container() -> Container:
 
     # Wire container with application modules
     # This enables @inject decorator to work in these modules
-    container.wire(
-        modules=[
-            "app.api.v1.api",
-            "app.api.v1.endpoints.tests",
-            "app.api.v1.endpoints.test_runs",
-            "app.api.v1.endpoints.schedules",
-            "app.api.v1.endpoints.analytics",
-            "app.api.v1.endpoints.suites",
-            "app.api.v1.endpoints.monitoring",
-            "app.services",
-            "app.temporal.workflows",
-            "app.temporal.activities",
-        ]
-    )
+    # Wire container so @inject on provide_* functions resolves dependencies.
+    container.wire(modules=["app.core.container"])
 
     logger.info("DI Container initialized and wired successfully")
     return container
@@ -730,11 +701,6 @@ class TestContainer(Container):
         >>> test_container.wire(modules=["app.api.v1.endpoints.tests"])
         >>> # Run tests with mocked dependencies
     """
-
-    # Override with mock implementations in tests
-    # test_run_repository = providers.Singleton(MockTestRunRepository)
-    # test_definition_repository = providers.Singleton(MockTestDefinitionRepository)
-    # etc.
 
 
 def override_provider(provider_name: str, mock_instance):

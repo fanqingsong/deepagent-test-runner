@@ -30,7 +30,12 @@ LANGGRAPH_SERVER_URL = os.environ.get(
 router = APIRouter()
 
 # JWT secret key for LangGraph auth (same as LangGraph server uses)
-LANGGRAPH_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4")
+# Must be set via environment variable for security
+LANGGRAPH_SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or os.environ.get("LANGGRAPH_SECRET_KEY")
+if not LANGGRAPH_SECRET_KEY:
+    raise ValueError(
+        "LANGGRAPH_SECRET_KEY or JWT_SECRET_KEY environment variable must be set for LangGraph authentication"
+    )
 LANGGRAPH_ALGORITHM = "HS256"
 
 

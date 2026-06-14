@@ -33,7 +33,7 @@ class ISuiteRunRepository(ABC):
         environment: dict,
         triggered_by: str,
         start_time: int,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> SuiteRun:
         """
         Create a new suite run.
@@ -58,7 +58,7 @@ class ISuiteRunRepository(ABC):
     async def get_by_run_id(
         self,
         run_id: str,
-        db_session: AsyncSession,
+        db_session: Optional[AsyncSession] = None,
         load_entries: bool = False
     ) -> Optional[SuiteRun]:
         """
@@ -78,7 +78,7 @@ class ISuiteRunRepository(ABC):
     async def get_by_id(
         self,
         suite_run_id: int,
-        db_session: AsyncSession,
+        db_session: Optional[AsyncSession] = None,
         load_entries: bool = False
     ) -> Optional[SuiteRun]:
         """
@@ -99,9 +99,9 @@ class ISuiteRunRepository(ABC):
         self,
         suite_run_id: int,
         status: str,
+        db_session: Optional[AsyncSession] = None,
         end_time: Optional[int] = None,
-        error: Optional[str] = None,
-        db_session: AsyncSession
+        error: Optional[str] = None
     ) -> Optional[SuiteRun]:
         """
         Update suite run status.
@@ -125,8 +125,8 @@ class ISuiteRunRepository(ABC):
         passed: int,
         failed: int,
         skipped: int,
-        total_duration: Optional[int] = None,
-        db_session: AsyncSession
+        total_duration: Optional[int],
+        db_session: Optional[AsyncSession] = None
     ) -> Optional[SuiteRun]:
         """
         Update suite run with final execution results.
@@ -150,7 +150,7 @@ class ISuiteRunRepository(ABC):
         suite_id: int,
         skip: int = 0,
         limit: int = 50,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> List[SuiteRun]:
         """
         List suite runs for a specific suite.
@@ -170,7 +170,7 @@ class ISuiteRunRepository(ABC):
     async def get_entries(
         self,
         suite_run_id: int,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> List[SuiteRunEntry]:
         """
         Get all entries for a suite run.
@@ -189,7 +189,7 @@ class ISuiteRunRepository(ABC):
         self,
         suite_run_id: int,
         entries: List[dict],
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> List[SuiteRunEntry]:
         """
         Create suite run entries.
@@ -213,8 +213,8 @@ class ISuiteRunRepository(ABC):
         finished_at: Optional[int] = None,
         test_run_id: Optional[str] = None,
         error_message: Optional[str] = None,
-        duration: Optional[int] = None,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None,
+        duration: Optional[int] = None
     ) -> Optional[SuiteRunEntry]:
         """
         Update suite run entry status.
@@ -239,7 +239,7 @@ class ISuiteRunRepository(ABC):
         self,
         suite_run_id: int,
         from_order: int,
-        db_session: AsyncSession
+        db_session: Optional[AsyncSession] = None
     ) -> int:
         """
         Cancel all pending entries from a specific order.
