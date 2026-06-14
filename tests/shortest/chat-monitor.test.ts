@@ -1,9 +1,5 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage } from "./helpers/prompts";
 
-shortest(
-  [
-    "Verify Chat Monitor page shows h2 title, Active Sessions stat, or session list panel",
-  ],
-  authPayload,
-);
+shortest([assertPage("Chat Monitor", "Active Sessions")], authPayload);

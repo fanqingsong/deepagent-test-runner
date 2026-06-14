@@ -11,7 +11,11 @@ set -a
 # shellcheck disable=SC1091
 source .env.local
 set +a
-export SHORTEST_HEADLESS=true
+export SHORTEST_HEADLESS="${SHORTEST_HEADLESS:-false}"
+
+headless_flag() {
+  [[ "${SHORTEST_HEADLESS}" == "true" ]] && echo --headless
+}
 
 COOLDOWN_SEC="${COOLDOWN_SEC:-10}"
 BETWEEN_FILES_SEC="${BETWEEN_FILES_SEC:-3}"
@@ -22,7 +26,7 @@ run_shortest_file() {
   shortest_env_for_file "$f"
   clear_login_ratelimit
   echo "SHORTEST_START_HASH=${SHORTEST_START_HASH:-}" >>"$log"
-  timeout 900 npx shortest "$f" --headless >>"$log" 2>&1
+  timeout 900 npx shortest "$f" $(headless_flag) >>"$log" 2>&1
 }
 
 setup_auth_state "$DIR" || true
@@ -44,7 +48,7 @@ idx=0
 
 echo "Run ID: $RUN_ID" | tee "$RESULTS"
 echo "Output: $OUT_DIR" | tee -a "$RESULTS"
-echo "Running $total test files (headless, auth-state)..." | tee -a "$RESULTS"
+echo "Running $total test files (headless=${SHORTEST_HEADLESS}, auth-state)..." | tee -a "$RESULTS"
 
 for f in "${files[@]}"; do
   idx=$((idx + 1))

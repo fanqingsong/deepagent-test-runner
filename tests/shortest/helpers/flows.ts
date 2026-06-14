@@ -8,23 +8,23 @@ export const authPayload = {
 
 /** Fresh login from unauthenticated state */
 export const loginSteps = [
-  "Open the app login page",
-  "Enter the provided email and password credentials into the login form, then click Sign In",
+  "Call browser_snapshot. Fill the Email Address field with the provided email and the Password field with the provided password, then click the Sign In button.",
 ];
 
 /** Ensure login form is visible (logout first if authenticated) */
 export const requireLoginPageSteps = [
-  "If logged in, open user dropdown in header and click Logout",
-  "Verify login page with Sign In form and email/password fields is visible",
+  "If a user menu or avatar in the header indicates a logged-in session, open it and click Logout",
+  'Call browser_snapshot. Pass if heading "AI Test Runner", field "Email Address", field "Password", and button "Sign In" are visible.',
 ];
 
 export const logoutSteps = [
-  "Open user dropdown in header and click Logout",
-  "Verify login page is shown again",
+  "Open the user menu in the header and click Logout",
+  'Call browser_snapshot. Pass if heading "AI Test Runner" and button "Sign In" are visible.',
 ];
 
-/** Navigate via URL hash (faster and more reliable than AI sidebar clicks). */
+/** Navigate with shortest navigate tool (navigation.test.ts only). */
 export function goTo(hash: string, _label: string): string {
   const path = hash.startsWith("#") ? hash : `#${hash}`;
-  return `Navigate directly to URL hash ${path} and wait for the page to finish loading`;
+  const base = (process.env.BASE_URL || "http://localhost:8085").replace(/\/$/, "");
+  return `Use the navigate tool to open ${base}${path}. Call browser_snapshot and wait until main content has loaded.`;
 }

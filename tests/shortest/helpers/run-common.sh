@@ -43,13 +43,15 @@ classify_log() {
 
 shortest_env_for_file() {
   local f="$1"
+  local helpers_dir
+  helpers_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   if [[ "$(basename "$f")" == "login.test.ts" ]]; then
     export SHORTEST_SKIP_AUTH_STATE=1
     unset SHORTEST_START_HASH
   else
     unset SHORTEST_SKIP_AUTH_STATE
     local hash
-    hash="$(grep -oE 'goTo\("#[^"]+"' "$f" 2>/dev/null | head -1 | sed -E 's/goTo\("([^"]+)".*/\1/' || true)"
+    hash="$(node "$helpers_dir/route-hashes.mjs" "$(basename "$f")" 2>/dev/null || echo '#dashboard')"
     export SHORTEST_START_HASH="${hash:-#dashboard}"
   fi
 }

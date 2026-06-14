@@ -20,7 +20,11 @@ set -a
 # shellcheck disable=SC1091
 source .env.local
 set +a
-export SHORTEST_HEADLESS=true
+export SHORTEST_HEADLESS="${SHORTEST_HEADLESS:-false}"
+
+headless_flag() {
+  [[ "${SHORTEST_HEADLESS}" == "true" ]] && echo --headless
+}
 
 run_one_file() {
   local f="$1"
@@ -31,7 +35,7 @@ run_one_file() {
     shortest_env_for_file "$f"
     clear_login_ratelimit
     echo "SHORTEST_START_HASH=${SHORTEST_START_HASH:-}"
-    timeout "$TIMEOUT_SEC" npx shortest "$f" --headless
+    timeout "$TIMEOUT_SEC" npx shortest "$f" $(headless_flag)
     local exit_code=$?
     local status
     status="$(classify_log "$log")"
@@ -42,7 +46,7 @@ run_one_file() {
       shortest_env_for_file "$f"
       clear_login_ratelimit
       echo "SHORTEST_START_HASH=${SHORTEST_START_HASH:-}"
-      timeout "$TIMEOUT_SEC" npx shortest "$f" --headless
+      timeout "$TIMEOUT_SEC" npx shortest "$f" $(headless_flag)
       exit_code=$?
       status="$(classify_log "$log")"
     fi
@@ -75,7 +79,7 @@ total=${#files[@]}
 
 echo "Run ID: $RUN_ID" | tee "$RESULTS"
 echo "Output: $OUT_DIR" | tee -a "$RESULTS"
-echo "Running $total test files in parallel (jobs=$PARALLEL_JOBS, headless, auth-state)..." | tee -a "$RESULTS"
+echo "Running $total test files in parallel (jobs=$PARALLEL_JOBS, headless=${SHORTEST_HEADLESS}, auth-state)..." | tee -a "$RESULTS"
 
 pass=0
 fail=0

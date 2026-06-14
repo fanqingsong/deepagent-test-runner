@@ -1,11 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify User Management heading is visible",
-    "Verify user list table is displayed",
-    "Click Create User button if visible and verify create user modal opens",
+    assertPage("User Management"),
+    assertPageAny("Users"),
   ],
   authPayload,
 );

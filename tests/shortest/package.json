@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "shortest",
-    "test:headless": "shortest --headless",
+    "test:headless": "SHORTEST_HEADLESS=true shortest --headless",
+    "test:headed": "SHORTEST_HEADLESS=false SHORTEST_LOG_CONFIG=1 NODE_OPTIONS='--import ./helpers/force-headed.mjs' shortest",
+    "demo:browser": "./headed-demo.sh",
     "test:smoke": "shortest smoke.test.ts",
     "test:login": "shortest login.test.ts",
     "test:dashboard": "shortest dashboard.test.ts",

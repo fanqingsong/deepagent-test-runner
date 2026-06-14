@@ -1,10 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify System Monitoring heading is visible",
-    "Verify AI Analysis or Alerts section is displayed",
+    assertPage("System Monitoring"),
+    assertPageAny("AI Analysis", "Alerts"),
   ],
   authPayload,
 );

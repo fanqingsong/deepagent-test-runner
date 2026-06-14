@@ -17,6 +17,9 @@ const authStatePath = join(process.cwd(), ".shortest/auth-state.json");
 const useAuthState =
   process.env.SHORTEST_SKIP_AUTH_STATE !== "1" && existsSync(authStatePath);
 
+/** Headed by default — set SHORTEST_HEADLESS=true for CI/batch. */
+const headless = process.env.SHORTEST_HEADLESS === "true";
+
 /** With saved session, open target page via hash — no AI navigation needed. */
 const startHash = process.env.SHORTEST_START_HASH || (useAuthState ? "#dashboard" : "");
 const appBaseUrl =
@@ -24,8 +27,14 @@ const appBaseUrl =
     ? `${baseUrl.replace(/\/$/, "")}${startHash.startsWith("#") ? startHash : `#${startHash}`}`
     : baseUrl;
 
+if (process.env.SHORTEST_LOG_CONFIG === "1") {
+  console.log(
+    `[shortest.config] headless=${headless} baseUrl=${appBaseUrl} DISPLAY=${process.env.DISPLAY ?? ""}`,
+  );
+}
+
 export default {
-  headless: process.env.SHORTEST_HEADLESS === "true",
+  headless,
   baseUrl: appBaseUrl,
   testPattern: "*.test.ts",
   browser: {

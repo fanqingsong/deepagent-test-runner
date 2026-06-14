@@ -1,10 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify Token Usage Dashboard heading is visible",
-    "Verify token usage summary cards or charts are displayed",
+    assertPage("Token Usage Dashboard"),
+    assertPageAny("Tokens", "Usage", "Total"),
   ],
   authPayload,
 );

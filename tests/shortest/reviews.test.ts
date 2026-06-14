@@ -1,10 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify Review Management heading is visible",
-    "Verify Pending Tests or Pending Suites section is displayed",
+    assertPage("Review Management"),
+    assertPageAny("Pending Tests", "Pending Suites", "pending", "No pending"),
   ],
   authPayload,
 );

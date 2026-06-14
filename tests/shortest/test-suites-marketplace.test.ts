@@ -1,10 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage, assertPageAny } from "./helpers/prompts";
 
 shortest(
   [
-    "Verify Test Suite Marketplace heading is visible",
-    "Verify marketplace shows suite cards or an empty state message",
+    assertPage("Test Suite Marketplace"),
+    assertPageAny("suite", "empty", "No suites"),
   ],
   authPayload,
 );

@@ -1,4 +1,5 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
+import { assertPage } from "./helpers/prompts";
 
-shortest(["Verify Test Dashboard heading is visible"], authPayload);
+shortest([assertPage("Test Dashboard")], authPayload);

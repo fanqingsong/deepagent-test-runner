@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
  * Fast Playwright login — saves storageState for subsequent shortest runs.
- * Avoids repeating AI-driven login in every test file.
  */
 import { chromium } from "playwright";
 import { mkdirSync, existsSync, readFileSync } from "fs";
@@ -24,7 +23,7 @@ function loadEnvLocal() {
 
 loadEnvLocal();
 
-const baseUrl = process.env.BASE_URL || "http://localhost:8085";
+const baseUrl = (process.env.BASE_URL || "http://localhost:8085").replace(/\/$/, "");
 const email = process.env.E2E_EMAIL || "e2e@test.com";
 const password = process.env.E2E_PASSWORD || "TestPass123!";
 const outDir = join(root, ".shortest");
@@ -41,7 +40,23 @@ try {
   await page.getByRole("textbox", { name: /email/i }).fill(email);
   await page.getByRole("textbox", { name: /password/i }).fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/#(dashboard|test-cases|suites|token|profile|users)/, { timeout: 30000 });
+
+  const loginError = page.locator("text=/invalid|failed|error|rate limit/i").first();
+  await Promise.race([
+    page.waitForFunction(
+      () => {
+        const hash = window.location.hash.replace(/^#/, "");
+        return hash.length > 0 && hash !== "login";
+      },
+      { timeout: 60000 },
+    ),
+    page.getByRole("heading", { name: /Test Dashboard/i }).waitFor({ timeout: 60000 }),
+    page.locator(".sidebar, nav").first().waitFor({ timeout: 60000 }),
+  ]).catch(async () => {
+    const errText = await loginError.textContent().catch(() => null);
+    throw new Error(errText ? `Login failed: ${errText}` : "Login timed out waiting for post-auth page");
+  });
+
   await context.storageState({ path: statePath });
   console.log(`Auth state saved: ${statePath}`);
 } finally {
