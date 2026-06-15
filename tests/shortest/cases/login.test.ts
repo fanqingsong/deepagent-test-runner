@@ -1,6 +1,6 @@
 import { shortest } from "@antiwork/shortest";
-import { authPayload, loginSteps, logoutSteps, requireLoginPageSteps } from "./helpers/flows";
-import { actThenAssert, assertPage } from "./helpers/prompts";
+import { authPayload, loginSteps, logoutSteps, requireLoginPageSteps } from "../helpers/flows";
+import { actThenAssert, assertPage } from "../helpers/prompts";
 
 shortest(
   assertPage("AI Test Runner", "Email Address", "Password", "Sign In"),

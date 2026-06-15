@@ -1,6 +1,6 @@
 import { shortest } from "@antiwork/shortest";
-import { authPayload, goTo } from "./helpers/flows";
-import { assertAfterNavigate, assertAfterNavigateAny } from "./helpers/prompts";
+import { authPayload, goTo } from "../helpers/flows";
+import { assertAfterNavigate, assertAfterNavigateAny } from "../helpers/prompts";
 
 const single = (text: string) => assertAfterNavigate(text);
 const anyOf = (...texts: string[]) => assertAfterNavigateAny(...texts);

@@ -74,7 +74,7 @@ RESULTS="$OUT_DIR/summary.txt"
 LATEST_LINK="$DIR/results/latest"
 
 shopt -s nullglob
-mapfile -t files < <(printf '%s\n' *.test.ts | sort)
+mapfile -t files < <(list_case_files)
 total=${#files[@]}
 
 echo "Run ID: $RUN_ID" | tee "$RESULTS"

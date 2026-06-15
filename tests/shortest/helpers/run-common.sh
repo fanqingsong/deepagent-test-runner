@@ -1,6 +1,29 @@
 #!/usr/bin/env bash
 # Shared helpers for shortest batch runners.
 
+
+CASES_DIR="${CASES_DIR:-cases}"
+
+resolve_case_file() {
+  local f="$1"
+  if [[ -f "$f" ]]; then
+    echo "$f"
+  elif [[ -f "$CASES_DIR/$f" ]]; then
+    echo "$CASES_DIR/$f"
+  else
+    echo "$f"
+  fi
+}
+
+list_case_files() {
+  local dir="${1:-$CASES_DIR}"
+  shopt -s nullglob
+  local f
+  for f in "$dir"/*.test.ts; do
+    printf '%s\n' "$f"
+  done | sort
+}
+
 clear_login_ratelimit() {
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -q deepagent-tester-redis; then
     docker exec deepagent-tester-redis redis-cli KEYS 'ratelimit*' 2>/dev/null \

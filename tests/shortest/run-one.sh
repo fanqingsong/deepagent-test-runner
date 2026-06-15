@@ -2,7 +2,7 @@
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
-FILE="${1:?Usage: ./run-one.sh <file.test.ts> [timeout_sec] [--headless]}"
+RAW_FILE="${1:?Usage: ./run-one.sh <file.test.ts> [timeout_sec] [--headless]}"
 TIMEOUT_SEC=900
 FORCE_HEADLESS=false
 
@@ -15,6 +15,7 @@ done
 
 # shellcheck disable=SC1091
 source "$DIR/helpers/run-common.sh"
+FILE="$(resolve_case_file "$RAW_FILE")"
 
 set -a
 # shellcheck disable=SC1091

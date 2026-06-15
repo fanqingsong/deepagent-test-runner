@@ -36,7 +36,7 @@ if (process.env.SHORTEST_LOG_CONFIG === "1") {
 export default {
   headless,
   baseUrl: appBaseUrl,
-  testPattern: "*.test.ts",
+  testPattern: "cases/*.test.ts",
   browser: {
     contextOptions: {
       ignoreHTTPSErrors: true,
