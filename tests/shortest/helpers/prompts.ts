@@ -31,6 +31,12 @@ export function assertPageLoaded(...texts: string[]): string {
 }
 
 /** Interactive step: snapshot → action → snapshot → assert. */
+
+/** Assert a validation/error message string in snapshot. */
+export function assertError(message: string): string {
+  return `${SNAPSHOT_AFTER_WAIT} Pass if the snapshot contains "${message}".`;
+}
+
 export function actThenAssert(action: string, expectation: string): string {
   return `Call browser_snapshot. ${action} Call browser_snapshot again. Pass if ${expectation}.`;
 }

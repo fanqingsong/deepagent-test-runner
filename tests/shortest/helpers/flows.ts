@@ -8,13 +8,18 @@ export const authPayload = {
 
 /** Fresh login from unauthenticated state */
 export const loginSteps = [
-  "Call browser_snapshot. Fill the Email Address field with the provided email and the Password field with the provided password, then click the Sign In button.",
+  "Navigate to http://localhost:8085/#login if the Sign In form is not visible.",
+  "Fill Email Address with the provided email and Password with the provided password, then click Sign In and wait until loading finishes.",
 ];
 
 /** Ensure login form is visible (logout first if authenticated, navigate to login if on another form) */
+export const openLoginFormSteps = [
+  "Call browser_snapshot. If Email Address, Password, and Sign In are not visible, use the navigate tool to open http://localhost:8085/#login.",
+];
+
 export const requireLoginPageSteps = [
-  "If a user menu or avatar in the header indicates a logged-in session, open it and click Logout. If the snapshot does not show the main login form with Email Address, Password, and Sign In, use the navigate tool to open http://localhost:8085/#login.",
-  'Call browser_snapshot. Pass if heading "AI Test Runner", field "Email Address", field "Password", and button "Sign In" are all visible.',
+  "If a user menu or avatar indicates a logged-in session, open it and click Logout.",
+  "If Email Address, Password, and Sign In are not visible, use the navigate tool to open http://localhost:8085/#login.",
 ];
 
 export const logoutSteps = [

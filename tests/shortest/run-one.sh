@@ -70,4 +70,7 @@ code=${PIPESTATUS[0]}
 set -e
 
 grep -E "Tests|failed|passed|Error processing|Duration|shortest.config" "$log" | tail -10 || true
-echo "Exit: $code | Full log: $log"
+status="$(classify_log "$log")"
+if [[ "$status" == "FAIL" ]]; then code=1; fi
+echo "Exit: $code ($status) | Full log: $log"
+exit $code
