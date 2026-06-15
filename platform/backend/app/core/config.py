@@ -203,6 +203,20 @@ class Settings(BaseSettings):
         description="Tavily search API key for web search functionality"
     )
 
+    # Neo4j (Causal GraphRAG root cause analysis)
+    NEO4J_URI: str = Field(
+        default="bolt://localhost:7687",
+        description="Neo4j Bolt connection URI"
+    )
+    NEO4J_USER: str = Field(
+        default="neo4j",
+        description="Neo4j username"
+    )
+    NEO4J_PASSWORD: str = Field(
+        default="neo4j_password",
+        description="Neo4j password"
+    )
+
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
         """Reject default/weak secrets when not in debug mode."""

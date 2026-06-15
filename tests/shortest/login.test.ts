@@ -9,24 +9,24 @@ shortest(
 shortest([
   ...requireLoginPageSteps,
   actThenAssert(
-    "Leave Email Address empty, click Sign In.",
-    'an error message such as "Please enter your email address" is visible.',
+    "Without filling any fields, click the Sign In button.",
+    'an error message such as "Please enter your email address" is visible in the snapshot.',
   ),
 ]);
 
 shortest([
   ...requireLoginPageSteps,
   actThenAssert(
-    "Fill Email Address with test@example.com, leave Password empty, click Sign In.",
-    'an error message such as "Please enter your password" is visible.',
+    'Fill the Email Address field with "test@example.com" but leave the Password field empty, then click Sign In.',
+    'an error message containing "password" or "Please enter" is visible in the snapshot.',
   ),
 ]);
 
 shortest([
   ...requireLoginPageSteps,
   actThenAssert(
-    'Fill Email Address with wrong@test.com and Password with wrongpassword, click Sign In.',
-    "an error message about invalid credentials or login failure is visible.",
+    'Fill Email Address with "wrong@test.com" and Password with "wrongpassword", then click Sign In.',
+    'an error message is visible (e.g. "Invalid email or password", "Login failed", "Too many login attempts", or similar).',
   ),
 ]);
 

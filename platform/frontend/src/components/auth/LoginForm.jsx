@@ -77,6 +77,7 @@ function LoginForm({ onLoginSuccess, onSwitchToPasswordReset }) {
       if (onLoginSuccess) {
         onLoginSuccess(response.user);
       }
+      setLoading(false);
     } catch (err) {
       // Extract error message from response or use default
       let errorMessage = err.message || 'Login failed. Please try again.';

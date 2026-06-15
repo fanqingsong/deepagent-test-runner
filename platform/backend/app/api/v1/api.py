@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     monitoring,
     reviews,
     roles,
+    root_cause,
     run_configs,
     script_generation,
     script_validation,
@@ -95,6 +96,13 @@ api_router.include_router(
     data_analysis.router,
     prefix="/data-analysis",
     tags=["data-analysis"]
+)
+
+# Causal GraphRAG root cause analysis endpoints
+api_router.include_router(
+    root_cause.router,
+    prefix="/analysis",
+    tags=["root-cause-analysis"]
 )
 
 api_router.include_router(

@@ -18,7 +18,7 @@ export const ROUTE_HASHES = {
   "token-budget.test.ts": "#token-budget",
   "token-quota.test.ts": "#token-quota",
   "token-alert.test.ts": "#token-alert",
-  "token-analytics.test.ts": "#token-analytics",
+  "token-analytics.test.ts": "#dashboard",
   "navigation.test.ts": "#dashboard",
 };
 

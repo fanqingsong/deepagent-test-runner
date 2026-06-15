@@ -9,3 +9,4 @@ export * from './api-testing.js';
 export * from './api-execution.js';
 export * from './api-monitoring.js';
 export * from './api-token.js';
+export * from './api-root-cause.js';

@@ -75,6 +75,8 @@ from app.services.token_budget_service import TokenBudgetService
 from app.services.token_quota_service import TokenQuotaService
 from app.services.token_alert_service import TokenAlertService
 from app.services.token_reporting_service import TokenReportingService
+from app.services.causal_graphrag.neo4j_client import Neo4jClient
+from app.services.causal_graphrag.root_cause_service import RootCauseService
 
 # Service Interfaces (for Dependency Inversion Principle)
 from app.services.interfaces.execution_service_interface import IExecutionService
@@ -410,6 +412,22 @@ class Container(containers.DeclarativeContainer):
         metrics_collector=metrics_collector
     )
 
+    # =============================================================================
+    # Causal GraphRAG (Root Cause Analysis) Services (Singleton)
+    # =============================================================================
+
+    # Neo4j client (lazy connection)
+    neo4j_client = providers.Singleton(
+        Neo4jClient
+    )
+
+    # Root Cause Service (GraphRAG + causal inference + LLM summarization)
+    root_cause_service = providers.Singleton(
+        RootCauseService,
+        neo4j_client=neo4j_client,
+        llm_client=llm_client
+    )
+
 
 # =============================================================================
 # Global Container Instance
@@ -660,6 +678,14 @@ def provide_token_reporting_service(
     service: TokenReportingService = Depends(Provide[Container.token_reporting_service])
 ) -> TokenReportingService:
     """FastAPI provider for Token Reporting Service."""
+    return service
+
+
+@inject
+def provide_root_cause_service(
+    service: RootCauseService = Depends(Provide[Container.root_cause_service])
+) -> RootCauseService:
+    """FastAPI provider for the Causal GraphRAG Root Cause Service."""
     return service
 
 

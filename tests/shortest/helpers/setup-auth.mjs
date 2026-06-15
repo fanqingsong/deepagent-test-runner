@@ -39,6 +39,8 @@ try {
   await page.goto(`${baseUrl}/#login`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("textbox", { name: /email/i }).fill(email);
   await page.getByRole("textbox", { name: /password/i }).fill(password);
+  // Remember me → user_info in localStorage (Playwright storageState does not persist sessionStorage).
+  await page.getByRole("checkbox", { name: /remember me/i }).check();
   await page.getByRole("button", { name: /sign in/i }).click();
 
   const loginError = page.locator("text=/invalid|failed|error|rate limit/i").first();
@@ -55,6 +57,17 @@ try {
   ]).catch(async () => {
     const errText = await loginError.textContent().catch(() => null);
     throw new Error(errText ? `Login failed: ${errText}` : "Login timed out waiting for post-auth page");
+  });
+
+  await page.waitForFunction(
+    () => !!localStorage.getItem("user_info"),
+    { timeout: 15000 },
+  );
+
+  // Drop chat UI prefs so tests start from a closed chat panel.
+  await page.evaluate(() => {
+    localStorage.removeItem("chat-modal-maximized");
+    localStorage.removeItem("chat-modal-width");
   });
 
   await context.storageState({ path: statePath });

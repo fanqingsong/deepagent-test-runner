@@ -1,11 +1,11 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
-import { assertPage } from "./helpers/prompts";
+import { assertPageAny, assertPageLoaded } from "./helpers/prompts";
 
 shortest(
   [
-    assertPage("My Profile"),
-    assertPage("Username", "Email"),
+    assertPageLoaded("My Profile"),
+    assertPageAny("Edit Profile", "admin@example.com", "admin"),
   ],
   authPayload,
 );

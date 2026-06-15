@@ -3,7 +3,7 @@
 
 clear_login_ratelimit() {
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -q deepagent-tester-redis; then
-    docker exec deepagent-tester-redis redis-cli KEYS 'ratelimit:login:*' 2>/dev/null \
+    docker exec deepagent-tester-redis redis-cli KEYS 'ratelimit*' 2>/dev/null \
       | xargs -r docker exec deepagent-tester-redis redis-cli DEL >/dev/null 2>&1 || true
   fi
 }

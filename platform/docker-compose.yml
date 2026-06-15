@@ -42,6 +42,37 @@ services:
       - test-network
     restart: unless-stopped
 
+  neo4j:
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/neo4j:5.22.0
+    container_name: deepagent-tester-neo4j
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/neo4j_password}
+      # Enable Graph Data Science plugin for community detection (Louvain).
+      # If the plugin cannot be provisioned, the app falls back to category-based
+      # community grouping (see graph_builder.detect_communities).
+      NEO4J_PLUGINS: '["graph-data-science"]'
+      NEO4J_dbms_security_procedures_unrestricted: gds.*
+      NEO4J_dbms_security_procedures_allowlist: gds.*
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+    # NOTE: Host ports 7475/7688 (mapped to in-container 7474/7687) to avoid
+    # clashing with other local Neo4j instances. The backend connects over the
+    # internal docker network via bolt://neo4j:7687.
+    ports:
+      - "7475:7474"
+      - "7688:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - test-network
+    restart: unless-stopped
+
   temporal:
     image: temporalio/auto-setup:latest
     container_name: deepagent-tester-temporal
@@ -198,6 +229,10 @@ services:
       LLM_EMBEDDING_MODEL: ${LLM_EMBEDDING_MODEL:-BAAI/bge-m3}
       LLM_EMBEDDING_BASE_URL: ${LLM_EMBEDDING_BASE_URL:-https://api.siliconflow.cn/v1}
       LLM_EMBEDDING_API_KEY: ${LLM_EMBEDDING_API_KEY:-}
+      # Neo4j (Causal GraphRAG)
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j_password}
       # Langfuse Observability
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
@@ -278,6 +313,10 @@ services:
       TEMPORAL_HOST_URL: temporal:7233
       TEMPORAL_NAMESPACE: default
       TEMPORAL_TASK_QUEUE: unified-backend-task-queue
+      # Neo4j (Causal GraphRAG)
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-neo4j_password}
       # Observability Settings
       PROMETHEUS_ENABLED: "true"
       LOKI_ENABLED: "true"
@@ -568,6 +607,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  neo4j_data:
   langfuse_db_data:
   langfuse_redis_data:
   langfuse_clickhouse_data:

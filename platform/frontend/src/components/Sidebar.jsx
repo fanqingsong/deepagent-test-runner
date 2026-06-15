@@ -147,6 +147,11 @@ const menuItems = [
         path: '#monitoring'
       },
       {
+        id: 'root-cause',
+        label: 'Root Cause Analysis',
+        path: '#root-cause'
+      },
+      {
         id: 'nanjing-weather',
         label: 'Nanjing Weather',
         path: '#nanjing-weather'

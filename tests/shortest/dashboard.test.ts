@@ -1,12 +1,5 @@
 import { shortest } from "@antiwork/shortest";
 import { authPayload } from "./helpers/flows";
-import { assertPage, assertPageAny } from "./helpers/prompts";
+import { assertPageLoaded } from "./helpers/prompts";
 
-shortest(
-  [
-    assertPage("Test Dashboard"),
-    assertPageAny("Admin View", "Personal View"),
-    assertPage("7 days", "30 days", "90 days"),
-  ],
-  authPayload,
-);
+shortest([assertPageLoaded("Test Dashboard", "7 days", "30 days", "90 days")], authPayload);

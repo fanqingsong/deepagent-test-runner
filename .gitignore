@@ -211,3 +211,5 @@ htmlcov/
 venv/
 .venv/
 
+.env*.local
+.shortest/

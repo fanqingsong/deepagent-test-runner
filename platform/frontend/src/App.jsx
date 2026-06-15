@@ -20,6 +20,7 @@ import TestCasesMarketplacePage from './pages/TestCasesMarketplacePage';
 import SuiteMarketplacePage from './pages/SuiteMarketplacePage';
 import NanjingWeatherPage from './pages/NanjingWeatherPage';
 import MonitoringPage from './pages/MonitoringPage';
+import RootCauseAnalysisPage from './pages/RootCauseAnalysisPage';
 import TokenUsageDashboard from './components/token/TokenUsageDashboard';
 import BudgetManagement from './components/token/BudgetManagement';
 import QuotaManagement from './components/token/QuotaManagement';
@@ -50,7 +51,7 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState(() => {
     const hash = window.location.hash.slice(1);
-    if (['dashboard', 'users', 'roles', 'reviews', 'profile', 'chat-monitor', 'nanjing-weather', 'monitoring', 'token-usage', 'token-budget', 'token-quota', 'token-alert', 'token-analytics'].includes(hash)) {
+    if (['dashboard', 'users', 'roles', 'reviews', 'profile', 'chat-monitor', 'nanjing-weather', 'monitoring', 'root-cause', 'token-usage', 'token-budget', 'token-quota', 'token-alert', 'token-analytics'].includes(hash)) {
       return hash;
     } else if (hash.startsWith('test-cases')) {
       return hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases';
@@ -74,7 +75,7 @@ function AppContent() {
         setCurrentView(hash === 'test-cases-marketplace' ? 'test-cases-marketplace' : 'test-cases');
       } else if (hash.startsWith('suites')) {
         setCurrentView(hash === 'suites-marketplace' ? 'suites-marketplace' : 'suites');
-      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'reviews' || hash === 'profile' || hash === 'chat-monitor' || hash === 'nanjing-weather' || hash === 'monitoring' || hash === 'token-usage' || hash === 'token-budget' || hash === 'token-quota' || hash === 'token-alert' || hash === 'token-analytics') {
+      } else if (hash === 'dashboard' || hash === 'users' || hash === 'roles' || hash === 'reviews' || hash === 'profile' || hash === 'chat-monitor' || hash === 'nanjing-weather' || hash === 'monitoring' || hash === 'root-cause' || hash === 'token-usage' || hash === 'token-budget' || hash === 'token-quota' || hash === 'token-alert' || hash === 'token-analytics') {
         setCurrentView(hash);
       }
     };
@@ -282,6 +283,8 @@ function AppContent() {
           <NanjingWeatherPage />
         ) : currentView === 'monitoring' ? (
           <MonitoringPage />
+        ) : currentView === 'root-cause' ? (
+          <RootCauseAnalysisPage />
         ) : currentView === 'token-usage' ? (
           <TokenUsageDashboard />
         ) : currentView === 'token-budget' ? (

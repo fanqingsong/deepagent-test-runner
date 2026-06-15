@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@antiwork/shortest": "^0.4.9"
+  }
+}
