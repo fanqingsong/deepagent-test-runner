@@ -9,7 +9,7 @@ shortest(
       'a message textbox or chat input area is visible in the snapshot.',
     ),
     actThenAssert(
-      'Click the button with aria-label "Close chat".',
+      'Close the chat panel by clicking the button with aria-label "Close chat", or press Escape.',
       'the button with aria-label "Open chat" is visible again.',
     ),
   ],

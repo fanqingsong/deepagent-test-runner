@@ -29,7 +29,7 @@
     "test:monitoring": "shortest cases/monitoring.test.ts",
     "test:weather": "shortest cases/nanjing-weather.test.ts",
     "test:chat": "shortest cases/chat-assistant.test.ts",
-    "test:navigation": "shortest cases/navigation.test.ts",
+    "test:navigation": "shortest cases/navigation-core.test.ts cases/navigation-token-usage.test.ts cases/navigation-token-budget.test.ts cases/navigation-token-quota.test.ts cases/navigation-admin-mgmt.test.ts cases/navigation-admin-ops.test.ts",
     "test:admin": "shortest cases/users.test.ts cases/roles.test.ts cases/reviews.test.ts cases/profile.test.ts cases/chat-monitor.test.ts cases/monitoring.test.ts cases/nanjing-weather.test.ts"
   },
   "devDependencies": {

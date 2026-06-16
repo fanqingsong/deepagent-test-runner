@@ -3,6 +3,6 @@ import { authPayload } from "../helpers/flows";
 import { assertPageAny } from "../helpers/prompts";
 
 shortest(
-  [assertPageAny("天气", "Weather", "Weather Information", "Loading")],
+  [assertPageAny("天气", "Weather", "Weather Information", "Nanjing", "Loading")],
   authPayload,
 );

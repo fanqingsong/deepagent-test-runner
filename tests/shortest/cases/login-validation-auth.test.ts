@@ -5,7 +5,7 @@ import { actThenAssert } from "../helpers/prompts";
 shortest([
   ...openLoginFormSteps,
   actThenAssert(
-    'Navigate to http://localhost:8085/#login. Fill Email "wrong@test.com" and Password "wrongpassword", click Sign In, wait 3 seconds.',
-    '"Test Dashboard" is not in the snapshot and the Sign In form or a login error alert is still visible',
+    'Fill Email Address with "wrong@test.com" and Password with "wrongpassword", then click Sign In.',
+    'the snapshot still shows the Sign In form and does not contain "Test Dashboard" (an error like "Invalid email or password" may appear).',
   ),
 ]);

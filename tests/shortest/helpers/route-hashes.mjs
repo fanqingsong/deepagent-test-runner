@@ -19,7 +19,12 @@ export const ROUTE_HASHES = {
   "token-quota.test.ts": "#token-quota",
   "token-alert.test.ts": "#token-alert",
   "token-analytics.test.ts": "#dashboard",
-  "navigation.test.ts": "#dashboard",
+  "navigation-core.test.ts": "#dashboard",
+  "navigation-token-usage.test.ts": "#dashboard",
+  "navigation-token-budget.test.ts": "#dashboard",
+  "navigation-token-quota.test.ts": "#dashboard",
+  "navigation-admin-mgmt.test.ts": "#dashboard",
+  "navigation-admin-ops.test.ts": "#dashboard",
 };
 
 export function routeHashFor(filename) {

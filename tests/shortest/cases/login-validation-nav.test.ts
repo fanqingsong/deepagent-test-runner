@@ -5,15 +5,15 @@ import { actThenAssert } from "../helpers/prompts";
 shortest([
   ...openLoginFormSteps,
   actThenAssert(
-    'Navigate to http://localhost:8085/#login, then click "Forgot password?".',
-    'heading "Reset Your Password" or a reset email form is visible',
+    'Click the "Forgot password?" link button below the password field.',
+    'the snapshot contains "Reset Your Password" or a password reset email form.',
   ),
 ]);
 
 shortest([
   ...openLoginFormSteps,
   actThenAssert(
-    'Navigate to http://localhost:8085/#login, then click "Create account".',
-    'heading "Create an account" or a registration form is visible',
+    'Click the "Create account" link button in the footer below "Don\'t have an account?".',
+    'the snapshot contains "Create an account" or "Create a new account".',
   ),
 ]);

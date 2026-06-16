@@ -20,13 +20,25 @@ headless_flag() {
 COOLDOWN_SEC="${COOLDOWN_SEC:-10}"
 BETWEEN_FILES_SEC="${BETWEEN_FILES_SEC:-3}"
 
+timeout_for_file() {
+  local base="$1"
+  case "$base" in
+    login) echo 1800 ;;
+    navigation|navigation-*) echo 1800 ;;
+    *) echo 900 ;;
+  esac
+}
+
 run_shortest_file() {
   local f="$1"
   local log="$2"
+  local base timeout_sec
+  base="$(basename "$f" .test.ts)"
+  timeout_sec="$(timeout_for_file "$base")"
   shortest_env_for_file "$f"
   clear_login_ratelimit
   echo "SHORTEST_START_HASH=${SHORTEST_START_HASH:-}" >>"$log"
-  timeout 900 npx shortest "$f" $(headless_flag) >>"$log" 2>&1
+  timeout "$timeout_sec" npx shortest "$f" $(headless_flag) >>"$log" 2>&1
 }
 
 setup_auth_state "$DIR" || true

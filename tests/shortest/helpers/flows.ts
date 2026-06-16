@@ -27,15 +27,38 @@ export const logoutSteps = [
   'Call browser_snapshot. Pass if heading "AI Test Runner" and button "Sign In" are visible.',
 ];
 
-/** Navigate with shortest navigate tool (navigation.test.ts only). */
-export function goTo(hash: string, pageTitle: string): string {
+const SIDEBAR_FALLBACKS: Record<string, string> = {
+  "#test-cases-marketplace":
+    ' If the page did not change, expand "Test Cases" in the sidebar and click "Marketplace".',
+  "#suites-marketplace":
+    ' If the page did not change, expand "Test Suites" in the sidebar and click "Marketplace".',
+  "#token-usage":
+    ' If the page did not change, expand "Token Management" in the sidebar and click "Usage Dashboard".',
+  "#token-budget":
+    ' If the page did not change, expand "Token Management" in the sidebar and click "Budget Management".',
+  "#token-quota":
+    ' If the page did not change, expand "Token Management" in the sidebar and click "Quota Management".',
+  "#token-alert":
+    ' If the page did not change, expand "Token Management" in the sidebar and click "Alert Management".',
+  "#profile":
+    ' If the page did not change, expand "System Management" in the sidebar and click "My Profile".',
+  "#users":
+    ' If the page did not change, expand "System Management" in the sidebar and click "User Management".',
+  "#roles":
+    ' If the page did not change, expand "System Management" in the sidebar and click "Role Management".',
+  "#reviews":
+    ' If the page did not change, expand "System Management" in the sidebar and click "Review Management".',
+  "#chat-monitor":
+    ' If the page did not change, expand "System Management" in the sidebar and click "Chat Monitor".',
+  "#monitoring":
+    ' If the page did not change, expand "System Management" in the sidebar and click "System Monitoring".',
+};
+
+/** Navigate and verify in one step (avoids losing page state between steps). */
+export function navAndVerify(hash: string, pageTitle: string, ...matchTexts: string[]): string {
   const path = hash.startsWith("#") ? hash : `#${hash}`;
   const base = (process.env.BASE_URL || "http://localhost:8085").replace(/\/$/, "");
-  const marketplaceHint =
-    hash === "#test-cases-marketplace"
-      ? ' After navigation, expand "Test Cases" in the sidebar and click "Marketplace" if the page did not change.'
-      : hash === "#suites-marketplace"
-        ? ' After navigation, expand "Test Suites" in the sidebar and click "Marketplace" if the page did not change.'
-        : "";
-  return `Use the navigate tool to open exactly "${base}${path}".${marketplaceHint} Call browser_snapshot. If "${pageTitle}" is not in the main content, wait 2 seconds and snapshot again. Pass when "${pageTitle}" appears.`;
+  const texts = matchTexts.length > 0 ? matchTexts : [pageTitle];
+  const sidebarHint = SIDEBAR_FALLBACKS[path] ?? "";
+  return `Use the navigate tool to open exactly "${base}${path}". Call browser_snapshot. If the expected content is missing, click "Expand sidebar" or "Toggle menu" if visible, then snapshot again.${sidebarHint} If still missing, wait 2 seconds and snapshot again. Pass when the snapshot contains at least one of: ${texts.map((t) => `"${t}"`).join(", ")}.`;
 }

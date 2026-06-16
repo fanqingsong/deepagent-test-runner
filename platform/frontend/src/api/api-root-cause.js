@@ -30,16 +30,3 @@ export const analyzeGlobalRootCause = async (days = 7) => {
   return response.json();
 };
 
-// Subgraph nodes/edges for visualization.
-export const getRunRootCauseGraph = async (runId) => {
-  const response = await apiFetch(`${ROOT_CAUSE_API}/graph/${encodeURIComponent(runId)}`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to load run graph'));
-  return response.json();
-};
-
-// Neo4j connectivity health.
-export const getRootCauseHealth = async () => {
-  const response = await apiFetch(`${ROOT_CAUSE_API}/health`);
-  if (!response.ok) throw new Error(await parseApiError(response, 'Failed to check health'));
-  return response.json();
-};
