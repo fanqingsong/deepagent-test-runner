@@ -43,6 +43,13 @@ from app.temporal.activities.schedule_activities import (
 
 from app.temporal.activities.email_activities import send_email
 
+from app.temporal.activities.monitoring_activities import (
+    collect_system_metrics,
+    analyze_health_metrics,
+    store_monitoring_snapshot,
+    send_alert_notifications,
+)
+
 __all__ = [
     "get_default_retry_policy",
     "get_long_running_retry_policy",
@@ -52,4 +59,8 @@ __all__ = [
     "mark_run_failed",
     "execute_scheduled_test",
     "send_email",
+    "collect_system_metrics",
+    "analyze_health_metrics",
+    "store_monitoring_snapshot",
+    "send_alert_notifications",
 ]

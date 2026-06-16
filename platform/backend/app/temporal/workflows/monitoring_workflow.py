@@ -8,7 +8,7 @@ Runs periodically to collect metrics, analyze health, and send alerts.
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict
 
 from temporalio import workflow
@@ -34,10 +34,10 @@ logger = logging.getLogger(__name__)
 
 
 # Default timeouts
-DEFAULT_CHECK_TIMEOUT = timedelta(seconds=300)  # 5 minutes
-DEFAULT_ANALYSIS_TIMEOUT = timedelta(seconds=120)  # 2 minutes
-DEFAULT_STORAGE_TIMEOUT = timedelta(seconds=120)  # 2 minutes
-DEFAULT_NOTIFICATION_TIMEOUT = timedelta(seconds=300)  # 5 minutes
+DEFAULT_CHECK_TIMEOUT = 300  # 5 minutes
+DEFAULT_ANALYSIS_TIMEOUT = 120  # 2 minutes
+DEFAULT_STORAGE_TIMEOUT = 120  # 2 minutes
+DEFAULT_NOTIFICATION_TIMEOUT = 300  # 5 minutes
 
 
 @dataclass
@@ -148,29 +148,6 @@ class MonitoringAgentWorkflow:
                     retry_policy=get_default_retry_policy(),
                 )
 
-                # Step 5: Generate AI report (async, non-blocking)
-                self._status = "generating_report"
-
-                try:
-                    from app.temporal.activities.monitoring_activities import (
-                        generate_ai_report,
-                        GenerateAIReportInput,
-                    )
-
-                    await workflow.execute_activity(
-                        generate_ai_report,
-                        GenerateAIReportInput(
-                            snapshot_id=snapshot_output.monitoring_id,
-                            force_regeneration=False,
-                        ),
-                        start_to_close_timeout=DEFAULT_ANALYSIS_TIMEOUT,
-                        retry_policy=get_default_retry_policy(),
-                    )
-                    logger.info(f"AI report generated for snapshot {snapshot_output.monitoring_id}")
-                except Exception as e:
-                    logger.warning(f"Failed to generate AI report for snapshot {snapshot_output.monitoring_id}: {e}")
-                    # Continue even if report generation fails
-
                 # Update workflow state
                 self._last_check_time = metrics_output.collected_at
                 self._check_count += 1
@@ -183,7 +160,7 @@ class MonitoringAgentWorkflow:
                 )
 
                 # Wait for next check interval
-                await workflow.sleep(timedelta(seconds=config.check_interval_seconds))
+                await asyncio.sleep(config.check_interval_seconds)
 
         except asyncio.CancelledError:
             logger.info("MonitoringAgentWorkflow cancelled")

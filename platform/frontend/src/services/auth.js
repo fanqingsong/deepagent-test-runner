@@ -14,15 +14,19 @@ class AuthClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      withCredentials: true,
     });
 
-    // Add request interceptor — prefer in-memory token; cookies sent via withCredentials
+    // Add request interceptor to include auth tokens
     this.client.interceptors.request.use(
       (config) => {
-        const accessToken = authService.getAccessToken();
-        if (accessToken && accessToken !== 'undefined') {
+        const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+
+        if (accessToken) {
           config.headers.Authorization = `Bearer ${accessToken}`;
+        }
+        if (sessionToken) {
+          config.headers['X-Session-Token'] = sessionToken;
         }
 
         return config;
@@ -38,16 +42,31 @@ class AuthClient {
       async (error) => {
         const originalRequest = error.config;
 
-        // If 401 and not retrying yet, try token refresh via httpOnly cookies
+        // If 401 and not retrying yet, try token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
           try {
-            await authService.refreshToken();
-            return this.client(originalRequest);
+            const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+            if (refreshToken) {
+              const response = await this.refreshAccessToken(refreshToken);
+
+              // Store new tokens in the appropriate storage
+              const rememberMe = localStorage.getItem('remember_me') === '1';
+              const storage = rememberMe ? localStorage : sessionStorage;
+              storage.setItem('access_token', response.access_token);
+              if (response.refresh_token) {
+                storage.setItem('refresh_token', response.refresh_token);
+              }
+
+              // Retry original request with new token
+              originalRequest.headers.Authorization = `Bearer ${response.access_token}`;
+              return this.client(originalRequest);
+            }
           } catch (refreshError) {
-            authService.clearAuthData();
-            window.location.hash = 'login';
+            // Refresh failed, clear tokens and redirect to login
+            this.clearTokens();
+            window.location.href = '/login';
             return Promise.reject(refreshError);
           }
         }
@@ -96,21 +115,22 @@ class AuthClient {
       return { require_mfa: true, email };
     }
 
-    // Store user info (tokens are in httpOnly cookies set by backend)
-    const { user } = response.data;
-    if (user) {
-      authService.setAuthData('local', user, rememberMe);
-    }
+    // Store tokens and session for successful login (200 OK)
+    const { access_token, refresh_token, session_token, user } = response.data;
+
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem('access_token', access_token);
+    storage.setItem('refresh_token', refresh_token);
+    storage.setItem('session_token', session_token);
+    storage.setItem('user_info', JSON.stringify(user));
+    storage.setItem('remember_me', rememberMe ? '1' : '0');
+
+    // Notify authService about authentication state change
+    authService.notifyAuthChange();
 
     // Clear pending login data
     sessionStorage.removeItem('pending_login_email');
     sessionStorage.removeItem('pending_remember_me');
-
-    try {
-      await authService.getCurrentUser();
-    } catch (e) {
-      // Non-critical
-    }
 
     return response.data;
   }
@@ -165,7 +185,7 @@ class AuthClient {
    * Clear all auth tokens from storage
    */
   clearTokens() {
-    // Clear legacy localStorage tokens from pre-cookie auth
+    // Clear from both storages to handle all cases
     [localStorage, sessionStorage].forEach(storage => {
       storage.removeItem('access_token');
       storage.removeItem('refresh_token');
@@ -174,14 +194,13 @@ class AuthClient {
       storage.removeItem('user_info');
       storage.removeItem('remember_me');
     });
-    authService.clearAuthData();
   }
 
   /**
    * Check if user is authenticated
    */
   isAuthenticated() {
-    return authService.isAuthenticated();
+    return !!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
   }
 
   /**
@@ -253,22 +272,23 @@ class AuthClient {
     const payload = useBackup ? { recovery_code: code } : { totp_code: code };
     const response = await this.client.post('/mfa/verify', payload);
 
-    // Store user info (tokens are in httpOnly cookies set by backend)
-    const { user } = response.data;
+    // Store tokens and session after successful MFA verification
+    const { access_token, refresh_token, session_token, user } = response.data;
+
     const rememberMe = sessionStorage.getItem('pending_remember_me') === '1';
-    if (user) {
-      authService.setAuthData('local', user, rememberMe);
-    }
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem('access_token', access_token);
+    storage.setItem('refresh_token', refresh_token);
+    storage.setItem('session_token', session_token);
+    storage.setItem('user_info', JSON.stringify(user));
+    storage.setItem('remember_me', rememberMe ? '1' : '0');
+
+    // Notify authService about authentication state change
+    authService.notifyAuthChange();
 
     // Clear pending login data
     sessionStorage.removeItem('pending_login_email');
     sessionStorage.removeItem('pending_remember_me');
-
-    try {
-      await authService.getCurrentUser();
-    } catch (e) {
-      // Non-critical
-    }
 
     return response.data;
   }

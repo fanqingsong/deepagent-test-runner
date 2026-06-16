@@ -8,7 +8,6 @@
 
 import React, { useState, useCallback } from 'react';
 import useMonitoring from '../hooks/useMonitoring';
-import { useAuth } from '../contexts/AuthContext';
 import './AlertBanner.css';
 
 /**
@@ -20,11 +19,9 @@ import './AlertBanner.css';
  * - Shows alert severity, title, and description
  */
 function AlertBanner({ className = '', cooldownMinutes = 15 }) {
-  const { isAuthenticated } = useAuth();
-
   const { alerts, acknowledgeAlert, activeAlertsCount } = useMonitoring({
     pollInterval: 60000, // 1 minute for banner
-    enabled: isAuthenticated, // Only poll when authenticated
+    enabled: true,
   });
 
   const [dismissedUntil, setDismissedUntil] = useState(null);
@@ -37,10 +34,12 @@ function AlertBanner({ className = '', cooldownMinutes = 15 }) {
   // Check if banner is currently dismissed (in cooldown)
   const isDismissed = dismissedUntil && new Date() < new Date(dismissedUntil);
 
-  // Handle dismiss with cooldown - must be before early return
-  const handleDismiss = useCallback((withCooldown = false) => {
-    if (!alertToShow) return;
+  if (!alertToShow || isDismissed) {
+    return null;
+  }
 
+  // Handle dismiss with cooldown
+  const handleDismiss = useCallback((withCooldown = false) => {
     if (withCooldown) {
       const cooldownUntil = new Date();
       cooldownUntil.setMinutes(cooldownUntil.getMinutes() + cooldownMinutes);
@@ -55,10 +54,6 @@ function AlertBanner({ className = '', cooldownMinutes = 15 }) {
       console.error('Failed to acknowledge alert:', err);
     });
   }, [alertToShow, acknowledgeAlert, cooldownMinutes]);
-
-  if (!alertToShow || isDismissed) {
-    return null;
-  }
 
   return (
     <div className={`alert-banner alert-banner-${alertToShow.severity} ${className}`}>

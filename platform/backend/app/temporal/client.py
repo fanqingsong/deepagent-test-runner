@@ -112,7 +112,7 @@ async def start_monitoring_schedule(
             schedule_id,
             Schedule(
                 action=ScheduleActionStartWorkflow(
-                    MonitoringAgentWorkflow,
+                    MonitoringAgentWorkflow.run,
                     args=[monitoring_config],
                     id=f"{schedule_id}-run",
                     task_queue=settings.task_queue,

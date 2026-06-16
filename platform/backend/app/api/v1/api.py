@@ -16,27 +16,18 @@ from app.api.v1.endpoints import (
     auth,
     charts,
     data_analysis,
-    langgraph,
     llm_usage,
     monitoring,
     reviews,
-    roles,
-    root_cause,
     run_configs,
     script_generation,
-    script_validation,
-    script_management,
     tags,
     test_generation,
     test_suites,
     test_versions,
     users,
     voice,
-    weather,
-    health,
-    token,
 )
-from app.api.v1.endpoints.metrics import metrics_router
 
 api_router = APIRouter()
 
@@ -49,11 +40,6 @@ api_router.include_router(
 api_router.include_router(
     users.router,
     tags=["users"]
-)
-
-api_router.include_router(
-    roles.router,
-    tags=["roles"]
 )
 
 api_router.include_router(
@@ -96,13 +82,6 @@ api_router.include_router(
     data_analysis.router,
     prefix="/data-analysis",
     tags=["data-analysis"]
-)
-
-# Causal GraphRAG root cause analysis endpoints
-api_router.include_router(
-    root_cause.router,
-    prefix="/analysis",
-    tags=["root-cause-analysis"]
 )
 
 api_router.include_router(
@@ -164,73 +143,8 @@ api_router.include_router(
     tags=["admin-chat"],
 )
 
-# Script generation endpoints (refactored)
 api_router.include_router(
     script_generation.router,
     prefix="/scripts",
     tags=["script-generation"],
 )
-
-api_router.include_router(
-    script_validation.router,
-    prefix="/scripts",
-    tags=["script-validation"],
-)
-
-api_router.include_router(
-    script_management.router,
-    prefix="/scripts",
-    tags=["script-management"],
-)
-
-api_router.include_router(
-    weather.router,
-    prefix="/weather",
-    tags=["weather"],
-)
-
-api_router.include_router(
-    langgraph.router,
-    prefix="/langgraph",
-    tags=["langgraph"],
-)
-
-# Metrics endpoints
-api_router.include_router(
-    metrics_router,
-    prefix="/metrics",
-    tags=["metrics"],
-)
-
-# Health check endpoints
-api_router.include_router(
-    health.router,
-    tags=["health"],
-)
-
-# Token management endpoints
-api_router.include_router(
-    token.budgets.router,
-    prefix="/token",
-    tags=["token-budgets"],
-)
-
-api_router.include_router(
-    token.quotas.router,
-    prefix="/token",
-    tags=["token-quotas"],
-)
-
-api_router.include_router(
-    token.alerts.router,
-    prefix="/token",
-    tags=["token-alerts"],
-)
-
-api_router.include_router(
-    token.analytics.router,
-    prefix="/token",
-    tags=["token-analytics"],
-)
-
-

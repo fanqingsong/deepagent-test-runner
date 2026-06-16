@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.monitoring import AgentMonitoring, AgentAlert, AlertConfiguration
 from app.models.user import User
-from app.core.metrics.metrics_decorators import track_timing
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,6 @@ class MonitoringService:
         """
         self.db = db_session
 
-    @track_timing("service.monitoring.get_current_status")
     async def get_current_status(self) -> Dict[str, Any]:
         """
         Get the current monitoring status from the latest snapshot.
@@ -59,9 +57,8 @@ class MonitoringService:
             }
 
         # Count active (unacknowledged) alerts
-        # Note: acknowledged is stored as Integer (0/1), not boolean
         active_alerts_stmt = select(sql_func.count()).select_from(AgentAlert).where(
-            AgentAlert.acknowledged == 0
+            AgentAlert.acknowledged == False
         )
         active_alerts_result = await self.db.execute(active_alerts_stmt)
         active_alerts = active_alerts_result.scalar() or 0
@@ -84,10 +81,9 @@ class MonitoringService:
         Returns:
             list: Active alerts with details
         """
-        # acknowledged is stored as Integer (0/1), not boolean
         stmt = (
             select(AgentAlert)
-            .where(AgentAlert.acknowledged == 0)
+            .where(AgentAlert.acknowledged == False)
             .order_by(desc(AgentAlert.created_at))
             .limit(limit)
         )
@@ -133,8 +129,7 @@ class MonitoringService:
         if severity:
             stmt = stmt.where(AgentAlert.severity == severity)
         if acknowledged is not None:
-            # acknowledged is stored as Integer (0/1), not boolean
-            stmt = stmt.where(AgentAlert.acknowledged == (1 if acknowledged else 0))
+            stmt = stmt.where(AgentAlert.acknowledged == acknowledged)
 
         stmt = stmt.order_by(desc(AgentAlert.created_at)).limit(limit)
 
@@ -177,8 +172,7 @@ class MonitoringService:
         if not alert:
             return None
 
-        # acknowledged is stored as Integer (0/1), not boolean
-        alert.acknowledged = 1
+        alert.acknowledged = True
         alert.acknowledged_by = user_id
         alert.acknowledged_at = datetime.utcnow()
 
@@ -333,8 +327,7 @@ class MonitoringService:
         stmt = select(AlertConfiguration)
 
         if enabled_only:
-            # enabled is stored as Integer (0/1), not boolean
-            stmt = stmt.where(AlertConfiguration.enabled == 1)
+            stmt = stmt.where(AlertConfiguration.enabled == True)
 
         stmt = stmt.order_by(AlertConfiguration.created_at.desc())
 
